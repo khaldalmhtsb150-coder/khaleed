@@ -18,6 +18,7 @@ const rewardsOf = (guildId) => {
   // free servers use the first 15; rewards added with premium stay saved and come back on renewal
   return Array.isArray(r) ? r.slice(0, require('../utils/premium').limit(guildId, 'wheelRewards')) : [];
 };
+const odds = require('../utils/wheelOdds');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function buildPanel(guild) {
@@ -53,6 +54,7 @@ async function open(interaction) {
 
   const rewards = rewardsOf(guild.id);
   if (!rewards.length) return interaction.reply({ content: '• لا توجد جوائز في العجلة حالياً.', ephemeral: true });
+  if (odds.table(rewards).total <= 0) return interaction.reply({ content: '• كل جوائز العجلة نسبتها 0% حالياً، كلّم الإدارة.', ephemeral: true });
 
   const tickets = openTickets(guild.id);
   if (tickets[user.id] && guild.channels.cache.has(tickets[user.id]))
@@ -86,7 +88,7 @@ async function open(interaction) {
 
     await interaction.editReply(`${E.success} تم فتح تذكرة العجلة: ${channel}`);
 
-    const reward = rewards[Math.floor(Math.random() * rewards.length)];
+    const reward = odds.pick(rewards);
     const closeRow = new ActionRowBuilder().addComponents(ui.button('wheel_close', 'إغلاق التذكرة', { emoji: 'lock', style: ButtonStyle.Danger }));
     const resultEmbed = () =>
       ui
@@ -103,7 +105,7 @@ async function open(interaction) {
 
     // spinning picture: the MarkaBot wheel, or the server's own picture on premium
     const pic = await wheelImage
-      .render(rewards, reward, { background: premium.has(guild.id, 'wheelImage') ? conf.image || '' : '' })
+      .render(rewards.map(odds.nameOf), reward, { background: premium.has(guild.id, 'wheelImage') ? conf.image || '' : '' })
       .catch((err) => (console.error('[wheel image]', err.message), null));
 
     if (pic) {
@@ -125,7 +127,7 @@ async function open(interaction) {
       });
       for (let i = 0; i < 4; i++) {
         await sleep(800);
-        const r = rewards[Math.floor(Math.random() * rewards.length)];
+        const r = odds.nameOf(rewards[Math.floor(Math.random() * rewards.length)]);
         await msg.edit({ embeds: [ui.embed().setDescription(`### ${E.wheel} العجلة تدور ${E.loading}\n\`${r}\``)] }).catch(() => {});
       }
       await sleep(900);

@@ -1,5 +1,6 @@
 const E = require('../../utils/emojis');
 const store = require('../../utils/store');
+const odds = require('../../utils/wheelOdds');
 
 module.exports = {
   name: 'removereward',
@@ -13,6 +14,6 @@ module.exports = {
     if (!Array.isArray(list) || !list[i]) return ctx.fail('رقم غير صحيح.');
     const [removed] = list.splice(i, 1);
     store.save('wheelRewards');
-    return ctx.reply(`${E.delete} تم حذف: **${removed}**`);
+    return ctx.reply(`${E.delete} تم حذف: **${odds.nameOf(removed)}**`);
   },
 };
