@@ -26,10 +26,11 @@ const verify = require('../systems/verify');
 const purge = require('../systems/purge');
 const kafeel = require('../systems/kafeel');
 const prayer = require('../systems/prayer');
+const adhkar = require('../systems/adhkar');
 const staffSys = require('../systems/staff');
 const wrapped = require('../systems/wrapped');
 const who = (req) => ({ id: req.session.user.id, name: req.session.user.globalName || req.session.user.username });
-const MODULE_NAMES = { giveaway: 'القيفاواي', protection: 'الحماية', prefix: 'البادئة', general: 'الإعدادات العامة', greetings: 'الترحيب النصي', welcome: 'الترحيب المتقدم', autoLine: 'الخط التلقائي', feedback: 'الآراء', jail: 'السجن', tickets: 'التذاكر', vanity: 'حماية الرابط', logs: 'السجلات', invites: 'الدعوات', replies: 'الردود التلقائية', levels: 'المستويات', automod: 'AutoMod', verify: 'التحقق', purge: 'المسح التلقائي', kafeel: 'الكفيل', prayer: 'أوقات الصلاة', wrapped: 'ملخص السيرفر' };
+const MODULE_NAMES = { giveaway: 'القيفاواي', protection: 'الحماية', prefix: 'البادئة', general: 'الإعدادات العامة', greetings: 'الترحيب النصي', welcome: 'الترحيب المتقدم', autoLine: 'الخط التلقائي', feedback: 'الآراء', jail: 'السجن', tickets: 'التذاكر', vanity: 'حماية الرابط', logs: 'السجلات', invites: 'الدعوات', replies: 'الردود التلقائية', levels: 'المستويات', automod: 'AutoMod', verify: 'التحقق', purge: 'المسح التلقائي', kafeel: 'الكفيل', prayer: 'أوقات الصلاة', adhkar: 'الأذكار', wrapped: 'ملخص السيرفر' };
 
 const VIEWS = path.join(__dirname, 'views');
 const API = 'https://discord.com/api/v10';
@@ -185,6 +186,7 @@ function readSettings(guild) {
     automod: automod.config(id),
     kafeel: kafeel.config(id),
     prayer: prayer.config(id),
+    adhkar: adhkar.config(id),
     prayerCities: Object.fromEntries(Object.entries(prayer.CITIES).map(([k, c]) => [k, c.name])),
     wrapped: wrapped.config(id),
     staffReport: staffSys.canReport(id),
@@ -410,6 +412,21 @@ function writeSettings(guild, module, d) {
       });
       if (conf.enabled && !conf.channelId) throw new Error('اختار قناة الأذان');
       return store.save('prayerConfig');
+    }
+    case 'adhkar': {
+      const conf = store.guild('adhkarConfig', id, {});
+      const iv = int(d.interval, 0, 1440, 60);
+      Object.assign(conf, {
+        enabled: bool(d.enabled),
+        channelId: channelIn(guild, d.channelId) || '',
+        interval: iv === 0 ? 0 : Math.max(15, iv),
+        skipIdle: bool(d.skipIdle),
+        sabahMasa: bool(d.sabahMasa),
+        friday: bool(d.friday),
+        roleId: roleIn(guild, d.roleId) || '',
+      });
+      if (conf.enabled && !conf.channelId) throw new Error('اختار قناة الأذكار');
+      return store.save('adhkarConfig');
     }
     case 'wrapped': {
       const conf = store.guild('wrappedConfig', id, {});

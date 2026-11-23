@@ -1071,6 +1071,7 @@
     feedback: () => [['feedback', { enabled: checked('f-enabled'), channels: chipState.feedback, emojis: val('f-emojis').split(',').map((s) => s.trim()).filter(Boolean) }]],
     kafeel: () => [['kafeel', { enabled: checked('kf-enabled'), channelId: val('kf-channel'), sponsorRoleId: val('kf-role'), goalMessages: val('kf-goal'), days: val('kf-days'), rewardXp: val('kf-xp'), maxPerSponsor: val('kf-max') }]],
     wrapped: () => [['wrapped', { enabled: checked('wr-enabled'), channelId: val('wr-channel'), city: val('wr-city'), weekly: checked('wr-weekly'), accent: val('wr-accent') }]],
+    adhkar: () => [['adhkar', { enabled: checked('az-enabled'), channelId: val('az-channel'), interval: val('az-interval'), skipIdle: checked('az-idle'), sabahMasa: checked('az-sm'), friday: checked('az-fri'), roleId: val('az-role') }]],
     prayer: () => [['prayer', { enabled: checked('pr-enabled'), channelId: val('pr-channel'), city: val('pr-city'), roleId: val('pr-role'), prayers: [...document.querySelectorAll('[data-prayer]:checked')].map((c) => c.dataset.prayer), ramadan: checked('pr-ramadan'), suhoorMinutes: val('pr-suhoor') }]],
     automod: () => {
       const g = (x) => document.getElementById(x);
@@ -1604,7 +1605,7 @@
   const GROUPS = {
     settings: { sections: ['sec-general'], ar: ['إعدادات السيرفر', 'البادئة ورتبة مدراء البوت.'], en: ['Server settings', 'Prefix and the bot manager role.'] },
     moderation: { sections: ['sec-mod-note', 'sec-automod', 'sec-verify', 'sec-jail', 'sec-protection', 'sec-vanity', 'sec-purge'], ar: ['الإشراف والحماية', 'AutoMod، التحقق، السجن، الحماية والمسح التلقائي.'], en: ['Moderation', 'AutoMod, verification, jail, protection and auto purge.'] },
-    community: { sections: ['sec-kafeel', 'sec-wrapped', 'sec-prayer'], ar: ['المجتمع', 'الكفيل، ملخص السيرفر، وأوقات الصلاة ورمضان.'], en: ['Community', 'Sponsors, server summary, and prayer times & Ramadan.'] },
+    community: { sections: ['sec-kafeel', 'sec-wrapped', 'sec-prayer', 'sec-adhkar'], ar: ['المجتمع', 'الكفيل، ملخص السيرفر، أوقات الصلاة ورمضان، والأذكار.'], en: ['Community', 'Sponsors, server summary, prayer times & Ramadan, and adhkar.'] },
     staff: { sections: ['sec-staff'], ar: ['أداء الإدارة', 'تقرير شهري لنشاط كل إداري.'], en: ['Staff report', 'A monthly activity report for every staff member.'] },
     rolemenus: { sections: ['sec-rolemenus'], ar: ['رتب بالأزرار', 'لوحات يختار منها الأعضاء رتبهم.'], en: ['Role menus', 'Panels where members pick their roles.'] },
     embeds: { sections: ['sec-embeds'], ar: ['صانع الإمبد', 'صمم رسائل مرتبة وابعتها أو جدولها.'], en: ['Embed builder', 'Design messages and send or schedule them.'] },
@@ -2017,6 +2018,30 @@
       'wrapped'
     );
   }
+  function sAdhkar() {
+    const A = S.adhkar || {};
+    const iv = [[0, 'بدون'], [15, 'كل ربع ساعة'], [30, 'كل نص ساعة'], [60, 'كل ساعة'], [120, 'كل ساعتين'], [180, 'كل 3 ساعات'], [360, 'كل 6 ساعات'], [720, 'كل 12 ساعة'], [1440, 'مرة باليوم']];
+    return card(
+      'sec-adhkar',
+      'الأذكار 📿',
+      'نشر ذكر أو آية أو دعاء بقناة كل فترة، وأذكار الصباح والمساء بوقتها، وتذكير يوم الجمعة.',
+      'clock',
+      `${toggle('az-enabled', A.enabled, 'تفعيل نشر الأذكار')}
+      <div class="row">
+        ${field('قناة الأذكار', `<select class="select" id="az-channel">${textOpts(A.channelId, 'اختر قناة')}</select>`)}
+        ${field('ذكر تلقائي', `<select class="select" id="az-interval">${iv.map(([v, n]) => `<option value="${v}" ${Number(A.interval ?? 60) === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`)}
+      </div>
+      ${field('منشن رتبة (اختياري)', `<select class="select" id="az-role">${roleOpts(A.roleId, 'بدون منشن')}</select>`)}
+      <div class="row">
+        <div>${toggle('az-sm', A.sabahMasa !== false, 'أذكار الصباح والمساء', 'بعد الفجر وبعد العصر بـ 20 دقيقة، حسب مدينة قسم أوقات الصلاة')}</div>
+        <div>${toggle('az-fri', A.friday !== false, 'تذكير الجمعة', 'سورة الكهف، والصلاة على النبي ﷺ، وساعة الإجابة')}</div>
+      </div>
+      ${toggle('az-idle', A.skipIdle !== false, 'لا تكدّس الأذكار', 'إذا ما حدا كتب بالقناة من آخر ذكر، البوت ما بينزل ذكر جديد')}
+      <div class="help">كل منشور فيه أزرار بتفتح لكل عضو الأذكار مع عدّاد، والمسبحة الإلكترونية، برسالة خاصة فيه. والأعضاء بيقدروا يستخدموا <code>/azkar</code> و <code>/tasbeeh</code> بأي وقت.</div>`,
+      'adhkar'
+    );
+  }
+
   function sPrayer() {
     const Pr = S.prayer;
     const pn = { fajr: 'الفجر', dhuhr: 'الظهر', asr: 'العصر', maghrib: 'المغرب', isha: 'العشاء' };
@@ -2067,7 +2092,7 @@
     if (!P) throw new Error('لوحة التحكم تحدّثت لكن البوت ما زال يعمل بالنسخة القديمة — أعد تشغيل البوت من الاستضافة ثم حدّث الصفحة');
     if (!EMO?.canEdit) EMO = null;
     document.getElementById('cards').innerHTML = [
-      sPremium(), sGeneral(), sBotProfile(), sWelcome(), sTickets(), sGwManage(), sGiveaway(), sModNote(), sAutomod(), sVerify(), sProtection(), sJail(), sVanity(), sPurge(), sRoleMenus(), sEmbeds(), sKafeel(), sWrapped(), sPrayer(), sStaff(), sLogs(), sInvites(), sAutoLine(), sFeedback(), sReplies(), sLevels(), sGuildEmojis(), sEmojis(),
+      sPremium(), sGeneral(), sBotProfile(), sWelcome(), sTickets(), sGwManage(), sGiveaway(), sModNote(), sAutomod(), sVerify(), sProtection(), sJail(), sVanity(), sPurge(), sRoleMenus(), sEmbeds(), sKafeel(), sWrapped(), sPrayer(), sAdhkar(), sStaff(), sLogs(), sInvites(), sAutoLine(), sFeedback(), sReplies(), sLevels(), sGuildEmojis(), sEmojis(),
     ].join('');
     arrangeGroups();
     renderChips('autoline');

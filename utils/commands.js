@@ -23,6 +23,7 @@ const CATEGORIES = {
   invites: 'الدعوات والعجلة',
   levels: 'المستويات',
   community: 'المجتمع',
+  adhkar: 'الأذكار',
   greetings: 'الترحيب',
   channels: 'التحكم بالقنوات',
   moderation: 'الإدارة والسجن',
