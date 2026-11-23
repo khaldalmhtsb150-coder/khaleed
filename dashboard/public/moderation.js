@@ -773,7 +773,8 @@
       'حماية الرابط المخصص',
       v.current ? `الرابط الحالي: discord.gg/${esc(v.current)}` : 'هذا السيرفر لا يملك رابطاً مخصصاً.',
       'shield',
-      `${toggle('v-enabled', v.vanityProtect, 'تفعيل الحماية', 'استرجاع الرابط فوراً ومعاقبة المنفذ', !v.current)}
+      `${toggle('v-enabled', v.vanityProtect, 'تفعيل الحماية', 'معاقبة اللي بيغيّر الرابط فوراً، وتنبيه عاجل لمالك السيرفر بالخاص فيه الرابط القديم عشان يرجّعه', !v.current)}
+      <p class="hint">ديسكورد ما بيسمح للبوتات تغيّر الرابط المخصص، فالبوت ما بيقدر يرجّعه بنفسه. أقوى حماية إنك تعطي صلاحية Manage Server بس للناس اللي بتثق فيهم.</p>
       <div class="row">
         ${field('العقوبة', `<select class="select" id="v-punish">
           <option value="ban" ${v.punishment === 'ban' ? 'selected' : ''}>حظر نهائي</option>
