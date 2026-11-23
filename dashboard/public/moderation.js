@@ -812,6 +812,7 @@
         ${field('قناة سجل الدعوات', `<select class="select" id="i-log">${textOpts(i.logChannelId, 'معطل')}</select>`)}
         ${field('أقل عمر للحساب لاحتساب النقطة (أيام)', `<input class="input ltr" type="number" id="i-age" min="0" max="365" value="${i.minAccountAgeDays}">`, 'الحسابات الأحدث تُحسب كدعوات وهمية.')}
       </div>
+      ${field('مدة البقاء قبل احتساب نقطة العجلة (ساعات)', `<input class="input ltr" type="number" id="i-hold" min="0" max="720" value="${i.pointHoldHours || 0}">`, 'الداعي ما بياخد النقطة إلا إذا العضو الجديد ضل بالسيرفر هالمدة. 0 = فوراً. ننصح بـ 24. وإذا طلع العضو بعد ما انحسبت النقطة، بتنسحب.')}
       ${premiumBlock(
         field(
           `صورة العجلة ${crown}`,
@@ -1065,7 +1066,7 @@
       document.querySelectorAll('[data-log]').forEach((s) => (d[s.dataset.log] = s.value));
       return [['logs', d]];
     },
-    invites: () => [['invites', { logChannelId: val('i-log'), minAccountAgeDays: val('i-age'), wheelEnabled: checked('i-wheel'), ...(isPrem('wheelImage') ? { wheelImage: val('i-wheel-img').trim() } : {}) }]],
+    invites: () => [['invites', { logChannelId: val('i-log'), minAccountAgeDays: val('i-age'), pointHoldHours: val('i-hold'), wheelEnabled: checked('i-wheel'), ...(isPrem('wheelImage') ? { wheelImage: val('i-wheel-img').trim() } : {}) }]],
     autoLine: () => [['autoLine', { enabled: checked('a-enabled'), channels: chipState.autoline, imageUrl: val('a-image') }]],
     feedback: () => [['feedback', { enabled: checked('f-enabled'), channels: chipState.feedback, emojis: val('f-emojis').split(',').map((s) => s.trim()).filter(Boolean) }]],
     kafeel: () => [['kafeel', { enabled: checked('kf-enabled'), channelId: val('kf-channel'), sponsorRoleId: val('kf-role'), goalMessages: val('kf-goal'), days: val('kf-days'), rewardXp: val('kf-xp'), maxPerSponsor: val('kf-max') }]],

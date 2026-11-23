@@ -6,6 +6,33 @@ const welcome = require('./welcome');
 
 const cache = new Map(); // guildId → Map(code → uses)
 const DAY = 86_400_000;
+const queues = new Map(); // guildId → promise chain of joins
+
+/** Wheel points are only earned while the wheel is on (/wheel-toggle). */
+function givePoint(guildId, e, rec) {
+  delete rec.pointAt;
+  if (store.peek('wheelConfig', guildId)?.enabled === false) return false;
+  e.points++;
+  rec.point = true;
+  return true;
+}
+
+/** Hands out held points to inviters whose members stayed long enough. */
+function releaseHeld() {
+  const now = Date.now();
+  let changed = false;
+  for (const [guildId, users] of Object.entries(store.get('invites'))) {
+    for (const e of Object.values(users || {})) {
+      for (const rec of e?.invited || []) {
+        if (rec.pointAt && rec.pointAt <= now && !rec.leftAt && !rec.left) {
+          givePoint(guildId, e, rec);
+          changed = true;
+        }
+      }
+    }
+  }
+  if (changed) store.save('invites');
+}
 
 function entry(guildId, userId) {
   const g = store.guild('invites', guildId);
@@ -35,16 +62,35 @@ async function snapshot(guild) {
   }
 }
 
+/**
+ * Which invite did the new member use?
+ * Only credits someone when exactly ONE invite's use count went up; if several changed at once
+ * (two people joined together via different links) nobody is credited rather than the wrong person.
+ */
 async function detect(guild) {
   const before = cache.get(guild.id);
   const invites = await guild.invites.fetch().catch(() => null);
-  if (!invites) return null;
-  let used = null;
-  if (before) {
-    used = invites.find((i) => (i.uses || 0) > (before.get(i.code) || 0)) || null;
+  if (!invites) return { used: null, reason: 'fetch' };
+  const fresh = new Map(invites.map((i) => [i.code, i.uses || 0]));
+  if (!before) {
+    cache.set(guild.id, fresh);
+    return { used: null, reason: 'nocache' };
   }
-  cache.set(guild.id, new Map(invites.map((i) => [i.code, i.uses || 0])));
-  return used;
+  const changed = invites.filter((i) => {
+    const uses = i.uses || 0;
+    // a link we never saw: only trust it if this is its very first use
+    return before.has(i.code) ? uses > before.get(i.code) : uses === 1;
+  });
+  if (changed.size === 1) {
+    const used = changed.first();
+    // count this join only; if two people came through the same link, the next join still finds it
+    const base = before.has(used.code) ? before.get(used.code) + 1 : 1;
+    fresh.set(used.code, Math.min(base, used.uses || 0));
+    cache.set(guild.id, fresh);
+    return { used, reason: null };
+  }
+  cache.set(guild.id, fresh);
+  return { used: null, reason: changed.size > 1 ? 'ambiguous' : 'none' };
 }
 
 function logChannel(guild) {
@@ -66,15 +112,25 @@ function init(client) {
   client.once(Events.ClientReady, async () => {
     await Promise.all(client.guilds.cache.map((g) => snapshot(g)));
     console.log('[invites] cache ready');
+    setInterval(releaseHeld, 5 * 60_000);
+    releaseHeld();
   });
   client.on(Events.GuildCreate, (g) => snapshot(g));
   client.on(Events.InviteCreate, (i) => cache.get(i.guild.id)?.set(i.code, i.uses || 0));
   client.on(Events.InviteDelete, (i) => cache.get(i.guild.id)?.delete(i.code));
 
-  client.on(Events.GuildMemberAdd, async (member) => {
+  // joins are handled one at a time per server, so two people joining together can't be mixed up
+  client.on(Events.GuildMemberAdd, (member) => {
+    const prev = queues.get(member.guild.id) || Promise.resolve();
+    const next = prev.then(() => onJoin(member)).catch((e) => console.error('[invites]', e.message));
+    queues.set(member.guild.id, next);
+  });
+
+  async function onJoin(member) {
     const { guild } = member;
-    const used = await detect(guild);
-    const inviter = used?.inviter || null;
+    const { used, reason } = await detect(guild);
+    // bots (Disboard, other listing bots) and the vanity link never earn points
+    const inviter = used?.inviter && !used.inviter.bot ? used.inviter : null;
     const conf = store.peek('inviteConfig', guild.id) || {};
     const minAge = (conf.minAccountAgeDays ?? 30) * DAY;
     const fake = Date.now() - member.user.createdTimestamp < minAge;
@@ -89,12 +145,15 @@ function init(client) {
         e.left = Math.max(0, e.left - 1);
         e.regular++;
       } else {
-        e.invited.push({ id: member.id, joinedAt: Date.now(), leftAt: null, fake });
+        const rec = { id: member.id, joinedAt: Date.now(), leftAt: null, fake };
+        e.invited.push(rec);
         if (fake) e.fake++;
         else {
           e.regular++;
-          // wheel points are only earned while the wheel is on (/wheel-toggle)
-          if (store.peek('wheelConfig', member.guild.id)?.enabled !== false) e.points++;
+          // the point only comes after the new member stays for the hold time (0 = right away)
+          const hold = Math.max(0, Number(conf.pointHoldHours) || 0) * 3_600_000;
+          if (hold) rec.pointAt = Date.now() + hold;
+          else givePoint(guild.id, e, rec);
         }
       }
       store.save('invites');
@@ -105,7 +164,15 @@ function init(client) {
       ?.send({
         content: [
           `${E.joinLeave} دخل العضو ${member} السيرفر`,
-          `${E.dot} الداعي: ${inviter ? `<@${inviter.id}> (${stats(guild.id, inviter.id).total} دعوة)` : 'غير معروف'}`,
+          `${E.dot} الداعي: ${
+            inviter
+              ? `<@${inviter.id}> (${stats(guild.id, inviter.id).total} دعوة)`
+              : reason === 'ambiguous'
+                ? 'غير مؤكد (دخل أكثر من عضو بنفس اللحظة، فما انحسبت لحدا)'
+                : used?.inviter?.bot
+                  ? `بوت (${used.inviter.username}) — ما بتنحسب`
+                  : 'غير معروف'
+          }`,
           `${E.dot} عمر الحساب: ${formatDays(ageDays)}${fake ? ` ${E.warning} حساب جديد` : ''}`,
         ].join('\n'),
         allowedMentions: { parse: [] },
@@ -113,7 +180,7 @@ function init(client) {
       .catch(() => {});
 
     await welcome.onJoin(member, inviter).catch((e) => console.error('[welcome]', e.message));
-  });
+  }
 
   client.on(Events.GuildMemberRemove, (member) => {
     const { guild } = member;
@@ -125,6 +192,12 @@ function init(client) {
       if (!found.rec.fake) {
         e.regular = Math.max(0, e.regular - 1);
         e.left++;
+      }
+      // left before the point was earned → never gets it; left after → the point is taken back
+      delete found.rec.pointAt;
+      if (found.rec.point) {
+        found.rec.point = false;
+        e.points = Math.max(0, e.points - 1);
       }
       store.save('invites');
     }
@@ -143,4 +216,4 @@ function init(client) {
   });
 }
 
-module.exports = { init, entry, stats, findInviter };
+module.exports = { init, entry, stats, findInviter, detect, releaseHeld, _cache: cache };

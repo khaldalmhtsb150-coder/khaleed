@@ -176,7 +176,7 @@ function readSettings(guild) {
     tickets: { ...tickets.DEFAULT_CONFIG, ...(store.peek('ticketConfig', id) || {}) },
     vanity: { ...p('linkProtection', { vanityProtect: false, punishment: 'ban', whitelist: [] }), current: guild.vanityURLCode || null },
     logs: p('logsConfig'),
-    invites: { ...p('inviteConfig', { logChannelId: '', minAccountAgeDays: 30 }), wheelEnabled: store.peek('wheelConfig', id)?.enabled !== false, wheelImage: store.peek('wheelConfig', id)?.image || '' },
+    invites: { ...p('inviteConfig', { logChannelId: '', minAccountAgeDays: 30, pointHoldHours: 0 }), wheelEnabled: store.peek('wheelConfig', id)?.enabled !== false, wheelImage: store.peek('wheelConfig', id)?.image || '' },
     replies: p('customReplies', { enabled: false, replies: [] }),
     giveaway: p('giveawayConfig', giveaways.DEFAULT_CONFIG),
     protection: protection.config(id),
@@ -339,6 +339,7 @@ function writeSettings(guild, module, d) {
       Object.assign(store.guild('inviteConfig', id), {
         logChannelId: channelIn(guild, d.logChannelId),
         minAccountAgeDays: int(d.minAccountAgeDays, 0, 365, 30),
+        pointHoldHours: int(d.pointHoldHours, 0, 720, 0),
       });
       if ('wheelEnabled' in d) {
         store.guild('wheelConfig', id).enabled = bool(d.wheelEnabled);
