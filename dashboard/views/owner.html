@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>لوحة المالك — MarkaBot</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding-top: 10px; }
+    .bars div { flex: 1; background: var(--grad, #8b5cf6); border-radius: 6px 6px 2px 2px; min-height: 3px; position: relative; opacity: .9; }
+    .bars div span { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--faint); white-space: nowrap; }
+    .top-list { display: flex; flex-direction: column; gap: 8px; }
+    .top-list .row-item { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+    .top-list code { min-width: 110px; direction: ltr; text-align: right; color: var(--text); }
+    .top-list .meter { flex: 1; height: 8px; background: var(--surface); border-radius: 8px; overflow: hidden; }
+    .top-list .meter i { display: block; height: 100%; background: var(--grad, #8b5cf6); border-radius: 8px; }
+    .inline-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .inline-form .input, .inline-form .select { flex: 1; min-width: 160px; }
+    .err-item { background: #0e0b1c; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+    .err-item small { color: var(--faint); display: block; margin-bottom: 4px; }
+    .err-item pre { margin: 0; white-space: pre-wrap; word-break: break-word; direction: ltr; text-align: left; font-size: 12px; color: #fda4af; max-height: 160px; overflow: auto; }
+    .progress { height: 10px; background: var(--surface); border-radius: 10px; overflow: hidden; margin: 10px 0 6px; }
+    .progress i { display: block; height: 100%; background: var(--grad, #8b5cf6); transition: width .4s; }
+    .cmd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+    .cmd-grid label { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #0e0b1c; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+    .cmd-grid code { direction: ltr; }
+    .warn { background: rgba(251, 191, 36, .08); border: 1px solid rgba(251, 191, 36, .3); color: #fde68a; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 14px; }
+    .log-item { display: flex; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .log-item:last-child { border-bottom: 0; }
+    .log-item .tag { flex-shrink: 0; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--accent-soft, rgba(139,92,246,.16)); color: #d8ccff; height: fit-content; white-space: nowrap; }
+    .log-item .tag.t-guild_join { background: rgba(34,197,94,.14); color: #4ade80; }
+    .log-item .tag.t-guild_leave { background: rgba(244,63,94,.14); color: #fb7185; }
+    .log-item .tag.t-owner { background: rgba(251,191,36,.14); color: #fcd34d; }
+    .log-item .tag.t-command { background: var(--surface); color: var(--muted); }
+    .log-item .body { flex: 1; min-width: 0; }
+    .log-item .meta { color: var(--faint); font-size: 12px; margin-top: 2px; }
+    .log-wrap { max-height: 560px; overflow-y: auto; background: #0e0b1c; border: 1px solid var(--line); border-radius: 12px; }
+    .owner-only, .logs-only, .main-only { display: none; }
+    body.can-logs section.logs-only, body.is-main div.main-only, body.is-main section.main-only { display: block; }
+    body.is-main a.main-only { display: flex; }
+    body.can-logs a.logs-only { display: flex; }
+    body.is-owner .owner-only { display: block; }
+    body.is-owner a.owner-only { display: flex; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="guild-head"><div class="ph">M</div><div><b>لوحة المالك</b><small id="roleLabel">فريق البوت</small></div></div>
+      <a class="side-link" href="/servers">‹ السيرفرات</a>
+      <div class="side-label">عام</div>
+      <a class="side-link" href="#sec-overview">نظرة عامة</a>
+      <a class="side-link" href="#sec-servers">إدارة السيرفرات</a>
+      <a class="side-link" href="#sec-blacklist">القائمة السوداء</a>
+      <a class="side-link logs-only" href="#sec-logs">سجلات البوت</a>
+      <a class="side-link" href="#sec-errors">سجل الأخطاء</a>
+      <div class="side-label owner-only">للمالك</div>
+      <a class="side-link owner-only" href="#sec-admins">مشرفو البوت</a>
+      <a class="side-link owner-only" href="#sec-identity">هوية البوت</a>
+      <a class="side-link owner-only" href="#sec-control">الصيانة والأوامر</a>
+      <a class="side-link owner-only" href="#sec-announce">إعلان لمالكي السيرفرات</a>
+      <a class="side-link owner-only" href="#sec-premium">البريميوم</a>
+      <a class="side-link main-only" href="#sec-backup">النسخ الاحتياطي</a>
+    </aside>
+
+    <main class="main"><div class="main-inner">
+      <div class="page-head"><div><h1>لوحة المالك</h1><p>إدارة البوت على مستوى كل السيرفرات.</p></div></div>
+
+      <!-- 1 overview -->
+      <section class="card" id="sec-overview">
+        <div class="card-head"><div><h2>نظرة عامة</h2></div><span class="pill" id="maintPill" style="display:none">وضع الصيانة مفعل</span></div>
+        <div class="card-body">
+          <div class="grid-4">
+            <div class="stat"><div class="k">السيرفرات</div><div class="v" id="oServers">—</div></div>
+            <div class="stat"><div class="k">الأعضاء</div><div class="v" id="oUsers">—</div></div>
+            <div class="stat"><div class="k">أوامر اليوم</div><div class="v" id="oToday">—</div></div>
+            <div class="stat"><div class="k">أوامر الأسبوع</div><div class="v" id="oWeek">—</div></div>
+            <div class="stat"><div class="k">مدة التشغيل</div><div class="v" id="oUptime" style="font-size:18px;padding-top:6px">—</div></div>
+            <div class="stat"><div class="k">الرام</div><div class="v" id="oRam">—</div></div>
+            <div class="stat"><div class="k">البنق</div><div class="v" id="oPing">—</div></div>
+            <div class="stat"><div class="k">سيرفرات بريميوم</div><div class="v" id="oPremium">—</div></div>
+          </div>
+          <div class="grid-2 mt">
+            <div><div class="field"><label>استخدام الأوامر (آخر 14 يوم)</label><div class="bars" id="oBars"></div></div></div>
+            <div><div class="field"><label>الأكثر استخداماً هذا الأسبوع</label><div class="top-list" id="oTop"></div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 servers -->
+      <section class="card" id="sec-servers">
+        <div class="card-head"><div><h2>إدارة السيرفرات</h2><p id="srvCount"></p></div><input class="input" id="srvQ" placeholder="بحث..." style="max-width:220px"></div>
+        <div class="card-body"><div id="srvTable" class="faint">جاري التحميل...</div></div>
+      </section>
+
+      <!-- 3 blacklist -->
+      <section class="card" id="sec-blacklist">
+        <div class="card-head"><div><h2>القائمة السوداء</h2><p>المحظور لا يستطيع استخدام البوت، والسيرفر المحظور يخرج منه البوت تلقائياً.</p></div></div>
+        <div class="card-body">
+          <div class="inline-form">
+            <select class="select" id="blType" style="max-width:130px"><option value="user">مستخدم</option><option value="server">سيرفر</option></select>
+            <input class="input ltr" id="blId" placeholder="الآيدي">
+            <input class="input" id="blReason" placeholder="السبب (اختياري)">
+            <button class="btn primary" id="blAdd">حظر</button>
+          </div>
+          <div id="blList" class="mt"></div>
+        </div>
+      </section>
+
+      <!-- 13 activity logs -->
+      <section class="card logs-only" id="sec-logs">
+        <div class="card-head"><div><h2>سجلات البوت</h2><p id="lgCount">كل ما يحدث في البوت: دخول وخروج السيرفرات، القيفات، الأوامر، تعديلات اللوحة، وإجراءات المالك.</p></div>
+          <button class="btn ghost sm" id="lgRefresh">تحديث</button></div>
+        <div class="card-body">
+          <div class="inline-form">
+            <select class="select" id="lgType" style="max-width:200px"><option value="">كل الأنواع</option></select>
+            <input class="input" id="lgQ" placeholder="بحث بالاسم أو الآيدي أو السيرفر...">
+          </div>
+          <div id="lgList" class="mt"></div>
+          <div class="main-only" style="margin-top:18px">
+            <div class="toggle-line" style="display:block">
+              <b>من يستطيع رؤية السجلات</b>
+              <small style="margin-bottom:10px">أنت (المالك الرئيسي) ترى السجلات دائماً. أضف آيدي أي مالك أو مشرف تريد أن يراها، والباقي لن يظهر لهم هذا القسم.</small>
+              <div class="inline-form"><input class="input ltr" id="lvId" placeholder="آيدي المستخدم"><button class="btn primary" id="lvAdd">منح الصلاحية</button></div>
+              <div id="lvList" class="mt"></div>
+            </div>
+            <div class="toggle-line" style="display:block">
+              <b>إرسال السجلات لقناة في ديسكورد</b>
+              <small style="margin-bottom:10px">ضع آيدي قناة في سيرفرك، والبوت يرسل لها السجلات المهمة مباشرة. (استخدام الأوامر يبقى هنا فقط لأنه كثير)</small>
+              <div class="inline-form"><input class="input ltr" id="lgChannel" placeholder="آيدي القناة (فارغ = إيقاف)"><button class="btn primary" id="lgSave">حفظ</button></div>
+              <div class="cmd-grid mt" id="lgTypes"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8 errors -->
+      <section class="card" id="sec-errors">
+        <div class="card-head"><div><h2>سجل الأخطاء</h2><p>آخر الأخطاء منذ آخر تشغيل للبوت.</p></div>
+          <div style="display:flex;gap:8px"><button class="btn ghost sm" id="errRefresh">تحديث</button><button class="btn danger sm owner-only" id="errClear">مسح</button></div></div>
+        <div class="card-body"><div id="errList"></div></div>
+      </section>
+
+      <!-- 4 admins -->
+      <section class="card owner-only" id="sec-admins">
+        <div class="card-head"><div><h2>مشرفو البوت</h2><p>يدخلون هذه اللوحة بصلاحيات محدودة: النظرة العامة، السيرفرات، القائمة السوداء، والأخطاء.</p></div></div>
+        <div class="card-body">
+          <div class="inline-form"><input class="input ltr" id="adId" placeholder="آيدي المستخدم"><button class="btn primary" id="adAdd">إضافة</button></div>
+          <div id="adList" class="mt"></div>
+        </div>
+      </section>
+
+      <!-- 5 identity -->
+      <section class="card owner-only" id="sec-identity">
+        <div class="card-head"><div><h2>هوية البوت</h2><p>ديسكورد يسمح بتغيير الاسم مرتين كل ساعة تقريباً.</p></div></div>
+        <div class="card-body">
+          <div class="person" style="margin-bottom:16px"><img id="idAvatar" alt="" style="width:56px;height:56px"><b id="idName" style="font-size:18px"></b></div>
+          <div class="row">
+            <div class="field"><label>اسم البوت</label><input class="input" id="idUsername" maxlength="32"></div>
+            <div class="field"><label>نص الحالة</label><input class="input" id="idStatus" maxlength="120"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>رابط صورة جديدة</label><input class="input ltr" id="idAvatarUrl" placeholder="https://..."></div>
+            <div class="field"><label>رابط بانر جديد</label><input class="input ltr" id="idBannerUrl" placeholder="https://..."></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>نوع النشاط</label><select class="select" id="idType"><option value="Custom">حالة مخصصة (فقاعة)</option><option value="Watching">يشاهد</option><option value="Playing">يلعب</option><option value="Listening">يستمع</option><option value="Competing">يتنافس</option></select></div>
+            <div class="field"><label>الحالة</label><select class="select" id="idPresence"><option value="online">متصل</option><option value="idle">خامل</option><option value="dnd">عدم الإزعاج</option></select></div>
+          </div>
+        </div>
+        <div class="card-foot"><button class="btn primary" id="idSave">حفظ</button></div>
+      </section>
+
+      <!-- 6+7 control -->
+      <section class="card owner-only" id="sec-control">
+        <div class="card-head"><div><h2>الصيانة والأوامر</h2><p>وضع الصيانة لا يؤثر على مالكي البوت، أما إيقاف الأوامر فيطبق على الجميع.</p></div></div>
+        <div class="card-body">
+          <div class="toggle-line"><div><b>وضع الصيانة</b><small>البوت يرد على الجميع برسالة الصيانة بدل تنفيذ الأوامر</small></div>
+            <label class="switch"><input type="checkbox" id="mtEnabled"><span></span></label></div>
+          <div class="field"><label>رسالة الصيانة</label><input class="input" id="mtMessage" maxlength="300" placeholder="البوت تحت الصيانة حالياً، حاول لاحقاً."></div>
+          <div class="field mt"><label>إيقاف أوامر في كل السيرفرات</label><div class="cmd-grid" id="gdList"></div></div>
+        </div>
+        <div class="card-foot"><button class="btn danger" id="reconnect">إعادة اتصال البوت</button><button class="btn primary" id="ctlSave">حفظ</button></div>
+      </section>
+
+      <!-- 11 announce -->
+      <section class="card owner-only" id="sec-announce">
+        <div class="card-head"><div><h2>إعلان لمالكي السيرفرات</h2><p id="anOwners"></p></div></div>
+        <div class="card-body">
+          <div class="warn">يُرسل في خاص كل مالك سيرفر برسالة كل 2.5 ثانية حتى لا يعتبره ديسكورد سبام. جرّب الإرسال لنفسك أولاً، ولا ترسل إعلانات كثيرة.</div>
+          <div class="field"><label>العنوان</label><input class="input" id="anTitle" maxlength="200" placeholder="تحديث جديد في MarkaBot"></div>
+          <div class="field"><label>النص</label><textarea class="textarea" id="anDesc" maxlength="3500" style="min-height:140px"></textarea></div>
+          <div class="row">
+            <div class="field"><label>رابط صورة (اختياري)</label><input class="input ltr" id="anImage" placeholder="https://..."></div>
+            <div class="field"><label>زر (اختياري)</label><div class="inline-form"><input class="input" id="anBtnLabel" placeholder="نص الزر" maxlength="80"><input class="input ltr" id="anBtnUrl" placeholder="https://..."></div></div>
+          </div>
+          <div id="anJob" style="display:none"><div class="progress"><i id="anBar" style="width:0"></i></div><small class="faint" id="anText"></small></div>
+        </div>
+        <div class="card-foot"><button class="btn ghost" id="anCancel" style="display:none">إيقاف الإرسال</button><button class="btn ghost" id="anTest">إرسال تجربة لي</button><button class="btn primary" id="anSend">إرسال للجميع</button></div>
+      </section>
+
+      <!-- 12 premium -->
+      <section class="card owner-only" id="sec-premium">
+        <div class="card-head"><div><h2>البريميوم</h2><p>فترة الإطلاق، الميزات المجانية، المتجر، والتفعيل اليدوي.</p></div></div>
+        <div class="card-body">
+          <div class="group-title">🎉 فترة الإطلاق</div>
+          <p class="faint" style="margin:0 0 10px">لما تكون شغالة: كل ميزات وحدود البريميوم مجانية لكل السيرفرات. قبل النهاية بـ 7 أيام البوت بيبعت إنذار لكل أصحاب السيرفرات، وعند النهاية كل سيرفر استخدم البوت بالفترة بياخد هدية بريميوم.</p>
+          <div id="lnState" class="mt"></div>
+          <div class="inline-form mt">
+            <label class="check"><input type="checkbox" id="lnOn"> تشغيل فترة الإطلاق</label>
+            <label class="faint" style="font-size:13px">تنتهي</label><input class="input ltr" id="lnEnd" type="datetime-local" style="max-width:220px" title="فاضي = بدون تاريخ">
+            <label class="faint" style="font-size:13px">الهدية (أيام)</label><input class="input ltr" id="lnGift" type="number" min="0" max="365" value="30" style="max-width:100px">
+            <button class="btn primary" id="lnSave">حفظ</button>
+            <button class="btn ghost" id="lnEndNow" title="يبعت الإنذار للكل وينتهي العرض بعد 7 أيام">إنهاء العرض بعد 7 أيام</button>
+          </div>
+
+          <div class="group-title" style="margin-top:22px">الميزات: مجاني أو بريميوم</div>
+          <p class="faint" style="margin:0 0 10px">الميزة المفعّلة هون بتشتغل لكل السيرفرات ببلاش، حتى بعد ما تخلص فترة الإطلاق.</p>
+          <div id="frList" class="check-grid"></div>
+          <button class="btn primary mt" id="frSave">حفظ الميزات</button>
+
+          <div class="group-title" style="margin-top:22px">🛒 متجر البريميوم بالكريدت</div>
+          <p class="faint" style="margin:0 0 10px">بسيرفر المتجر، أي قسم تذاكر بتعلّم عليه "قسم شراء البريميوم" (من إعدادات التذاكر لهداك السيرفر) بيعرض الخطط. العضو بيحوّل بـ ProBot بنفس التذكرة، والبوت بيتأكد وبيبعتله الكود على الخاص.</p>
+          <div id="shStats" class="mt"></div>
+          <div class="row mt">
+            <div class="field"><label>سيرفر المتجر</label><select class="select" id="shGuild"></select></div>
+            <div class="field"><label>آيدي مستلم الكريدت</label><input class="input ltr" id="shRecipient" placeholder="فاضي = مالك البوت"></div>
+          </div>
+          <div class="row-3">
+            <div class="field"><label>ضريبة بروبوت %</label><input class="input ltr" id="shTax" type="number" min="0" max="50" step="0.5"></div>
+            <div class="field"><label>وقت التحويل (دقائق)</label><input class="input ltr" id="shMin" type="number" min="1" max="30"></div>
+            <div class="field"><label>خصم الإطلاق %</label><input class="input ltr" id="shDisc" type="number" min="0" max="90"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>قناة سجل المبيعات (آيدي)</label><input class="input ltr" id="shLog" placeholder="اختياري"></div>
+            <div class="field"><label>آيدي ProBot</label><input class="input ltr" id="shProbot"></div>
+          </div>
+          <div class="field"><label>الخطط (المدة بالأيام، 0 = دائم · السعر بالكريدت · الكمية فاضي = بلا حدود)</label><div id="shPlans" class="list-editor"></div>
+            <button class="btn ghost sm mt" id="shPlanAdd" type="button">+ إضافة خطة</button></div>
+          <label class="check mt"><input type="checkbox" id="shOn"> تشغيل المتجر</label>
+          <div><button class="btn primary mt" id="shSave">حفظ المتجر</button></div>
+
+          <div class="group-title" style="margin-top:22px">تفعيل يدوي لسيرفر</div>
+          <div class="inline-form">
+            <input class="input ltr" id="prId" placeholder="آيدي السيرفر">
+            <input class="input ltr" id="prDays" type="number" min="0" placeholder="الأيام (فارغ = دائم)" style="max-width:170px">
+            <input class="input" id="prNote" placeholder="ملاحظة (اختياري)">
+            <button class="btn primary" id="prAdd">تفعيل</button>
+          </div>
+          <div id="prList" class="mt"></div>
+          <div class="group-title" style="margin-top:22px">أكواد التفعيل</div>
+          <p class="faint" style="margin:0 0 10px">أنشئ أكواداً وبِعها — صاحب السيرفر يفعّلها بالأمر <code>/premium code:</code> أو من لوحة السيرفر.</p>
+          <div class="inline-form">
+            <input class="input ltr" id="pcCount" type="number" min="1" max="50" value="1" placeholder="العدد" style="max-width:110px">
+            <input class="input ltr" id="pcDays" type="number" min="0" placeholder="الأيام (فارغ = دائم)" style="max-width:170px">
+            <input class="input" id="pcNote" placeholder="ملاحظة (اختياري)">
+            <button class="btn primary" id="pcGen">إنشاء</button>
+          </div>
+          <div id="pcList" class="mt"></div>
+        </div>
+      </section>
+
+      <!-- 9 backup -->
+      <section class="card main-only" id="sec-backup">
+        <div class="card-head"><div><h2>النسخ الاحتياطي</h2><p>كل بيانات البوت في ملف واحد. هذا القسم يظهر لك فقط كمالك رئيسي.</p></div></div>
+        <div class="card-body">
+          <div class="toggle-line"><div><b>تحميل نسخة احتياطية</b><small>احتفظ بها على جهازك، يُنصح بعمل نسخة أسبوعياً</small></div><a class="btn primary" href="/api/owner/backup">تحميل</a></div>
+          <div class="toggle-line"><div><b>استرجاع نسخة</b><small>يستبدل البيانات الحالية بالكامل بمحتوى الملف</small></div>
+            <div><input type="file" id="bkFile" accept=".json" style="display:none"><button class="btn danger" id="bkRestore">اختيار ملف</button></div></div>
+        </div>
+      </section>
+    </div></main>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script src="/static/owner.js"></script>
+</body>
+</html>

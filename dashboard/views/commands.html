@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>الأوامر — MarkaBot</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .cmd-row > div:first-child { flex: 1; min-width: 0; }
+    .sc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+    .sc-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-soft, rgba(139,92,246,.16)); color: #e9e2ff; border: 1px solid var(--line-2); padding: 2px 6px 2px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    .sc-chip button { background: none; border: 0; color: var(--faint); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+    .sc-chip button:hover { color: #fb7185; }
+    .sc-input { width: 130px; background: transparent; border: 1px dashed var(--line-2); border-radius: 8px; padding: 3px 10px; font-size: 13px; outline: none; color: var(--text); }
+    .sc-input:focus { border-style: solid; border-color: var(--accent); background: rgba(139, 92, 246, .08); }
+    .sc-input::placeholder { color: var(--faint); }
+    .sc-full .sc-input { display: none; }
+    .sc-save { display: none; background: var(--accent, #8b5cf6); color: #fff; border: 0; border-radius: 8px; padding: 4px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .sc-save.show { display: inline-block; }
+    .sc-save:disabled { opacity: .6; cursor: wait; }
+    .sc-full .sc-save { display: none; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar"></aside>
+    <main class="main"><div class="main-inner">
+      <div class="page-head">
+        <div><h1>الأوامر</h1><p id="sub">فعّل أو عطّل أي أمر، وأضف اختصارات خاصة بسيرفرك.</p></div>
+      </div>
+      <div class="cmd-tools">
+        <input class="input" id="q" placeholder="ابحث عن أمر أو اختصار...">
+        <button class="btn ghost" id="allOn">تفعيل الكل</button>
+        <button class="btn ghost" id="allOff">تعطيل الكل</button>
+      </div>
+      <div class="toggle-line" style="margin-bottom:16px"><div><b>الاختصارات</b>
+        <small>اكتب الاختصار واضغط Enter أو زر حفظ (أو اضغط بأي مكان ثاني وبينحفظ لحاله). يعمل بدون بادئة (مثال: باند ثم منشن العضو) ومع البادئة إن وُجدت. الأعضاء بدون صلاحية يتم تجاهلهم بصمت.</small></div></div>
+      <div id="groups"><div class="skeleton" style="height:240px"></div></div>
+    </div></main>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script>
+    const id = MB.guildIdFromPath();
+    let data = { commands: [], prefix: null };
+    let shortcuts = {};
+    let max = 5;
+
+    function chipsHtml(name) {
+      const list = shortcuts[name] || [];
+      return list.map((a) => `<span class="sc-chip">${MB.esc(a)}<button type="button" data-rm="${MB.esc(a)}" aria-label="حذف">×</button></span>`).join('') +
+        `<input class="sc-input" data-add="${name}" maxlength="20" placeholder="+ اختصار">` +
+        `<button type="button" class="sc-save" data-save-sc="${name}">حفظ</button>`;
+    }
+
+    function render() {
+      const q = document.getElementById('q').value.trim().toLowerCase();
+      const cats = {};
+      for (const c of data.commands) {
+        const hay = `${c.name} ${c.description} ${c.aliases.join(' ')} ${(shortcuts[c.name] || []).join(' ')}`.toLowerCase();
+        if (q && !hay.includes(q)) continue;
+        (cats[c.categoryLabel] ||= []).push(c);
+      }
+      const html = Object.entries(cats).map(([label, list]) => `
+        <div class="card">
+          <div class="card-head"><h2>${MB.esc(label)}</h2><span class="pill">${list.filter((c) => c.enabled).length} / ${list.length}</span></div>
+          ${list.map((c) => `
+            <div class="cmd-row">
+              <div>
+                <code>/${MB.esc(c.name)}</code>${c.aliases.length && data.prefix ? `<span class="alias">${c.aliases.map((a) => MB.esc(data.prefix + a)).join(' · ')}</span>` : ''}
+                <p>${MB.esc(c.description)}</p>
+                <div class="sc ${(shortcuts[c.name] || []).length >= max ? 'sc-full' : ''}" data-sc="${c.name}">${chipsHtml(c.name)}</div>
+              </div>
+              <label class="switch" title="${c.locked ? 'لا يمكن تعطيل هذا الأمر' : ''}">
+                <input type="checkbox" data-cmd="${c.name}" ${c.enabled ? 'checked' : ''} ${c.locked ? 'disabled' : ''}><span></span>
+              </label>
+            </div>`).join('')}
+        </div>`).join('');
+      groups.innerHTML = html || '<div class="empty">لا توجد نتائج.</div>';
+    }
+
+    function renderRow(name, focus) {
+      const box = document.querySelector(`[data-sc="${name}"]`);
+      if (!box) return;
+      box.innerHTML = chipsHtml(name);
+      box.classList.toggle('sc-full', (shortcuts[name] || []).length >= max);
+      if (focus) box.querySelector('.sc-input')?.focus();
+    }
+
+    async function saveShortcuts(name, list, focus) {
+      try {
+        const r = await MB.api(`/api/aliases/${id}`, { method: 'POST', body: { name, aliases: list } });
+        shortcuts[name] = r.aliases;
+        if (!r.aliases.length) delete shortcuts[name];
+        renderRow(name, focus);
+        MB.toast(`تم حفظ اختصارات /${name}`, 'success');
+        return true;
+      } catch (e) {
+        MB.toast(e.message, 'error');
+        return false;
+      }
+    }
+
+    async function save(updates) {
+      try {
+        await MB.api(`/api/commands/${id}`, { method: 'POST', body: { updates } });
+        for (const u of updates) { const c = data.commands.find((x) => x.name === u.name); if (c && !c.locked) c.enabled = u.enabled; }
+        render();
+        MB.toast(updates.length > 1 ? 'تم تحديث الأوامر' : `تم ${updates[0].enabled ? 'تفعيل' : 'تعطيل'} /${updates[0].name}`, 'success');
+      } catch (e) { MB.toast(e.message, 'error'); render(); }
+    }
+
+    (async () => {
+      await MB.topbar({ guild: true });
+      await MB.guildSidebar('commands');
+      const [cmds, al] = await Promise.all([MB.api(`/api/commands/${id}`), MB.api(`/api/aliases/${id}`)]);
+      data = cmds;
+      shortcuts = al.aliases || {};
+      max = al.max || 5;
+      if (data.prefix) sub.textContent = `البادئة الحالية: ${data.prefix} — فعّل أو عطّل الأوامر وأضف اختصارات خاصة بسيرفرك.`;
+      render();
+    })().catch((e) => MB.toast(e.message, 'error'));
+
+    groups.addEventListener('change', (e) => {
+      const cb = e.target.closest('[data-cmd]');
+      if (cb) save([{ name: cb.dataset.cmd, enabled: cb.checked }]);
+    });
+
+    // Saves whatever is typed in a shortcut box (Enter, the حفظ button, or leaving the box).
+    async function addShortcut(input) {
+      if (!input || input.disabled) return;
+      const value = input.value.trim().toLowerCase();
+      if (!value) return;
+      if (/\s/.test(value)) return MB.toast('الاختصار بدون مسافات', 'error');
+      const name = input.dataset.add;
+      const list = [...(shortcuts[name] || [])];
+      if (list.includes(value)) {
+        input.value = '';
+        toggleSaveBtn(input);
+        return MB.toast('الاختصار موجود بالفعل', 'error');
+      }
+      input.disabled = true;
+      const btn = input.parentElement.querySelector('.sc-save');
+      if (btn) btn.disabled = true;
+      const ok = await saveShortcuts(name, [...list, value], document.activeElement === input);
+      if (!ok) {
+        input.disabled = false;
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function toggleSaveBtn(input) {
+      input.parentElement.querySelector('.sc-save')?.classList.toggle('show', input.value.trim().length > 0);
+    }
+
+    groups.addEventListener('keydown', (e) => {
+      const input = e.target.closest('[data-add]');
+      if (!input || e.key !== 'Enter') return;
+      e.preventDefault();
+      addShortcut(input);
+    });
+
+    groups.addEventListener('input', (e) => {
+      const input = e.target.closest('[data-add]');
+      if (input) toggleSaveBtn(input);
+    });
+
+    // clicking anywhere else saves it too, so nothing gets lost
+    groups.addEventListener('focusout', (e) => {
+      const input = e.target.closest('[data-add]');
+      if (!input) return;
+      if (e.relatedTarget?.closest?.('.sc-save')) return; // the حفظ button handles it
+      addShortcut(input);
+    });
+
+    // warn before leaving the page with an unsaved shortcut
+    window.addEventListener('beforeunload', (e) => {
+      if ([...document.querySelectorAll('[data-add]')].some((i) => i.value.trim() && !i.disabled)) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+
+    groups.addEventListener('click', (e) => {
+      const sv = e.target.closest('[data-save-sc]');
+      if (sv) return addShortcut(sv.parentElement.querySelector('[data-add]'));
+      const rm = e.target.closest('[data-rm]');
+      if (!rm) return;
+      const name = rm.closest('[data-sc]').dataset.sc;
+      saveShortcuts(name, (shortcuts[name] || []).filter((a) => a !== rm.dataset.rm));
+    });
+
+    q.addEventListener('input', render);
+    allOn.onclick = () => save(data.commands.filter((c) => !c.locked).map((c) => ({ name: c.name, enabled: true })));
+    allOff.onclick = () => save(data.commands.filter((c) => !c.locked).map((c) => ({ name: c.name, enabled: false })));
+  </script>
+</body>
+</html>

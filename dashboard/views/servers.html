@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>السيرفرات — MarkaBot</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <h1>اختر السيرفر</h1>
+        <p>تظهر السيرفرات التي تملك فيها صلاحية «إدارة السيرفر» أو «المسؤول».</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input class="input" id="q" placeholder="بحث..." style="width:220px">
+        <button class="btn ghost" id="refresh">تحديث</button>
+      </div>
+    </div>
+    <div class="servers" id="list">
+      <div class="skeleton" style="height:170px"></div><div class="skeleton" style="height:170px"></div>
+      <div class="skeleton" style="height:170px"></div><div class="skeleton" style="height:170px"></div>
+    </div>
+  </main>
+
+  <script src="/static/app.js"></script>
+  <script>
+    let all = [];
+    const card = (g) => `<div class="server-card" data-name="${MB.esc(g.name.toLowerCase())}">
+      <div class="cover">${g.icon ? `<img src="${MB.esc(g.icon)}" alt="">` : ''}</div>
+      <div class="body">
+        <div class="ava">${g.icon ? `<img src="${MB.esc(g.icon)}" alt="">` : MB.esc(g.name[0])}</div>
+        <div><h3>${MB.esc(g.name)}</h3>
+          <span class="pill ${g.hasBot ? 'on' : ''}"><span class="dot"></span>${g.hasBot ? (g.ownerView ? 'عرض المالك' : 'البوت موجود') : 'البوت غير موجود'}</span></div>
+        ${g.hasBot ? `<a class="btn primary" href="/dashboard/${g.id}/overview">لوحة التحكم</a>` : `<a class="btn ghost" href="${MB.esc(g.invite)}" target="_blank">إضافة البوت</a>`}
+      </div></div>`;
+
+    function render() {
+      const q = document.getElementById('q').value.trim().toLowerCase();
+      const items = all.filter((g) => !q || g.name.toLowerCase().includes(q));
+      list.innerHTML = items.length ? items.map(card).join('') : '<div class="empty" style="grid-column:1/-1">لا توجد نتائج.</div>';
+    }
+    async function load(refresh) {
+      try {
+        all = await MB.api(`/api/guilds${refresh ? '?refresh=1' : ''}`);
+        render();
+        if (refresh) MB.toast('تم تحديث قائمة السيرفرات', 'success');
+      } catch (e) { MB.toast(e.message, 'error'); }
+    }
+    MB.topbar({ active: 'servers' });
+    load(false);
+    q.addEventListener('input', render);
+    refresh.onclick = () => load(true);
+  </script>
+</body>
+</html>

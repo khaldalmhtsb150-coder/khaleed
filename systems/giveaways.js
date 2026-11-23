@@ -1,0 +1,304 @@
+const { ActionRowBuilder, Events } = require('discord.js');
+const store = require('../utils/store');
+const ui = require('../utils/ui');
+const E = require('../utils/emojis');
+const { ts } = require('../utils/time');
+const botlog = require('../utils/botlog');
+const premium = require('../utils/premium');
+const gctx = require('../utils/guildContext');
+
+// إيموجي المشاركة — ضع إيموجي مخصص بصيغة '<:name:id>' أو اترك 🎉
+const REACTION = '<:emoji_71:1571539538747203706>';
+
+// Premium per-server settings (dashboard → القيفاواي)
+const DEFAULT_CONFIG = {
+  title: '', // template, empty = prize
+  description: '', // template, empty = classic layout
+  color: '#2b2d31',
+  imageUrl: '',
+  reaction: '', // custom entry emoji
+  winMessage: '',
+  requiredRoleId: '',
+  minInvites: 0,
+  minAccountAgeDays: 0,
+  bonusRoles: [], // [{ roleId, entries }]
+};
+const DEFAULT_WIN = '{gift} مبروك {winnerList}! فزتم بـ **{prize}**';
+
+const list = () => store.get('giveaways');
+const find = (messageId) => list().find((g) => g.messageId === messageId);
+const ending = new Set(); // prevents ending the same giveaway twice
+let ready = false;
+
+// write to disk immediately so a restart never loses a giveaway
+function saveNow() {
+  store.save('giveaways');
+  store.flush();
+}
+
+function fillTemplate(text, g) {
+  const endsUnix = Math.floor(g.endTime / 1000);
+  return String(text || '')
+    .replace(/{prize}/g, g.prize)
+    .replace(/{winners}/g, `${g.winnersCount}`)
+    .replace(/{winnerList}/g, g.winners?.length ? g.winners.map((w) => `<@${w}>`).join('، ') : '—')
+    .replace(/{host}/g, `<@${g.hostId}>`)
+    .replace(/{ends}/g, `<t:${endsUnix}:R>`)
+    .replace(/{endsAt}/g, `<t:${endsUnix}:F>`)
+    .replace(/{gift}/g, E.gift);
+}
+
+function requirementLines(g, guild) {
+  const out = [];
+  const r = g.req || {};
+  const parts = [];
+  if (r.roleId) parts.push(`رتبة <@&${r.roleId}>`);
+  if (r.minInvites) parts.push(`${r.minInvites} دعوات`);
+  if (r.minAccountAgeDays) parts.push(`عمر الحساب ${r.minAccountAgeDays} يوم`);
+  if (parts.length) out.push(`${E.lock} **الشروط:** ${parts.join(' · ')}`);
+  if (g.bonus?.length) out.push(`${E.star} **إدخالات إضافية:** ${g.bonus.map((b) => `<@&${b.roleId}> ×${b.entries}`).join(' · ')}`);
+  return out;
+}
+
+function render(g, guild) {
+  const st = g.style;
+  let lines;
+  if (st?.description) {
+    lines = [fillTemplate(st.description, g)];
+  } else {
+    lines = [
+      `${E.gwHost} **Hosted By:** <@${g.hostId}>`,
+      `${E.gwEnds} **${g.ended ? 'Ended' : 'Ends'}:** ${ts(g.endTime)}`,
+      `${E.gwWinners} **Winners:** ${g.winnersCount}`,
+    ];
+  }
+  const req = requirementLines(g, guild);
+  if (req.length) lines.push('', ...req);
+  if (g.ended) {
+    lines.push('', g.winners.length ? `**Winner${g.winners.length > 1 ? 's' : ''}:** ${g.winners.map((w) => `<@${w}>`).join(', ')}` : '• لم يشارك أحد.');
+  }
+  const embed = ui
+    .embed()
+    .setAuthor({ name: (st?.title ? fillTemplate(st.title, g) : g.prize).slice(0, 256), iconURL: guild?.iconURL({ size: 128 }) || undefined })
+    .setDescription(ui.trim(lines.join('\n'), 4000));
+  if (st?.color) embed.setColor(parseInt(st.color.slice(1), 16));
+  if (st?.imageUrl) embed.setImage(st.imageUrl);
+  if (g.hostName) embed.setFooter({ text: g.hostName, iconURL: g.hostAvatar || undefined });
+  return { embeds: [embed], components: [] };
+}
+
+async function start(channel, { prize, winnersCount, durationMs, hostId, hostName, hostAvatar, requiredRoleId, minInvites }) {
+  const gid = channel.guild.id;
+  const conf = { ...DEFAULT_CONFIG, ...(store.peek('giveawayConfig', gid) || {}) };
+  // premium settings are copied into the giveaway when it starts
+  const style = premium.has(gid, 'giveawayMessage') && (conf.title || conf.description || conf.imageUrl || conf.winMessage || conf.color !== DEFAULT_CONFIG.color || conf.reaction)
+    ? { title: conf.title, description: conf.description, color: conf.color, imageUrl: conf.imageUrl, winMessage: conf.winMessage }
+    : null;
+  const req = premium.has(gid, 'giveawayRequirements')
+    ? {
+        roleId: requiredRoleId || conf.requiredRoleId || null,
+        minInvites: minInvites ?? conf.minInvites ?? 0,
+        minAccountAgeDays: conf.minAccountAgeDays || 0,
+      }
+    : null;
+  const bonus = premium.has(gid, 'giveawayBonus') && conf.bonusRoles?.length ? conf.bonusRoles : null;
+  const reaction = (premium.has(gid, 'giveawayMessage') && conf.reaction) || REACTION;
+
+  const g = {
+    messageId: null,
+    channelId: channel.id,
+    guildId: channel.guild.id,
+    prize,
+    winnersCount,
+    endTime: Date.now() + durationMs,
+    hostId,
+    hostName,
+    hostAvatar,
+    reaction, // remember which emoji this giveaway uses
+    style,
+    req: req && (req.roleId || req.minInvites || req.minAccountAgeDays) ? req : null,
+    bonus,
+    entrants: [],
+    winners: [],
+    ended: false,
+  };
+  const msg = await channel.send({ ...render(g, channel.guild), allowedMentions: { parse: [] } });
+  g.messageId = msg.id;
+  list().push(g);
+  saveNow();
+  await msg.react(reaction).catch(async (e) => {
+    console.error('[giveaway] react failed:', e.message);
+    if (reaction !== REACTION) {
+      g.reaction = REACTION;
+      saveNow();
+      await msg.react(REACTION).catch(() => {});
+    }
+  });
+  botlog.log('giveaway_start', `بدأ قيفاواي **${prize}** في <#${channel.id}> — ${winnersCount} فائز، ينتهي ${ts(g.endTime)}`, {
+    user: { id: hostId, name: hostName },
+    guild: channel.guild,
+  });
+  return msg;
+}
+
+/** Random winners without repeats. weights: Map(userId → entries), default 1. */
+function pick(entrants, count, weights = null) {
+  const pool = [...new Set(entrants)].map((id) => ({ id, w: weights?.get(id) || 1 }));
+  const out = [];
+  while (pool.length && out.length < count) {
+    let r = Math.random() * pool.reduce((a, p) => a + p.w, 0);
+    let i = 0;
+    while (i < pool.length - 1 && (r -= pool[i].w) > 0) i++;
+    out.push(pool.splice(i, 1)[0].id);
+  }
+  return out;
+}
+
+/** Premium: drop entrants that don't meet the requirements and compute bonus entries. */
+async function eligibility(guild, g) {
+  if (!g.req && !g.bonus) return { entrants: g.entrants, weights: null };
+  const ids = [...new Set(g.entrants)];
+  const members = new Map();
+  for (let i = 0; i < ids.length; i += 100) {
+    const batch = await guild.members.fetch({ user: ids.slice(i, i + 100) }).catch(() => null);
+    batch?.forEach((m) => members.set(m.id, m));
+  }
+  const invites = store.peek('invites', guild.id) || {};
+  const DAY = 86_400_000;
+  const ok = [];
+  const weights = new Map();
+  for (const id of ids) {
+    const m = members.get(id);
+    if (!m) continue; // left the server
+    const r = g.req || {};
+    if (r.roleId && !m.roles.cache.has(r.roleId)) continue;
+    if (r.minInvites && (invites[id]?.regular || 0) + (invites[id]?.bonus || 0) < r.minInvites) continue;
+    if (r.minAccountAgeDays && Date.now() - m.user.createdTimestamp < r.minAccountAgeDays * DAY) continue;
+    ok.push(id);
+    const extra = (g.bonus || []).filter((b) => m.roles.cache.has(b.roleId)).reduce((a, b) => Math.max(a, b.entries), 1);
+    if (extra > 1) weights.set(id, extra);
+  }
+  return { entrants: ok, weights };
+}
+
+const keyOf = (emoji) => String(emoji || '').match(/(\d{17,21})>?$/)?.[1] || emoji;
+
+function findReaction(msg, g) {
+  const cache = msg.reactions.cache;
+  // 1) the emoji saved with this giveaway, 2) the current emoji, 3) the one the bot added, 4) the most used
+  return (
+    (g.reaction && cache.get(keyOf(g.reaction))) ||
+    cache.get(keyOf(REACTION)) ||
+    cache.find((r) => r.me) ||
+    [...cache.values()].sort((a, b) => b.count - a.count)[0] ||
+    null
+  );
+}
+
+async function collectEntrants(msg, g) {
+  if (!msg) return null;
+  const reaction = findReaction(msg, g);
+  if (!reaction) return null; // old button giveaway: keep stored entrants
+  const ids = [];
+  let after;
+  while (true) {
+    const batch = await reaction.users.fetch({ limit: 100, after });
+    if (!batch.size) break;
+    for (const u of batch.values()) if (!u.bot) ids.push(u.id);
+    after = batch.last().id;
+    if (batch.size < 100) break;
+  }
+  return ids;
+}
+
+function end(client, g, opts) {
+  return gctx.run(g.guildId, () => endInner(client, g, opts));
+}
+
+async function endInner(client, g, { reroll = false } = {}) {
+  if (ending.has(g.messageId)) return g;
+  ending.add(g.messageId);
+  try {
+    const channel = await client.channels.fetch(g.channelId).catch(() => null);
+    if (!channel) {
+      console.error(`[giveaway] channel ${g.channelId} not reachable, will retry`);
+      return g;
+    }
+    const msg = await channel.messages.fetch(g.messageId).catch(() => null);
+    if (!msg) console.error(`[giveaway] message ${g.messageId} not found (deleted?)`);
+
+    let fromReactions = null;
+    try {
+      fromReactions = await collectEntrants(msg, g);
+    } catch (e) {
+      console.error('[giveaway] could not read reactions:', e.message);
+      return g; // don't end it with zero entrants — retry on the next tick
+    }
+    if (fromReactions) g.entrants = fromReactions;
+
+    g.ended = true;
+    const { entrants: eligible, weights } = await eligibility(channel.guild, g);
+    g.eligible = eligible.length;
+    g.winners = pick(eligible, g.winnersCount, weights);
+    saveNow();
+    console.log(`[giveaway] ${reroll ? 'reroll' : 'ended'} "${g.prize}" — ${g.entrants.length} entrants, ${g.winners.length} winners`);
+    botlog.log(
+      'giveaway_end',
+      `${reroll ? 'إعادة سحب' : 'انتهى'} قيفاواي **${g.prize}** — ${g.entrants.length} مشارك، الفائزون: ${g.winners.length ? g.winners.map((w) => `<@${w}>`).join('، ') : 'لا أحد'}`,
+      { user: { id: g.hostId, name: g.hostName }, guild: channel.guild }
+    );
+
+    if (msg) await msg.edit({ ...render(g, channel.guild), allowedMentions: { parse: [] } }).catch(() => {});
+    const text = g.winners.length
+      ? `${reroll ? 'إعادة سحب — ' : ''}${fillTemplate(g.style?.winMessage || DEFAULT_WIN, g)}`
+      : `• انتهى القيفاواي على **${g.prize}** بدون ${g.req && g.entrants.length ? 'مشاركين مستوفين للشروط' : 'مشاركين'}.`;
+    await channel
+      .send({ content: text, reply: msg ? { messageReference: msg.id, failIfNotExists: false } : undefined, allowedMentions: { users: g.winners } })
+      .catch(() => {});
+    return g;
+  } finally {
+    ending.delete(g.messageId);
+  }
+}
+
+async function tick(client) {
+  if (!ready) return;
+  const now = Date.now();
+  for (const g of list().filter((x) => !x.ended && x.endTime <= now)) {
+    await end(client, g).catch((e) => console.error('[giveaway]', e.message));
+  }
+  // keep the file small: drop giveaways ended more than 14 days ago
+  const cutoff = now - 14 * 86_400_000;
+  const kept = list().filter((g) => !g.ended || g.endTime > cutoff);
+  if (kept.length !== list().length) {
+    store.set('giveaways', kept);
+    saveNow();
+  }
+}
+
+function init(client) {
+  // wait until the bot is fully connected, then finish anything that ended while it was off
+  client.once(Events.ClientReady, () => {
+    ready = true;
+    const pending = list().filter((g) => !g.ended);
+    console.log(`[giveaway] ${pending.length} active giveaway(s) restored`);
+    setTimeout(() => tick(client), 3000);
+    setInterval(() => tick(client), 10_000);
+  });
+}
+
+async function onButton(interaction) {
+  const g = find(interaction.message.id);
+  if (!g || g.ended) return interaction.reply({ content: '• هذا القيفاواي انتهى.', ephemeral: true });
+  const idx = g.entrants.indexOf(interaction.user.id);
+  if (idx === -1) g.entrants.push(interaction.user.id);
+  else g.entrants.splice(idx, 1);
+  saveNow();
+  await interaction.update({ ...render(g, interaction.guild), allowedMentions: { parse: [] } });
+  return interaction.followUp({
+    content: idx === -1 ? `${E.success} تم تسجيل مشاركتك.` : '• تم سحب مشاركتك.',
+    ephemeral: true,
+  });
+}
+
+module.exports = { DEFAULT_CONFIG, start, end, find, list, init, pick, fillTemplate, components: [{ prefix: 'gw_join', type: 'button', handle: onButton }] };

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MarkaBot — Your Server. Your Kingdom.</title>
+  <meta name="description" content="MarkaBot — an Arabic-first Discord bot with tickets, giveaways, welcome images, moderation and a full web dashboard. Made in Amman, Jordan.">
+  <meta name="theme-color" content="#080912">
+  <link rel="preconnect" href="https://images.unsplash.com">
+  <link rel="preconnect" href="https://upload.wikimedia.org">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/landing.css">
+</head>
+<body class="lp">
+  <a class="skip" href="#main">Skip</a>
+
+  <header class="lp-nav" id="nav">
+    <div class="lp-wrap lp-nav-in">
+      <span id="logo"></span>
+      <nav class="lp-links" aria-label="Site">
+        <a href="#top" data-i="home"></a>
+        <a href="#commands" data-i="commands"></a>
+        <a href="#features" data-i="features"></a>
+        <a href="#pricing" data-i="pricing"></a>
+      </nav>
+      <div class="lp-nav-end">
+        <span id="lang"></span>
+        <a class="btn primary sm" href="/login" id="loginTop"><span data-i="login"></span></a>
+        <button class="btn ghost sm lp-burger" type="button" id="burger" aria-label="Menu" aria-expanded="false"></button>
+      </div>
+    </div>
+    <div class="lp-sheet" id="sheet">
+      <a href="#top" data-i="home"></a><a href="#commands" data-i="commands"></a><a href="#features" data-i="features"></a><a href="#pricing" data-i="pricing"></a><div class="sheet-lang" id="lang2"></div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO: a real photograph of Abdali, Amman -->
+    <section class="lp-hero" id="top">
+      <figure class="lp-photo" id="heroPhoto">
+        <img src="https://images.unsplash.com/photo-1627734383978-627095b4ac05?fm=jpg&amp;q=72&amp;w=2400&amp;auto=format&amp;fit=crop" alt="" fetchpriority="high" decoding="async">
+      </figure>
+      <div class="lp-hero-grade" aria-hidden="true"></div>
+
+      <div class="lp-wrap lp-hero-in">
+        <span class="lp-eyebrow"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span data-i="made"></span></span>
+        <h1 class="lp-title"><span data-i="h1a"></span><br><em data-i="h1b"></em></h1>
+        <p class="lp-sub" data-i="sub"></p>
+        <div class="lp-cta">
+          <a class="btn primary lg" href="/login" id="ctaDash"></a>
+          <a class="btn ghost lg" href="/invite" target="_blank" rel="noopener" id="ctaInvite"></a>
+        </div>
+        <dl class="lp-live" id="live" hidden></dl>
+      </div>
+
+      <!-- the "seven hills" platform with the real dashboard screenshot -->
+      <div class="lp-stage lp-wrap" aria-hidden="false">
+        <svg class="lp-hills" viewBox="0 0 1200 260" preserveAspectRatio="none" aria-hidden="true" id="hills"></svg>
+        <svg class="lp-trail" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true">
+          <path id="trail" d="M-20 250 C 200 230, 330 120, 520 150 S 820 260, 1000 140 S 1180 60, 1240 80" fill="none" stroke="url(#tg)" stroke-width="2.4" stroke-linecap="round"/>
+          <defs><linearGradient id="tg" x1="0" x2="1"><stop offset="0" stop-color="#7950E8" stop-opacity="0"/><stop offset=".5" stop-color="#A78BFA"/><stop offset="1" stop-color="#91C8FF" stop-opacity=".2"/></linearGradient></defs>
+        </svg>
+        <div class="lp-shot" id="shot">
+          <div class="lp-shot-bar"><i></i><i></i><i></i><span>markabot · dashboard</span></div>
+          <img src="/static/img/dashboard-overview-ar.png" alt="" id="shotImg" loading="lazy" decoding="async">
+        </div>
+      </div>
+      <a class="lp-credit" href="https://unsplash.com/photos/L1wu1sPh92E" target="_blank" rel="noopener" data-i="credHero"></a>
+    </section>
+
+    <!-- FEATURES (only what the bot really does) -->
+    <section class="lp-sec" id="features">
+      <div class="lp-wrap">
+        <div class="lp-head reveal"><span class="lp-kicker" data-i="fK"></span><h2 data-i="fH"></h2><p data-i="fP"></p></div>
+        <div class="lp-feats" id="feats"></div>
+      </div>
+    </section>
+
+    <!-- AMMAN band: real photographs -->
+    <section class="lp-sec lp-amman" aria-labelledby="ammanH">
+      <div class="lp-wrap">
+        <div class="lp-head reveal"><span class="lp-kicker" data-i="aK"></span><h2 id="ammanH" data-i="aH"></h2><p data-i="aP"></p></div>
+        <div class="lp-gallery">
+          <figure class="g-tall reveal">
+            <img src="https://commons.wikimedia.org/wiki/Special:FilePath/King_Abdullah_Mosque_at_Night.jpg?width=1000" alt="" loading="lazy" decoding="async" data-alt="altMosque">
+            <figcaption><b data-i="capMosque"></b><a href="https://commons.wikimedia.org/wiki/File:King_Abdullah_Mosque_at_Night.jpg" target="_blank" rel="noopener">David Bjorgen · CC BY-SA 3.0</a></figcaption>
+          </figure>
+          <figure class="g-wide reveal">
+            <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Eastern_side_of_Abdali_Project_in_Amman_showing%3B_from_right_to_left%3B_Abdali_Gateway%2C_The_Heights_and_Clemanceau_Medical_Center_in_2013.jpg?width=1600" alt="" loading="lazy" decoding="async" data-alt="altAbdali">
+            <figcaption><b data-i="capAbdali"></b><a href="https://commons.wikimedia.org/wiki/File:Eastern_side_of_Abdali_Project_in_Amman_showing;_from_right_to_left;_Abdali_Gateway,_The_Heights_and_Clemanceau_Medical_Center_in_2013.jpg" target="_blank" rel="noopener">Wikimedia Commons · CC0</a></figcaption>
+          </figure>
+          <figure class="g-wide reveal">
+            <img src="https://images.unsplash.com/photo-1630158922952-a92c88afbc4c?fm=jpg&amp;q=70&amp;w=1600&amp;auto=format&amp;fit=crop" alt="" loading="lazy" decoding="async" data-alt="altHills">
+            <figcaption><b data-i="capHills"></b><a href="https://unsplash.com/photos/l3CDhTS3VsQ" target="_blank" rel="noopener">Daniel Qura · Unsplash</a></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD PREVIEW -->
+    <section class="lp-sec" id="dashboard">
+      <div class="lp-wrap lp-split">
+        <div class="lp-head reveal" style="text-align:start;margin:0">
+          <span class="lp-kicker" data-i="dK"></span><h2 data-i="dH"></h2><p data-i="dP"></p>
+          <ul class="lp-checks" id="dList"></ul>
+          <a class="btn primary" href="/login" id="ctaDash2"></a>
+        </div>
+        <div class="lp-shot lp-shot-2 reveal">
+          <div class="lp-shot-bar"><i></i><i></i><i></i><span>markabot · welcome</span></div>
+          <img src="/static/img/dashboard-welcome-ar.png" alt="" loading="lazy" decoding="async" id="shot2">
+        </div>
+      </div>
+    </section>
+
+    <!-- COMMANDS (live from the bot) -->
+    <section class="lp-sec" id="commands">
+      <div class="lp-wrap">
+        <div class="lp-head reveal"><span class="lp-kicker" data-i="cK"></span><h2 data-i="cH"></h2><p id="cP"></p></div>
+        <div class="lp-cmds" id="cmds"><div class="skeleton" style="height:160px"></div><div class="skeleton" style="height:160px"></div><div class="skeleton" style="height:160px"></div></div>
+      </div>
+    </section>
+
+    <!-- PRICING -->
+    <section class="lp-sec" id="pricing">
+      <div class="lp-wrap">
+        <div class="lp-head reveal"><span class="lp-kicker" data-i="pK"></span><h2 data-i="pH"></h2><p data-i="pP"></p></div>
+        <div class="lp-plans" id="plans"></div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="lp-sec" id="faq">
+      <div class="lp-wrap lp-narrow">
+        <div class="lp-head reveal"><h2 data-i="qH"></h2></div>
+        <div class="lp-faq" id="faqList"></div>
+      </div>
+    </section>
+
+    <section class="lp-final">
+      <div class="lp-wrap lp-final-in reveal">
+        <h2 data-i="endH"></h2>
+        <div class="lp-cta" style="justify-content:center">
+          <a class="btn primary lg" href="/invite" target="_blank" rel="noopener" id="ctaInvite2"></a>
+          <a class="btn ghost lg" href="/login" id="ctaDash3"></a>
+        </div>
+        <p class="faint" id="err" style="margin-top:14px;display:none"></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="lp-foot">
+    <div class="lp-wrap lp-foot-in">
+      <div class="lp-foot-brand"><span id="logo2"></span><p data-i="footTag"></p></div>
+      <nav aria-label="Footer"><b data-i="product"></b><a href="#features" data-i="features"></a><a href="#commands" data-i="commands"></a><a href="#pricing" data-i="pricing"></a><a href="/login" data-i="dashboard"></a></nav>
+      <nav aria-label="Support"><b data-i="support"></b><a href="/invite" target="_blank" rel="noopener" data-i="invite"></a><a id="supportLink" target="_blank" rel="noopener" data-i="supportServer" hidden></a><a href="#faq" data-i="faq"></a></nav>
+      <div class="lp-credits"><b data-i="photos"></b>
+        <span><a href="https://unsplash.com/photos/L1wu1sPh92E" target="_blank" rel="noopener">Abdali — Daniel Qura / Unsplash</a></span>
+        <span><a href="https://commons.wikimedia.org/wiki/File:King_Abdullah_Mosque_at_Night.jpg" target="_blank" rel="noopener">King Abdullah I Mosque — David Bjorgen / CC BY-SA 3.0</a></span>
+        <span><a href="https://unsplash.com/photos/l3CDhTS3VsQ" target="_blank" rel="noopener">Amman — Daniel Qura / Unsplash</a></span>
+        <span>Abdali 2013 — Wikimedia Commons / CC0</span>
+      </div>
+    </div>
+    <div class="lp-wrap lp-copy">© <span id="year"></span> MarkaBot · <span data-i="rights"></span></div>
+  </footer>
+
+  <script src="/static/app.js"></script>
+  <script src="/static/landing.js"></script>
+</body>
+</html>

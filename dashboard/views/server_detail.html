@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Overview — MarkaBot</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar"></aside>
+    <main class="main"><div class="main-inner page-enter" id="root">
+      <div class="page-head">
+        <div><span class="crumbs" id="crumbs">&nbsp;</span><h1 id="title"></h1></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <span class="ov-status" id="status"><i></i><span>—</span></span>
+          <a class="btn primary" id="toSettings"></a>
+        </div>
+      </div>
+
+      <section class="ov-stats" id="stats" aria-label="Statistics">
+        <div class="skeleton" style="height:118px"></div><div class="skeleton" style="height:118px"></div>
+        <div class="skeleton" style="height:118px"></div><div class="skeleton" style="height:118px"></div>
+      </section>
+
+      <div class="ov-grid">
+        <section class="card" style="margin:0">
+          <div class="card-head">
+            <div><h2 id="hChart"></h2><p id="pChart"></p></div>
+            <div class="chart-legend" id="legend"></div>
+          </div>
+          <div class="card-body"><div class="chart-box" id="chart"><div class="skeleton" style="height:100%"></div></div></div>
+        </section>
+        <section class="card" style="margin:0">
+          <div class="card-head"><div><h2 id="hQuick"></h2></div></div>
+          <div class="card-body"><div class="quick" id="quick"></div></div>
+        </section>
+      </div>
+
+      <div class="ov-grid">
+        <section class="card" style="margin:0">
+          <div class="card-head"><div><h2 id="hFeed"></h2><p id="pFeed"></p></div></div>
+          <div class="card-body" style="padding-top:6px;padding-bottom:6px"><ul class="feed" id="feed"><li><div class="skeleton" style="height:44px;width:100%"></div></li></ul></div>
+        </section>
+        <section class="card" style="margin:0">
+          <div class="card-head"><div><h2 id="hMods"></h2><p id="pMods"></p></div></div>
+          <div class="card-body"><div class="mod-grid" id="mods" style="grid-template-columns:1fr"></div></div>
+        </section>
+      </div>
+    </div></main>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script>
+    (async () => {
+      const id = MB.guildIdFromPath();
+      const T = {
+        ar: {
+          title: 'نظرة عامة', settings: 'إعدادات السيرفر', online: 'البوت متصل', offline: 'البوت غير متصل',
+          members: 'الأعضاء', boosts: 'بوست', openTickets: 'تذاكر مفتوحة', week: 'هذا الأسبوع', giveaways: 'قيفاواي شغال', none: 'لا يوجد حالياً',
+          joins: 'دخول عبر الدعوات اليوم', joinsWeek: 'هذا الأسبوع',
+          chart: 'النشاط', chartP: 'آخر 14 يوم — من سجلات البوت', lJoins: 'دخول عبر دعوة', lTickets: 'تذاكر جديدة',
+          quick: 'إجراءات سريعة', qGiveaway: 'قيفاواي جديد', qTickets: 'إعداد التذاكر', qWelcome: 'محرر الترحيب', qCommands: 'الأوامر', qLogs: 'قنوات السجلات', qInvite: 'أضف البوت لسيرفر آخر',
+          feed: 'آخر الأحداث', feedP: 'من التذاكر والسجن والقيفاواي والدعوات', empty: 'لا توجد أحداث بعد — ستظهر هنا أول ما يبدأ البوت بالعمل في السيرفر.',
+          mods: 'الأنظمة', modsP: 'حالة كل نظام في هذا السيرفر', on: 'مفعّل', off: 'غير مُعد',
+          e: {
+            ticket_open: (e) => [`تذكرة جديدة${e.n ? ` #${e.n}` : ''}`, `${e.user || 'عضو'}${e.dept ? ` · ${e.dept}` : ''}`],
+            ticket_close: (e) => [`أُغلقت تذكرة${e.n ? ` #${e.n}` : ''}`, e.user || ''],
+            jail: (e) => ['سجن عضو', `${e.user || 'عضو'}${e.by ? ` · بواسطة ${e.by}` : ''}`],
+            giveaway_end: (e) => [`انتهى قيفاواي «${e.prize}»`, e.winners.length ? `الفائز: ${e.winners.join('، ')}` : 'بدون فائزين'],
+            join: (e) => ['عضو جديد', `${e.user || 'عضو'}${e.by ? ` · دعوة ${e.by}` : ''}`],
+            join_fake: (e) => ['دعوة وهمية', `${e.user || 'حساب'} — حساب جديد`],
+          },
+          mod: { welcome: 'الترحيب', tickets: 'التذاكر', giveaways: 'القيفاواي', logs: 'السجلات', jail: 'السجن', protection: 'الحماية', replies: 'الردود التلقائية', invites: 'سجل الدعوات', levels: 'المستويات', automod: 'AutoMod', verify: 'التحقق', kafeel: 'الكفيل', prayer: 'أوقات الصلاة' },
+        },
+        en: {
+          title: 'Overview', settings: 'Server settings', online: 'Bot online', offline: 'Bot offline',
+          members: 'Members', boosts: 'boosts', openTickets: 'Open tickets', week: 'this week', giveaways: 'Active giveaways', none: 'None right now',
+          joins: 'Invite joins today', joinsWeek: 'this week',
+          chart: 'Activity', chartP: 'Last 14 days — from the bot’s records', lJoins: 'Invite joins', lTickets: 'New tickets',
+          quick: 'Quick actions', qGiveaway: 'New giveaway', qTickets: 'Ticket setup', qWelcome: 'Welcome editor', qCommands: 'Commands', qLogs: 'Log channels', qInvite: 'Add to another server',
+          feed: 'Recent events', feedP: 'Tickets, jail, giveaways and invites', empty: 'No events yet — they will show up here once the bot is active in this server.',
+          mods: 'Systems', modsP: 'Status of each system in this server', on: 'Enabled', off: 'Not set up',
+          e: {
+            ticket_open: (e) => [`New ticket${e.n ? ` #${e.n}` : ''}`, `${e.user || 'Member'}${e.dept ? ` · ${e.dept}` : ''}`],
+            ticket_close: (e) => [`Ticket closed${e.n ? ` #${e.n}` : ''}`, e.user || ''],
+            jail: (e) => ['Member jailed', `${e.user || 'Member'}${e.by ? ` · by ${e.by}` : ''}`],
+            giveaway_end: (e) => [`Giveaway ended: ${e.prize}`, e.winners.length ? `Winner: ${e.winners.join(', ')}` : 'No winners'],
+            join: (e) => ['New member', `${e.user || 'Member'}${e.by ? ` · invited by ${e.by}` : ''}`],
+            join_fake: (e) => ['Fake invite', `${e.user || 'Account'} — new account`],
+          },
+          mod: { welcome: 'Welcome', tickets: 'Tickets', giveaways: 'Giveaways', logs: 'Logs', jail: 'Jail', protection: 'Protection', replies: 'Auto responses', invites: 'Invite log', levels: 'Levels', automod: 'AutoMod', verify: 'Verification', kafeel: 'Sponsors', prayer: 'Prayer times' },
+        },
+      }[MB.lang];
+
+      const $ = (x) => document.getElementById(x);
+      const [crumbs, title, toSettings, status, stats, hChart, pChart, legend, hQuick, quick, hFeed, pFeed, feed, hMods, pMods, mods] =
+        ['crumbs', 'title', 'toSettings', 'status', 'stats', 'hChart', 'pChart', 'legend', 'hQuick', 'quick', 'hFeed', 'pFeed', 'feed', 'hMods', 'pMods', 'mods'].map($);
+      await MB.topbar({ guild: true });
+      const g = await MB.guildSidebar('overview');
+      const o = await MB.api(`/api/overview/${id}`);
+
+      crumbs.textContent = g.name;
+      title.textContent = T.title;
+      toSettings.innerHTML = `${MB.icon('sliders')} ${T.settings}`;
+      toSettings.href = `/dashboard/${id}#settings`;
+      status.classList.toggle('down', !o.bot.ready);
+      status.querySelector('span').textContent = o.bot.ready ? `${T.online} · ${o.bot.ping}ms` : T.offline;
+
+      const s = o.stats;
+      const tile = (ic, label, v, sub) => `<div class="ov-stat"><div class="top"><span>${label}</span>${MB.icon(ic)}</div><div class="v">${v}</div><div class="sub">${sub}</div></div>`;
+      stats.innerHTML = [
+        tile('users', T.members, MB.num(s.members), `${MB.num(s.boosts)} ${T.boosts}`),
+        tile('ticket', T.openTickets, MB.num(s.openTickets), `${MB.num(s.ticketsWeek)} ${T.week}`),
+        tile('gift', T.giveaways, MB.num(s.activeGiveaways), s.activeGiveaways ? '&nbsp;' : T.none),
+        tile('link', T.joins, MB.num(s.joinsToday), `${MB.num(s.joinsWeek)} ${T.joinsWeek}`),
+      ].join('');
+
+      // chart
+      hChart.textContent = T.chart; pChart.textContent = T.chartP;
+      legend.innerHTML = `<span><i style="background:#7950E8"></i>${T.lJoins}</span><span><i style="background:#91C8FF"></i>${T.lTickets}</span>`;
+      drawChart(o.series);
+
+      // quick actions
+      hQuick.textContent = T.quick;
+      const q = (ic, label, href, ext) => `<a href="${href}" ${ext ? 'target="_blank" rel="noopener"' : ''}>${MB.icon(ic)}<span>${label}</span></a>`;
+      quick.innerHTML = [
+        q('gift', T.qGiveaway, `/dashboard/${id}#giveaways`),
+        q('ticket', T.qTickets, `/dashboard/${id}#tickets`),
+        q('wave', T.qWelcome, `/dashboard/${id}#welcome`),
+        q('log', T.qLogs, `/dashboard/${id}#logs`),
+        q('terminal', T.qCommands, `/dashboard/${id}/commands`),
+        q('plus', T.qInvite, '/invite', true),
+      ].join('');
+
+      // feed
+      hFeed.textContent = T.feed; pFeed.textContent = T.feedP;
+      const ic = { ticket_open: ['ticket', 'ice'], ticket_close: ['check', 'green'], jail: ['lock', 'red'], giveaway_end: ['trophy', 'yellow'], join: ['wave', ''], join_fake: ['info', 'red'] };
+      feed.innerHTML = o.events.length
+        ? o.events.map((e) => {
+            const [b, p] = T.e[e.type](e);
+            const [i, c] = ic[e.type];
+            return `<li><span class="ic ${c}">${MB.icon(i)}</span><div style="min-width:0"><b>${MB.esc(b)}</b><p>${MB.esc(p)}</p></div><time datetime="${new Date(e.at).toISOString()}">${MB.ago(e.at)}</time></li>`;
+          }).join('')
+        : `<li><div class="empty" style="width:100%;padding:28px 12px">${T.empty}</div></li>`;
+
+      // modules
+      hMods.textContent = T.mods; pMods.textContent = T.modsP;
+      const mIc = { welcome: 'wave', tickets: 'ticket', giveaways: 'gift', logs: 'log', jail: 'lock', protection: 'shield', replies: 'chat', invites: 'link', levels: 'trophy', automod: 'shield', verify: 'check', kafeel: 'users', prayer: 'clock' };
+      const mHref = { welcome: 'welcome', tickets: 'tickets', giveaways: 'giveaways', logs: 'logs', jail: 'moderation', protection: 'moderation', replies: 'responses', invites: 'invites', levels: 'levels', automod: 'moderation', verify: 'moderation', kafeel: 'community', prayer: 'community' };
+      mods.innerHTML = Object.entries(o.modules)
+        .map(([k, on]) => `<a class="mod" href="/dashboard/${id}#${mHref[k]}"><span class="ic">${MB.icon(mIc[k])}</span><b>${T.mod[k]}</b><span class="pill ${on ? 'on' : ''}">${on ? T.on : T.off}</span></a>`)
+        .join('');
+
+      function drawChart(series) {
+        const chart = document.getElementById("chart");
+        const W = 700, H = 230, pad = { t: 10, r: 8, b: 26, l: 28 };
+        const max = Math.max(4, ...series.map((d) => Math.max(d.joins, d.tickets)));
+        const step = (W - pad.l - pad.r) / series.length;
+        const bw = Math.min(14, step / 3);
+        const y = (v) => H - pad.b - (v / max) * (H - pad.t - pad.b);
+        const ticks = [0, Math.round(max / 2), max];
+        const rtl = document.documentElement.dir === 'rtl';
+        const xAt = (i) => (rtl ? W - pad.r - (i + 0.5) * step : pad.l + (i + 0.5) * step);
+        const fmt = new Intl.DateTimeFormat(MB.lang, { day: 'numeric', month: 'short' });
+        let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${T.chart}">`;
+        for (const tk of ticks) svg += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${y(tk)}" y2="${y(tk)}" stroke="rgba(145,152,173,.12)"/><text x="${rtl ? W - 2 : 2}" y="${y(tk) + 4}" fill="#6f7590" font-size="11" text-anchor="${rtl ? 'end' : 'start'}">${tk}</text>`;
+        series.forEach((d, i) => {
+          const cx = xAt(i);
+          svg += `<rect x="${cx - bw - 1}" y="${y(d.joins)}" width="${bw}" height="${Math.max(0, H - pad.b - y(d.joins))}" rx="3" fill="#7950E8"/>`;
+          svg += `<rect x="${cx + 1}" y="${y(d.tickets)}" width="${bw}" height="${Math.max(0, H - pad.b - y(d.tickets))}" rx="3" fill="#91C8FF"/>`;
+          if (i % 2 === 0 || series.length < 8) svg += `<text x="${cx}" y="${H - 6}" fill="#6f7590" font-size="11" text-anchor="middle">${fmt.format(d.day)}</text>`;
+          svg += `<rect x="${cx - step / 2}" y="0" width="${step}" height="${H - pad.b}" fill="transparent" data-i="${i}" class="hit"/>`;
+        });
+        svg += '</svg><div class="chart-tip" id="tip"></div>';
+        chart.innerHTML = svg;
+        const tip = chart.querySelector('#tip');
+        chart.querySelectorAll('.hit').forEach((r) => {
+          r.addEventListener('mouseenter', () => {
+            const d = series[+r.dataset.i];
+            const box = chart.getBoundingClientRect();
+            const rb = r.getBoundingClientRect();
+            tip.innerHTML = `<b>${fmt.format(d.day)}</b><br>${T.lJoins}: ${d.joins} · ${T.lTickets}: ${d.tickets}`;
+            tip.classList.add('show');
+            const tw = tip.offsetWidth;
+            const cx = rb.left - box.left + rb.width / 2;
+            tip.style.left = `${Math.max(tw / 2 + 4, Math.min(box.width - tw / 2 - 4, cx))}px`;
+            tip.style.top = `${Math.min(y(Math.max(d.joins, d.tickets)) * (box.height / H), box.height - 20)}px`;
+            tip.classList.add('show');
+          });
+          r.addEventListener('mouseleave', () => tip.classList.remove('show'));
+        });
+      }
+    })().catch((e) => MB.toast(e.message, 'error', 6000));
+  </script>
+</body>
+</html>

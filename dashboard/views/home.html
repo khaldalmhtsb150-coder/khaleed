@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>الرئيسية — MarkaBot</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <h1 id="hello">أهلاً بك</h1>
+        <p>هذه نظرة سريعة على البوت وسيرفراتك.</p>
+      </div>
+      <a class="btn primary" href="/servers">إدارة السيرفرات</a>
+    </div>
+
+    <div class="grid-4">
+      <div class="stat"><div class="k">السيرفرات</div><div class="v" id="sServers">—</div></div>
+      <div class="stat"><div class="k">إجمالي الأعضاء</div><div class="v" id="sUsers">—</div></div>
+      <div class="stat"><div class="k">مدة التشغيل</div><div class="v" id="sUptime" style="font-size:20px;padding-top:6px">—</div></div>
+      <div class="stat"><div class="k">الاستجابة</div><div class="v" id="sPing">—</div></div>
+    </div>
+
+    <div class="card mt">
+      <div class="card-head">
+        <div><h2>سيرفراتك</h2><p>السيرفرات التي تملك فيها صلاحية إدارة السيرفر أو المسؤول.</p></div>
+        <a class="btn ghost sm" href="/servers">عرض الكل</a>
+      </div>
+      <div class="card-body"><div class="servers" id="servers"><div class="skeleton" style="height:150px"></div><div class="skeleton" style="height:150px"></div><div class="skeleton" style="height:150px"></div></div></div>
+    </div>
+
+    <div class="card" id="ownerCard" style="display:none">
+      <div class="card-head"><div><h2>حالة البوت</h2><p>إعدادات عامة تظهر لمالك البوت فقط.</p></div></div>
+      <div class="card-body">
+        <div class="row-3">
+          <div class="field"><label>نص الحالة</label><input class="input" id="pStatus" maxlength="120" placeholder="/help"></div>
+          <div class="field"><label>نوع النشاط</label>
+            <select class="select" id="pType">
+              <option value="Custom">حالة مخصصة (فقاعة)</option><option value="Watching">يشاهد</option><option value="Playing">يلعب</option>
+              <option value="Listening">يستمع</option><option value="Competing">يتنافس</option>
+            </select></div>
+          <div class="field"><label>الحالة</label>
+            <select class="select" id="pPresence">
+              <option value="online">متصل</option><option value="idle">خامل</option><option value="dnd">عدم الإزعاج</option>
+            </select></div>
+        </div>
+      </div>
+      <div class="card-foot"><button class="btn primary" id="pSave">حفظ</button></div>
+    </div>
+  </main>
+
+  <script src="/static/app.js"></script>
+  <script>
+    (async () => {
+      const { stats, user } = await MB.topbar({ active: 'home' });
+      hello.textContent = `أهلاً ${user?.username || ''}`;
+      sServers.textContent = (stats.servers || 0).toLocaleString('ar');
+      sUsers.textContent = (stats.users || 0).toLocaleString('ar');
+      sUptime.textContent = stats.uptime || '—';
+      sPing.textContent = stats.ready ? `${stats.ping}ms` : '—';
+
+      const guilds = await MB.api('/api/guilds');
+      const mine = guilds.filter((g) => !g.ownerView).slice(0, 6);
+      servers.innerHTML = mine.length
+        ? mine.map(card).join('')
+        : '<div class="empty" style="grid-column:1/-1">لا توجد سيرفرات تملك فيها صلاحية الإدارة.</div>';
+
+      if (user?.isOwner) {
+        ownerCard.style.display = '';
+        pSave.onclick = async () => {
+          try {
+            await MB.api('/api/presence', { method: 'POST', body: { status: pStatus.value, activityType: pType.value, presence: pPresence.value } });
+            MB.toast('تم تحديث حالة البوت', 'success');
+          } catch (e) { MB.toast(e.message, 'error'); }
+        };
+      }
+    })();
+
+    function card(g) {
+      const ava = g.icon ? `<img src="${MB.esc(g.icon)}" alt="">` : MB.esc(g.name[0]);
+      return `<div class="server-card">
+        <div class="cover">${g.icon ? `<img src="${MB.esc(g.icon)}" alt="">` : ''}</div>
+        <div class="body">
+          <div class="ava">${ava}</div>
+          <h3>${MB.esc(g.name)}</h3>
+          ${g.hasBot ? `<a class="btn primary" href="/dashboard/${g.id}/overview">إدارة</a>` : `<a class="btn ghost" href="${MB.esc(g.invite)}" target="_blank">إضافة البوت</a>`}
+        </div></div>`;
+    }
+  </script>
+</body>
+</html>
