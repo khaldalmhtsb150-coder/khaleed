@@ -1169,6 +1169,7 @@
     btn.disabled = true;
     const label = btn.innerHTML;
     btn.innerHTML = '<span class="spinner"></span>';
+    let ok = false;
     try {
       if (key === 'botProfile') {
         const body = { nick: val('bp-nick'), bio: val('bp-bio') };
@@ -1199,11 +1200,14 @@
           document.getElementById('t-depts').innerHTML = S.tickets.departments.map(deptRow).join('');
         }
       }
+      ok = true;
     } catch (e) {
       toast(e.message, 'error');
     } finally {
       btn.disabled = false;
       btn.innerHTML = label;
+      if (ok) markDirty(key, false);
+      else if (dirty.has(key)) markDirty(key, true);
     }
   }
 
@@ -1620,6 +1624,179 @@
     premium: { sections: ['sec-premium'], ar: ['البريميوم', 'الخطة الحالية والحدود وتفعيل الأكواد.'], en: ['Premium', 'Current plan, limits and code activation.'] },
   };
 
+  const GROUP_ICONS = { settings: 'sliders', moderation: 'shield', community: 'users', staff: 'chart', rolemenus: 'layers', embeds: 'edit', tickets: 'ticket', logs: 'log', giveaways: 'gift', welcome: 'wave', responses: 'chat', levels: 'trophy', invites: 'link', customization: 'palette', premium: 'crown' };
+
+  // ---------- quick search (Ctrl+K): jumps to any setting on any page ----------
+  const SX = MB.lang === 'en'
+    ? { ph: 'Search settings…', none: 'Nothing found' }
+    : { ph: 'دوّر على أي إعداد…', none: 'ما لقيت إشي' };
+  let searchIndex = [];
+  function buildSearch() {
+    searchIndex = [];
+    for (const [key, g] of Object.entries(GROUPS)) {
+      const gName = (g[MB.lang] || g.ar)[0];
+      for (const sid of g.sections) {
+        const sec = document.getElementById(sid);
+        if (!sec) continue;
+        const cardTitle = sec.querySelector('.card-head h2')?.textContent.trim() || gName;
+        searchIndex.push({ key, el: sec, title: cardTitle, where: gName, text: `${cardTitle} ${sec.querySelector('.card-head p')?.textContent || ''}` });
+        sec.querySelectorAll('.field > label, .toggle-line b').forEach((lab) => {
+          const target = lab.closest('.field, .toggle-line');
+          const t = lab.textContent.trim();
+          if (t) searchIndex.push({ key, el: target, title: t, where: cardTitle.replace(/[^\p{L}\p{N} ]/gu, '').trim() === gName.trim() ? gName : `${gName} › ${cardTitle}`, text: `${t} ${target.querySelector('small, .help')?.textContent || ''}` });
+        });
+      }
+    }
+  }
+  const norm = (s) => s.toLowerCase().replace(/[ًٌٍَُِّْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+  function mountSearch() {
+    const tools = document.createElement('div');
+    tools.className = 'dash-tools';
+    tools.innerHTML = `<div class="dash-search">${icon('search')}<input class="input" id="ds-input" type="search" autocomplete="off" placeholder="${SX.ph}"><kbd>Ctrl K</kbd><div class="ds-results" id="ds-results"></div></div>`;
+    document.querySelector('.main-inner').prepend(tools);
+    const input = tools.querySelector('#ds-input');
+    const out = tools.querySelector('#ds-results');
+    let hits = [];
+    let cur = 0;
+    const draw = () => {
+      out.innerHTML = hits.length
+        ? hits.map((h, i) => `<a data-i="${i}" class="${i === cur ? 'on' : ''}"><span>${esc(h.title)}</span><small>${esc(h.where)}</small></a>`).join('')
+        : `<div class="none">${SX.none}</div>`;
+      out.classList.add('open');
+    };
+    const go = (h) => {
+      if (!h) return;
+      out.classList.remove('open');
+      input.value = '';
+      input.blur();
+      if (location.hash !== `#${h.key}`) location.hash = h.key;
+      setTimeout(() => {
+        h.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        h.el.classList.remove('flash');
+        void h.el.offsetWidth;
+        h.el.classList.add('flash');
+        h.el.querySelector('input:not([type=checkbox]), select, textarea')?.focus({ preventScroll: true });
+      }, 60);
+    };
+    input.addEventListener('input', () => {
+      const q = norm(input.value.trim());
+      if (!q) return out.classList.remove('open');
+      const words = q.split(/\s+/);
+      hits = searchIndex.filter((h) => words.every((w) => norm(h.text).includes(w))).slice(0, 12);
+      cur = 0;
+      draw();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!hits.length) return;
+        cur = (cur + (e.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length;
+        draw();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        go(hits[cur]);
+      } else if (e.key === 'Escape') {
+        out.classList.remove('open');
+        input.blur();
+      }
+    });
+    out.addEventListener('mousedown', (e) => {
+      const a = e.target.closest('a[data-i]');
+      if (a) {
+        e.preventDefault();
+        go(hits[Number(a.dataset.i)]);
+      }
+    });
+    input.addEventListener('blur', () => setTimeout(() => out.classList.remove('open'), 120));
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
+  // ---------- unsaved changes: highlight the card + a Discord-style bar ----------
+  const dirty = new Set();
+  const SB = MB.lang === 'en'
+    ? { title: 'Careful — you have unsaved changes!', sub: (n) => `${n} section${n > 1 ? 's' : ''} changed`, reset: 'Reset', save: 'Save changes', saved: 'Saved', saveOne: 'Save changes' }
+    : { title: 'انتبه، عندك تغييرات ما انحفظت!', sub: (n) => (n > 1 ? `${n} أقسام تغيّرت` : 'قسم واحد تغيّر'), reset: 'تراجع', save: 'احفظ الكل', saved: 'محفوظ ✓', saveOne: 'حفظ التغييرات' };
+  let saveBar = null;
+  function mountSaveBar() {
+    saveBar = document.createElement('div');
+    saveBar.className = 'save-bar';
+    saveBar.setAttribute('role', 'status');
+    saveBar.innerHTML = `<div class="sb-text"><span>${SB.title}</span><small id="sb-sub"></small></div><button type="button" class="btn link" id="sb-reset">${SB.reset}</button><button type="button" class="btn primary" id="sb-save">${SB.save}</button>`;
+    document.body.appendChild(saveBar);
+    saveBar.querySelector('#sb-reset').addEventListener('click', () => {
+      dirty.clear();
+      location.reload();
+    });
+    saveBar.querySelector('#sb-save').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      for (const key of [...dirty]) {
+        const b = document.querySelector(`[data-save="${key}"]`);
+        if (b) await save(key, b);
+      }
+      btn.disabled = false;
+    });
+    // mark every save button as "saved" until something changes
+    document.querySelectorAll('.card-foot [data-save]').forEach((b) => setSaved(b, true));
+    const onEdit = (e) => {
+      const t = e.target;
+      if (!t.matches('input, select, textarea') || t.id === 'ds-input') return;
+      const cardEl = t.closest('.card');
+      const btn = cardEl?.querySelector('.card-foot [data-save]');
+      if (!btn) return;
+      // uploads save themselves, except the bot look (kept pending until "save")
+      if (t.type === 'file' && btn.dataset.save !== 'botProfile') return;
+      markDirty(btn.dataset.save, true);
+      if (t.type === 'checkbox') updateOff(cardEl);
+    };
+    const root = document.getElementById('cards');
+    root.addEventListener('input', onEdit);
+    root.addEventListener('change', onEdit);
+    // removing list rows / chips also counts as a change
+    root.addEventListener('click', (e) => {
+      if (e.target.closest('[data-del], .chip button, [data-add], .vars code')) {
+        const btn = e.target.closest('.card')?.querySelector('.card-foot [data-save]');
+        if (btn) setTimeout(() => markDirty(btn.dataset.save, true), 0);
+      }
+    });
+    window.addEventListener('beforeunload', (e) => {
+      if (dirty.size) {
+        e.preventDefault();
+        e.returnValue = '';
+        saveBar.classList.remove('shake');
+        void saveBar.offsetWidth;
+        saveBar.classList.add('shake');
+      }
+    });
+    document.querySelectorAll('#cards .card').forEach(updateOff);
+  }
+  function setSaved(btn, saved) {
+    btn.classList.toggle('saved', saved);
+    btn.textContent = saved ? SB.saved : SB.saveOne;
+  }
+  function markDirty(key, on) {
+    if (on) dirty.add(key);
+    else dirty.delete(key);
+    document.querySelectorAll(`[data-save="${key}"]`).forEach((b) => {
+      setSaved(b, !on);
+      b.closest('.card')?.classList.toggle('is-dirty', on);
+    });
+    if (!saveBar) return;
+    saveBar.classList.toggle('show', dirty.size > 0);
+    saveBar.querySelector('#sb-sub').textContent = dirty.size ? SB.sub(dirty.size) : '';
+  }
+  /** A card whose main switch (…-enabled) is off gets a quieter body. */
+  function updateOff(cardEl) {
+    const main = cardEl.querySelector('.card-body > .toggle-line:first-child input[type=checkbox]');
+    cardEl.classList.toggle('is-off', Boolean(main && /enabled$/i.test(main.id) && !main.checked));
+  }
+
   function arrangeGroups() {
     const root = document.getElementById('cards');
     const frag = document.createDocumentFragment();
@@ -1628,7 +1805,7 @@
       box.className = 'sec-group';
       box.id = `grp-${key}`;
       const [title, desc] = g[MB.lang] || g.ar;
-      box.innerHTML = `<div class="group-head"><h1>${esc(title)}</h1><p>${esc(desc)}</p></div>`;
+      box.innerHTML = `<div class="group-head"><span class="gh-ic">${icon(GROUP_ICONS[key] || 'sliders')}</span><div><h1>${esc(title)}</h1><p>${esc(desc)}</p></div></div>`;
       for (const sid of g.sections) {
         const el = document.getElementById(sid);
         if (el) box.appendChild(el);
@@ -2110,6 +2287,9 @@
     MB.guildName = g?.name;
     window.addEventListener('hashchange', showGroup);
     showGroup();
+    buildSearch();
+    mountSearch();
+    mountSaveBar();
     loadStaff();
     loadAnalytics();
   })().catch((e) => toast(e.message, 'error', 6000));
