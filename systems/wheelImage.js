@@ -30,11 +30,11 @@ const MAX_SLICES = 12;
 const available = () => Boolean(canvas);
 
 /** Up to 12 slices are drawn; the winner is always one of them. */
-function slicesFor(rewards, winner) {
+function slicesFor(rewards, winner, max = MAX_SLICES) {
   const list = rewards.map(String);
-  if (list.length <= MAX_SLICES) return { slices: list, win: list.indexOf(String(winner)) };
-  const others = list.filter((r) => r !== String(winner)).sort(() => Math.random() - 0.5).slice(0, MAX_SLICES - 1);
-  const win = Math.floor(Math.random() * MAX_SLICES);
+  if (list.length <= max) return { slices: list, win: list.indexOf(String(winner)) };
+  const others = list.filter((r) => r !== String(winner)).sort(() => Math.random() - 0.5).slice(0, max - 1);
+  const win = Math.floor(Math.random() * max);
   others.splice(win, 0, String(winner));
   return { slices: others, win };
 }
@@ -123,7 +123,8 @@ function drawDisc(slices, bg, accent) {
     ctx.stroke();
   }
   // labels: along the middle of each slice, reading from the rim inwards
-  const size = n > 8 ? 26 : 30;
+  const size = n > 24 ? 16 : n > 18 ? 19 : n > 12 ? 22 : n > 8 ? 26 : 30;
+  const maxLen = n > 18 ? 11 : 13;
   ctx.font = `bold ${size}px ${FONT}`;
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'right';
@@ -134,7 +135,7 @@ function drawDisc(slices, bg, accent) {
     ctx.shadowColor = 'rgba(0,0,0,0.85)';
     ctx.shadowBlur = 8;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(short(slices[i]), r - 26, 0);
+    ctx.fillText(short(slices[i], maxLen), r - 26, 0);
     ctx.restore();
   }
   // rim
@@ -215,9 +216,9 @@ function drawFrame(ctx, disc, angle, result, accent) {
 /**
  * @returns {Promise<{gif: Buffer, png: Buffer, duration: number} | null>}
  */
-async function render(rewards, winner, { background = '', accent = '#7950E8' } = {}) {
+async function render(rewards, winner, { background = '', accent = '#7950E8', maxSlices = MAX_SLICES, frames: frameCount = 46 } = {}) {
   if (!canvas) return null;
-  const { slices, win } = slicesFor(rewards, winner);
+  const { slices, win } = slicesFor(rewards, winner, maxSlices);
   const disc = drawDisc(slices, await loadBg(background), accent);
   const seg = (Math.PI * 2) / slices.length;
   // land in the winner's slice (a little off-centre so it doesn't look rigged)
@@ -228,7 +229,7 @@ async function render(rewards, winner, { background = '', accent = '#7950E8' } =
   const c = canvas.createCanvas(W, H);
   const ctx = c.getContext('2d');
   const frames = [];
-  const N = 46;
+  const N = frameCount;
   for (let f = 0; f <= N; f++) {
     const t = f / N;
     const eased = 1 - Math.pow(1 - t, 3.2);

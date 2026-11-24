@@ -24,6 +24,7 @@ const CATEGORIES = {
   levels: 'المستويات',
   community: 'المجتمع',
   adhkar: 'الأذكار',
+  games: 'الألعاب',
   greetings: 'الترحيب',
   channels: 'التحكم بالقنوات',
   moderation: 'الإدارة والسجن',

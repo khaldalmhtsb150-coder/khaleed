@@ -991,3 +991,6 @@ html[dir="ltr"] .dash-search kbd { right: 10px; left: auto; }
 .logs-or { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; color: var(--faint); font-size: 12.5px; }
 .logs-or::before, .logs-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 @media (max-width: 640px) { .logs-auto { grid-template-columns: 1fr; } }
+.gm-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.gm-pick { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 11px; background: var(--sunken); border: 1px solid rgba(255, 255, 255, .06); font-size: 13.5px; cursor: pointer; }
+.gm-pick:has(input:checked) { border-color: rgba(124, 92, 240, .35); background: rgba(124, 92, 240, .08); }

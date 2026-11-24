@@ -27,10 +27,11 @@ const purge = require('../systems/purge');
 const kafeel = require('../systems/kafeel');
 const prayer = require('../systems/prayer');
 const adhkar = require('../systems/adhkar');
+const gamesSys = require('../systems/games');
 const staffSys = require('../systems/staff');
 const wrapped = require('../systems/wrapped');
 const who = (req) => ({ id: req.session.user.id, name: req.session.user.globalName || req.session.user.username });
-const MODULE_NAMES = { giveaway: 'القيفاواي', protection: 'الحماية', prefix: 'البادئة', general: 'الإعدادات العامة', greetings: 'الترحيب النصي', welcome: 'الترحيب المتقدم', autoLine: 'الخط التلقائي', feedback: 'الآراء', jail: 'السجن', tickets: 'التذاكر', vanity: 'حماية الرابط', logs: 'السجلات', invites: 'الدعوات', replies: 'الردود التلقائية', levels: 'المستويات', automod: 'AutoMod', verify: 'التحقق', purge: 'المسح التلقائي', kafeel: 'الكفيل', prayer: 'أوقات الصلاة', adhkar: 'الأذكار', wrapped: 'ملخص السيرفر' };
+const MODULE_NAMES = { giveaway: 'القيفاواي', protection: 'الحماية', prefix: 'البادئة', general: 'الإعدادات العامة', greetings: 'الترحيب النصي', welcome: 'الترحيب المتقدم', autoLine: 'الخط التلقائي', feedback: 'الآراء', jail: 'السجن', tickets: 'التذاكر', vanity: 'حماية الرابط', logs: 'السجلات', invites: 'الدعوات', replies: 'الردود التلقائية', levels: 'المستويات', automod: 'AutoMod', verify: 'التحقق', purge: 'المسح التلقائي', kafeel: 'الكفيل', prayer: 'أوقات الصلاة', adhkar: 'الأذكار', games: 'الألعاب', wrapped: 'ملخص السيرفر' };
 
 const VIEWS = path.join(__dirname, 'views');
 const API = 'https://discord.com/api/v10';
@@ -187,6 +188,7 @@ function readSettings(guild) {
     kafeel: kafeel.config(id),
     prayer: prayer.config(id),
     adhkar: adhkar.config(id),
+    games: gamesSys.config(id),
     prayerCities: Object.fromEntries(Object.entries(prayer.CITIES).map(([k, c]) => [k, c.name])),
     wrapped: wrapped.config(id),
     staffReport: staffSys.canReport(id),
@@ -412,6 +414,33 @@ function writeSettings(guild, module, d) {
       });
       if (conf.enabled && !conf.channelId) throw new Error('اختار قناة الأذان');
       return store.save('prayerConfig');
+    }
+    case 'games': {
+      const conf = store.guild('gamesConfig', id, {});
+      const n = d.night || {};
+      const time = /^([01]?\d|2[0-3]):[0-5]\d$/.test(String(n.time || '')) ? String(n.time).padStart(5, '0') : '21:00';
+      Object.assign(conf, {
+        enabled: bool(d.enabled),
+        channels: (Array.isArray(d.channels) ? d.channels : []).map((c) => channelIn(guild, c)).filter(Boolean).slice(0, 20),
+        starterRoleId: roleIn(guild, d.starterRoleId) || '',
+        lobbySeconds: int(d.lobbySeconds, 10, 120, 30),
+        winXp: int(d.winXp, 0, 1000, 60),
+        playXp: int(d.playXp, 0, 500, 10),
+        perks: bool(d.perks),
+        championRoleId: roleIn(guild, d.championRoleId) || '',
+        night: {
+          ...gamesSys.DEFAULT.night,
+          enabled: bool(n.enabled),
+          channelId: channelIn(guild, n.channelId) || '',
+          day: int(n.day, 0, 6, 4),
+          time,
+          roleId: roleIn(guild, n.roleId) || '',
+          games: (Array.isArray(n.games) ? n.games : []).filter((g) => gamesSys.TYPES.has(g)).slice(0, 8),
+        },
+      });
+      if (conf.night.enabled && !conf.night.channelId) throw new Error('اختار روم سهرة الألعاب');
+      if (conf.night.enabled && !conf.night.games.length) throw new Error('اختار لعبة وحدة على الأقل للسهرة');
+      return store.save('gamesConfig');
     }
     case 'adhkar': {
       const conf = store.guild('adhkarConfig', id, {});
