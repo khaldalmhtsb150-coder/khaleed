@@ -74,6 +74,8 @@ const DEFAULTS = {
   khatma: {},
   radarConfig: {},
   radar: {},
+  backupConfig: {},
+  youtube: {},
   staffActivity: {},
   staffReportLast: {},
   wrappedConfig: {},

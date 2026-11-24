@@ -1084,6 +1084,7 @@
     tempVoice: () => [['tempVoice', { enabled: checked('tv-enabled'), hubId: val('tv-hub'), categoryId: val('tv-cat'), nameTemplate: val('tv-name'), limit: val('tv-limit') }]],
     appeals: () => [['appeals', { enabled: checked('ap-enabled'), channelId: val('ap-channel'), cooldownDays: val('ap-cool') }]],
     khatma: () => [['khatma', { channelId: val('kh-channel'), roleId: val('kh-role'), maxPerUser: val('kh-max'), holdHours: val('kh-hours') }]],
+    backup: () => [['backup', { auto: checked('bk-auto') }]],
     radar: () => [['radar', { enabled: checked('rd-enabled'), channelId: val('rd-channel'), silentHours: val('rd-hours'), roleId: val('rd-role'), mentionSponsor: checked('rd-sponsor') }]],
     adhkar: () => [['adhkar', { enabled: checked('az-enabled'), channelId: val('az-channel'), interval: val('az-interval'), skipIdle: checked('az-idle'), sabahMasa: checked('az-sm'), friday: checked('az-fri'), roleId: val('az-role') }]],
     prayer: () => [['prayer', { enabled: checked('pr-enabled'), channelId: val('pr-channel'), city: val('pr-city'), roleId: val('pr-role'), prayers: [...document.querySelectorAll('[data-prayer]:checked')].map((c) => c.dataset.prayer), ramadan: checked('pr-ramadan'), suhoorMinutes: val('pr-suhoor') }]],
@@ -1360,6 +1361,38 @@
       if (ba) {
         if (document.querySelectorAll('[data-boost]').length >= 30) return toast('الحد 30', 'error');
         return document.getElementById('lv-boosts').insertAdjacentHTML('beforeend', boostRow(ba.dataset.boostAdd));
+      }
+      if (e.target.closest('#bk-now')) {
+        try {
+          const r = await api(`/api/backup/${id}/create`, { method: 'POST', body: {} });
+          toast(`انحفظت نسخة: ${r.snap.roles} رتبة و ${r.snap.channels} روم`, 'success');
+          S.backup = (await api(`/api/settings/${id}`)).backup;
+          const tmp = document.createElement('div');
+          tmp.innerHTML = sBackup();
+          document.getElementById('bk-list').replaceWith(tmp.querySelector('#bk-list'));
+        } catch (err) { toast(err.message, 'error', 5000); }
+        return;
+      }
+      if (e.target.closest('#yt-add')) {
+        const btn = e.target.closest('#yt-add');
+        btn.disabled = true;
+        try {
+          const r = await api(`/api/youtube/${id}/add`, { method: 'POST', body: { input: val('yt-input'), channelId: val('yt-channel'), roleId: val('yt-role'), message: val('yt-msg') } });
+          S.youtube.feeds.push(r.feed);
+          document.getElementById('sec-youtube').outerHTML = sYoutube();
+          toast(`انضافت ${r.feed.name} ✓`, 'success');
+        } catch (err) { toast(err.message, 'error', 6000); btn.disabled = false; }
+        return;
+      }
+      const ytDel = e.target.closest('[data-yt-del]');
+      if (ytDel) {
+        try {
+          await api(`/api/youtube/${id}/remove`, { method: 'POST', body: { ytId: ytDel.dataset.ytDel } });
+          S.youtube.feeds = S.youtube.feeds.filter((f) => f.ytId !== ytDel.dataset.ytDel);
+          document.getElementById('sec-youtube').outerHTML = sYoutube();
+          toast('انحذفت القناة', 'success');
+        } catch (err) { toast(err.message, 'error', 5000); }
+        return;
       }
       if (e.target.closest('#tv-setup')) {
         try {
@@ -1661,8 +1694,8 @@
   // ---------- groups (one per sidebar item) ----------
   const GROUPS = {
     settings: { sections: ['sec-general'], ar: ['إعدادات السيرفر', 'البادئة ورتبة مدراء البوت.'], en: ['Server settings', 'Prefix and the bot manager role.'] },
-    moderation: { sections: ['sec-mod-note', 'sec-automod', 'sec-verify', 'sec-jail', 'sec-appeals', 'sec-protection', 'sec-vanity', 'sec-purge'], ar: ['الإشراف والحماية', 'AutoMod، التحقق، السجن، طلبات فك الحظر، الحماية والمسح التلقائي.'], en: ['Moderation', 'AutoMod, verification, jail, ban appeals, protection and auto purge.'] },
-    community: { sections: ['sec-games', 'sec-tempvoice', 'sec-radar', 'sec-kafeel', 'sec-khatma', 'sec-wrapped', 'sec-prayer', 'sec-adhkar'], ar: ['المجتمع', 'الألعاب، الرومات المؤقتة، رادار الجداد، الكفيل، الختمة، الملخص، الصلاة والأذكار.'], en: ['Community', 'Games, temp voice, newcomer radar, sponsors, khatma, summary, prayer and adhkar.'] },
+    moderation: { sections: ['sec-mod-note', 'sec-automod', 'sec-verify', 'sec-jail', 'sec-appeals', 'sec-protection', 'sec-backup', 'sec-vanity', 'sec-purge'], ar: ['الإشراف والحماية', 'AutoMod، التحقق، السجن، طلبات فك الحظر، الحماية، النسخ الاحتياطي والمسح التلقائي.'], en: ['Moderation', 'AutoMod, verification, jail, ban appeals, protection, backups and auto purge.'] },
+    community: { sections: ['sec-games', 'sec-tempvoice', 'sec-radar', 'sec-kafeel', 'sec-youtube', 'sec-khatma', 'sec-wrapped', 'sec-prayer', 'sec-adhkar'], ar: ['المجتمع', 'الألعاب، الرومات المؤقتة، رادار الجداد، الكفيل، يوتيوب، الختمة، الملخص، الصلاة والأذكار.'], en: ['Community', 'Games, temp voice, newcomer radar, sponsors, YouTube, khatma, summary, prayer and adhkar.'] },
     staff: { sections: ['sec-staff'], ar: ['أداء الإدارة', 'تقرير شهري لنشاط كل إداري.'], en: ['Staff report', 'A monthly activity report for every staff member.'] },
     rolemenus: { sections: ['sec-rolemenus'], ar: ['رتب بالأزرار', 'لوحات يختار منها الأعضاء رتبهم.'], en: ['Role menus', 'Panels where members pick their roles.'] },
     embeds: { sections: ['sec-embeds'], ar: ['صانع الإمبد', 'صمم رسائل مرتبة وابعتها أو جدولها.'], en: ['Embed builder', 'Design messages and send or schedule them.'] },
@@ -2378,6 +2411,46 @@
     );
   }
 
+  function sBackup() {
+    const Bk = S.backup || {};
+    const snaps = Bk.snaps || [];
+    const when = (t) => new Date(t).toLocaleString('ar-JO', { dateStyle: 'medium', timeStyle: 'short' });
+    return card(
+      'sec-backup',
+      'النسخ الاحتياطي والإصلاح 🗂️',
+      'نسخة يومية من الرتب والرومات والصلاحيات. إذا انضرب السيرفر، البوت بيرجّع المحذوف بضغطة، وبيرجّع الأسماء والصلاحيات، وبيمسح رومات السبام.',
+      'refresh',
+      `${toggle('bk-auto', Bk.auto !== false, 'نسخة تلقائية كل يوم', `البوت بيحتفظ بآخر ${Bk.keep || 3} نسخ. وما بياخد نسخة إذا السيرفر شكله مضروب، عشان ما يمسح النسخة السليمة`)}
+      <div class="inline-form"><button type="button" class="btn ghost" id="bk-now">${icon('plus')} خذ نسخة هسا</button></div>
+      <div class="bk-list mt" id="bk-list">${snaps.length ? snaps.map((x, i) => `<div class="bk-row"><b>${i + 1}</b><span>${when(x.at)}</span><small>${x.roles} رتبة • ${x.channels} روم</small></div>`).join('') : '<div class="empty" style="padding:14px">ما في نسخ لسا.</div>'}</div>
+      <div class="help">الإصلاح من ديسكورد بأمر <code>/backup</code> واختار «إصلاح السيرفر» — بيوريك شو رح يتغير قبل ما يبلش. ولما الـ Anti-Nuke يوقف مخرّب، زر الإصلاح بينزل لحاله بروم التنبيهات. الرسائل المحذوفة ما بترجع، ديسكورد ما بيسمح لأي بوت.</div>`,
+      'backup'
+    );
+  }
+  function ytRow(f) {
+    const ch = (M.text || []).find((c) => c.id === f.channelId);
+    return `<div class="bk-row" data-yt="${esc(f.ytId)}"><b>▶️</b><span>${esc(f.name)}${f.errors >= 3 ? ' ⚠️' : ''}</span><small># ${esc(ch?.name || f.channelId)}</small><button type="button" class="btn ghost sm" data-yt-del="${esc(f.ytId)}">${icon('trash')}</button></div>`;
+  }
+  function sYoutube() {
+    const Y = S.youtube || { feeds: [], limit: 2 };
+    return card(
+      'sec-youtube',
+      'تنبيهات يوتيوب 🔔',
+      'لما قناة يوتيوب تنزّل فيديو أو تبث لايف، البوت بينزل التنبيه بالروم اللي بتختاره مع منشن.',
+      'send',
+      `<div class="bk-list" id="yt-list">${Y.feeds.length ? Y.feeds.map(ytRow).join('') : '<div class="empty" style="padding:14px">ما في قنوات مضافة.</div>'}</div>
+      <div class="logs-or"><span>إضافة قناة (${Y.feeds.length}/${Y.limit})</span></div>
+      ${field('رابط القناة', `<input class="input ltr" id="yt-input" placeholder="https://youtube.com/@name">`)}
+      <div class="row">
+        ${field('روم التنبيه', `<select class="select" id="yt-channel">${textOpts('', 'اختر روم')}</select>`)}
+        ${field('منشن', `<select class="select" id="yt-role"><option value="">بدون</option><option value="${id}">@everyone</option>${roleOpts('', 'بدون').replace(/<option value="">[^<]*<\/option>/, '')}</select>`)}
+      </div>
+      ${field('الرسالة (اختياري)', `<input class="input" id="yt-msg" maxlength="500" placeholder="{role} 🔔 {channel} نزّل فيديو جديد: {title} {url}">`, '<code>{role}</code> <code>{channel}</code> <code>{title}</code> <code>{url}</code>')}
+      <button type="button" class="btn primary" id="yt-add">${icon('plus')} أضف القناة</button>
+      <div class="help">البوت بيفحص كل 5 دقائق. بنبعت بس الفيديوهات الجديدة بعد الإضافة. تيك توك وكيك ما إلهم طريقة رسمية ثابتة، فما ضفناهم.</div>`
+    );
+  }
+
   function sAdhkar() {
     const A = S.adhkar || {};
     const iv = [[0, 'بدون'], [15, 'كل ربع ساعة'], [30, 'كل نص ساعة'], [60, 'كل ساعة'], [120, 'كل ساعتين'], [180, 'كل 3 ساعات'], [360, 'كل 6 ساعات'], [720, 'كل 12 ساعة'], [1440, 'مرة باليوم']];
@@ -2452,7 +2525,7 @@
     if (!P) throw new Error('لوحة التحكم تحدّثت لكن البوت ما زال يعمل بالنسخة القديمة — أعد تشغيل البوت من الاستضافة ثم حدّث الصفحة');
     if (!EMO?.canEdit) EMO = null;
     document.getElementById('cards').innerHTML = [
-      sPremium(), sGeneral(), sBotProfile(), sWelcome(), sTickets(), sGwManage(), sGiveaway(), sModNote(), sAutomod(), sVerify(), sProtection(), sJail(), sVanity(), sPurge(), sRoleMenus(), sEmbeds(), sKafeel(), sWrapped(), sGames(), sTempVoice(), sKhatma(), sRadar(), sAppeals(), sPrayer(), sAdhkar(), sStaff(), sLogs(), sInvites(), sAutoLine(), sFeedback(), sReplies(), sLevels(), sGuildEmojis(), sEmojis(),
+      sPremium(), sGeneral(), sBotProfile(), sWelcome(), sTickets(), sGwManage(), sGiveaway(), sModNote(), sAutomod(), sVerify(), sProtection(), sJail(), sVanity(), sBackup(), sPurge(), sRoleMenus(), sEmbeds(), sKafeel(), sWrapped(), sGames(), sTempVoice(), sKhatma(), sRadar(), sYoutube(), sAppeals(), sPrayer(), sAdhkar(), sStaff(), sLogs(), sInvites(), sAutoLine(), sFeedback(), sReplies(), sLevels(), sGuildEmojis(), sEmojis(),
     ].join('');
     arrangeGroups();
     renderChips('autoline');

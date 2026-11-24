@@ -170,6 +170,9 @@ async function onAudit(entry, guild) {
       `${E.dot} النتيجة: **${result}**`,
     ].join('\n')
   );
+  // offer a one-click repair from the last backup (deleted roles/channels come back)
+  const alertId = store.peek('protectionConfig', guild.id)?.alertChannelId;
+  require('./backup').offerRepair(guild, alertId ? guild.channels.cache.get(alertId) : null).catch(() => {});
 }
 
 function init(client) {

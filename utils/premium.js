@@ -46,6 +46,8 @@ const FEATURES = {
   xpBoost: 'مضاعفة XP لرتب وقنوات',
   wrappedPlus: 'ملخص السيرفر الأسبوعي والمخصص',
   wheelImage: 'صورة خاصة لعجلة الحظ',
+  backupPlus: 'نسخ احتياطية للسيرفر لآخر 7 أيام (المجاني 3)',
+  youtubePlus: 'تنبيهات يوتيوب لحد 10 قنوات (المجاني 2)',
 };
 
 const LIMIT_LABELS = {

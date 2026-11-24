@@ -32,10 +32,12 @@ const tempvoice = require('../systems/tempvoice');
 const appealsSys = require('../systems/appeals');
 const khatmaSys = require('../systems/khatma');
 const radarSys = require('../systems/radar');
+const backupSys = require('../systems/backup');
+const ytSys = require('../systems/youtube');
 const staffSys = require('../systems/staff');
 const wrapped = require('../systems/wrapped');
 const who = (req) => ({ id: req.session.user.id, name: req.session.user.globalName || req.session.user.username });
-const MODULE_NAMES = { giveaway: 'القيفاواي', protection: 'الحماية', prefix: 'البادئة', general: 'الإعدادات العامة', greetings: 'الترحيب النصي', welcome: 'الترحيب المتقدم', autoLine: 'الخط التلقائي', feedback: 'الآراء', jail: 'السجن', tickets: 'التذاكر', vanity: 'حماية الرابط', logs: 'السجلات', invites: 'الدعوات', replies: 'الردود التلقائية', levels: 'المستويات', automod: 'AutoMod', verify: 'التحقق', purge: 'المسح التلقائي', kafeel: 'الكفيل', prayer: 'أوقات الصلاة', adhkar: 'الأذكار', games: 'الألعاب', wrapped: 'ملخص السيرفر' };
+const MODULE_NAMES = { giveaway: 'القيفاواي', protection: 'الحماية', prefix: 'البادئة', general: 'الإعدادات العامة', greetings: 'الترحيب النصي', welcome: 'الترحيب المتقدم', autoLine: 'الخط التلقائي', feedback: 'الآراء', jail: 'السجن', tickets: 'التذاكر', vanity: 'حماية الرابط', logs: 'السجلات', invites: 'الدعوات', replies: 'الردود التلقائية', levels: 'المستويات', automod: 'AutoMod', verify: 'التحقق', purge: 'المسح التلقائي', kafeel: 'الكفيل', prayer: 'أوقات الصلاة', adhkar: 'الأذكار', games: 'الألعاب', wrapped: 'ملخص السيرفر', tempVoice: 'الرومات المؤقتة', appeals: 'طلبات فك الحظر', khatma: 'الختمة الجماعية', radar: 'رادار الأعضاء الجداد', backup: 'النسخ الاحتياطي' };
 
 const VIEWS = path.join(__dirname, 'views');
 const API = 'https://discord.com/api/v10';
@@ -201,6 +203,8 @@ function readSettings(guild) {
       return { ...khatmaSys.config(id), completed: d.completed || 0, active: k ? { channelId: k.channelId, done: Object.values(k.juz).filter((j) => j.done).length, taken: Object.values(k.juz).filter((j) => j.uid && !j.done).length, dedication: k.dedication } : null };
     })(),
     radar: { ...radarSys.config(id), report: (({ pct, ...r }) => r)(radarSys.report(id, 30)) },
+    backup: { ...backupSys.config(id), keep: backupSys.keep(id), snaps: backupSys.list(id).map((x) => ({ at: x.at, roles: x.roles.length, channels: x.channels.length })) },
+    youtube: { limit: ytSys.limit(id), feeds: ytSys.feeds(id).map((f) => ({ ytId: f.ytId, name: f.name, channelId: f.discordChannelId, roleId: f.roleId, errors: f.errors || 0 })) },
     prayerCities: Object.fromEntries(Object.entries(prayer.CITIES).map(([k, c]) => [k, c.name])),
     wrapped: wrapped.config(id),
     staffReport: staffSys.canReport(id),
@@ -483,6 +487,11 @@ function writeSettings(guild, module, d) {
       Object.assign(conf, { enabled: bool(d.enabled), channelId: channelIn(guild, d.channelId) || '', roleId: roleIn(guild, d.roleId) || '', silentHours: int(d.silentHours, 2, 168, 24), mentionSponsor: bool(d.mentionSponsor) });
       if (conf.enabled && !conf.channelId) throw new Error('اختار روم تنبيهات الرادار');
       return store.save('radarConfig');
+    }
+    case 'backup': {
+      const conf = store.guild('backupConfig', id, { ...backupSys.DEFAULT });
+      conf.auto = bool(d.auto);
+      return store.save('backupConfig');
     }
     case 'adhkar': {
       const conf = store.guild('adhkarConfig', id, {});
@@ -1123,6 +1132,35 @@ function start(client) {
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
+  });
+
+  // backup: take a snapshot now
+  app.post('/api/backup/:id/create', needGuild, csrf, (req, res) => {
+    try {
+      const { snap } = backupSys.take(req.guild);
+      botlog.log('dashboard', 'أخذ نسخة احتياطية للسيرفر', { user: who(req), guild: req.guild });
+      res.json({ ok: true, snap: { at: snap.at, roles: snap.roles.length, channels: snap.channels.length } });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // youtube alerts
+  app.post('/api/youtube/:id/add', needGuild, csrf, async (req, res) => {
+    const b = req.body || {};
+    const channelId = channelIn(req.guild, b.channelId);
+    if (!channelId) return res.status(400).json({ error: 'اختار الروم اللي بينزل فيه التنبيه' });
+    try {
+      const { feed } = await ytSys.add(req.guild, { input: String(b.input || ''), discordChannelId: channelId, roleId: b.roleId === req.guild.id ? req.guild.id : roleIn(req.guild, b.roleId) || '', message: String(b.message || '') });
+      res.json({ ok: true, feed: { ytId: feed.ytId, name: feed.name, channelId: feed.discordChannelId, roleId: feed.roleId, errors: 0 } });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+  app.post('/api/youtube/:id/remove', needGuild, csrf, (req, res) => {
+    const f = ytSys.remove(req.guild.id, String(req.body?.ytId || ''));
+    if (!f) return res.status(404).json({ error: 'ما لقيت القناة' });
+    res.json({ ok: true });
   });
 
   // khatma: start a new one from the dashboard
