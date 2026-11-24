@@ -790,9 +790,18 @@
     return card(
       'sec-logs',
       'السجلات',
-      'اختر قناة لكل نوع، أو نفس القناة للجميع.',
+      'خلّي البوت ينشئ الرومات بنفسه، أو اختار روم لكل نوع.',
       'log',
-      `<div class="row">${M.logTypes
+      `<div class="logs-auto">
+        <div><b>إنشاء تلقائي</b><small>البوت بينشئ كاتيجوري «📋 سجلات ماركا» فيها الرومات، مخفية عن الأعضاء، وبيربطها لحاله.</small></div>
+        <div class="logs-auto-btns">
+          <button type="button" class="btn primary sm" data-logs-auto="separate">${icon('plus')} روم لكل نوع</button>
+          <button type="button" class="btn ghost sm" data-logs-auto="single">روم وحدة للكل</button>
+        </div>
+        <label class="logs-ow"><input type="checkbox" id="logs-ow"> استبدل كمان الرومات المحددة حالياً</label>
+      </div>
+      <div class="logs-or"><span>أو اختار بنفسك</span></div>
+      <div class="row">${M.logTypes
         .map((t) => field(esc(t.label), `<select class="select" data-log="${t.key}">${textOpts(S.logs[t.key], 'معطل')}</select>`))
         .join('')}</div>
       <div class="vars" style="margin-top:12px"><code id="logs-all" style="direction:rtl">تعيين قناة واحدة للجميع</code></div>`,
@@ -1498,6 +1507,26 @@
       }
       if (e.target.closest('#r-add')) return document.getElementById('r-list').insertAdjacentHTML('beforeend', replyRow());
 
+      const autoBtn = e.target.closest('[data-logs-auto]');
+      if (autoBtn) {
+        autoBtn.disabled = true;
+        const label = autoBtn.innerHTML;
+        autoBtn.innerHTML = '<span class="spinner"></span>';
+        try {
+          const r = await api(`/api/logs/${id}/auto`, { method: 'POST', body: { mode: autoBtn.dataset.logsAuto, overwrite: document.getElementById('logs-ow').checked } });
+          if (!r.set) toast('كل الأنواع مربوطة من قبل. علّم «استبدل» إذا بدك رومات جديدة.');
+          else {
+            toast(`تم: ${r.made} روم جديد، و${r.set} نوع انربط`, 'success');
+            setTimeout(() => { location.hash = 'logs'; location.reload(); }, 900);
+          }
+        } catch (err) {
+          toast(err.message, 'error');
+        } finally {
+          autoBtn.disabled = false;
+          autoBtn.innerHTML = label;
+        }
+        return;
+      }
       if (e.target.closest('#logs-all')) {
         const first = [...document.querySelectorAll('[data-log]')].find((s) => s.value)?.value;
         if (!first) return toast('اختر قناة لأي نوع أولاً', 'error');
@@ -1746,7 +1775,7 @@
     document.querySelectorAll('.card-foot [data-save]').forEach((b) => setSaved(b, true));
     const onEdit = (e) => {
       const t = e.target;
-      if (!t.matches('input, select, textarea') || t.id === 'ds-input') return;
+      if (!t.matches('input, select, textarea') || t.id === 'ds-input' || t.id === 'logs-ow') return;
       const cardEl = t.closest('.card');
       const btn = cardEl?.querySelector('.card-foot [data-save]');
       if (!btn) return;

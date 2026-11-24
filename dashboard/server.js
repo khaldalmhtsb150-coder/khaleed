@@ -808,6 +808,16 @@ function start(client) {
     }
   });
 
+  app.post('/api/logs/:id/auto', needGuild, csrf, async (req, res) => {
+    try {
+      const mode = req.body?.mode === 'single' ? 'single' : 'separate';
+      const r = await require('../systems/logs').autoSetup(req.guild, { mode, overwrite: Boolean(req.body?.overwrite) });
+      res.json({ ok: true, made: r.made.length, set: r.set, skipped: r.skipped });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
   app.post('/api/jail/:id/release', needGuild, csrf, async (req, res) => {
     const { release } = require('../systems/jail');
     const r = await release(req.guild, String(req.body.userId), { by: req.session.user.id, reason: 'تحرير من لوحة التحكم' }).catch((e) => ({ error: e.message }));

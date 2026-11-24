@@ -982,3 +982,12 @@ html[dir="ltr"] .dash-search kbd { right: 10px; left: auto; }
 .am-rule .toggle-line, .rm-editor .toggle-line, .list-item .toggle-line { background: transparent !important; border: 0; padding: 2px 0; margin: 0; }
 .am-rule .textarea, .am-rule .input, .am-rule .select, .am-rule .chips { background: var(--panel); }
 .dash-search input[type="search"]::-webkit-search-cancel-button { display: none; }
+/* logs: auto-create box */
+.logs-auto { display: grid; grid-template-columns: 1fr auto; gap: 10px 16px; align-items: center; padding: 16px; border-radius: 14px; background: linear-gradient(270deg, rgba(124, 92, 240, .1), transparent 80%), var(--sunken); border: 1px solid rgba(124, 92, 240, .22); }
+.logs-auto b { display: block; font-size: 14.5px; }
+.logs-auto small { color: var(--faint); font-size: 12.5px; line-height: 1.6; }
+.logs-auto-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.logs-ow { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--faint); cursor: pointer; }
+.logs-or { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; color: var(--faint); font-size: 12.5px; }
+.logs-or::before, .logs-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+@media (max-width: 640px) { .logs-auto { grid-template-columns: 1fr; } }

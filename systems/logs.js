@@ -5,16 +5,62 @@ const E = require('../utils/emojis');
 const { ts } = require('../utils/time');
 
 const LOG_TYPES = {
-  member_join_leave: { label: 'دخول وخروج الأعضاء', emoji: 'joinLeave' },
-  message_edit_delete: { label: 'تعديل وحذف الرسائل', emoji: 'edit' },
-  role_changes: { label: 'تغييرات رتب الأعضاء', emoji: 'roles' },
-  channel_changes: { label: 'إنشاء وتعديل القنوات', emoji: 'settings' },
-  moderation_actions: { label: 'الحظر والطرد والسجن', emoji: 'ban' },
-  voice_changes: { label: 'نشاط الرومات الصوتية', emoji: 'voice' },
-  nickname_changes: { label: 'تغيير الألقاب', emoji: 'edit' },
-  server_updates: { label: 'تحديثات السيرفر', emoji: 'settings' },
-  ticket_logs: { label: 'سجلات التذاكر', emoji: 'ticket' },
+  member_join_leave: { label: 'دخول وخروج الأعضاء', emoji: 'joinLeave', channel: '📥・دخول-وخروج' },
+  message_edit_delete: { label: 'تعديل وحذف الرسائل', emoji: 'edit', channel: '💬・الرسائل' },
+  role_changes: { label: 'تغييرات رتب الأعضاء', emoji: 'roles', channel: '🎭・الرتب' },
+  channel_changes: { label: 'إنشاء وتعديل القنوات', emoji: 'settings', channel: '📁・القنوات' },
+  moderation_actions: { label: 'الحظر والطرد والسجن', emoji: 'ban', channel: '🔨・العقوبات' },
+  voice_changes: { label: 'نشاط الرومات الصوتية', emoji: 'voice', channel: '🔊・الصوت' },
+  nickname_changes: { label: 'تغيير الألقاب', emoji: 'edit', channel: '✏️・الألقاب' },
+  server_updates: { label: 'تحديثات السيرفر', emoji: 'settings', channel: '⚙️・السيرفر' },
+  ticket_logs: { label: 'سجلات التذاكر', emoji: 'ticket', channel: '🎫・التذاكر' },
 };
+const LOG_CATEGORY = '📋 سجلات ماركا';
+
+/**
+ * Creates the log channels itself, hidden from members (staff with Manage Server / the manager role can see them).
+ * mode 'separate' → one channel per log type, 'single' → one channel for everything.
+ * Types that already point to a working channel are left alone unless overwrite is true.
+ */
+async function autoSetup(guild, { mode = 'separate', overwrite = false } = {}) {
+  const { PermissionFlagsBits } = require('discord.js');
+  const me = guild.members.me;
+  if (!me.permissions.has(PermissionFlagsBits.ManageChannels)) throw new Error('البوت بحاجة صلاحية Manage Channels عشان ينشئ الرومات.');
+  const conf = store.guild('logsConfig', guild.id);
+  const managerRoleId = store.peek('guildSettings', guild.id)?.managerRoleId;
+  const overwrites = [
+    { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+    { id: me.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.ReadMessageHistory] },
+  ];
+  if (managerRoleId && guild.roles.cache.has(managerRoleId)) {
+    overwrites.push({ id: managerRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory], deny: [PermissionFlagsBits.SendMessages] });
+  }
+  let category = guild.channels.cache.find((c) => c.type === ChannelType.GuildCategory && c.name === LOG_CATEGORY);
+  if (!category) category = await guild.channels.create({ name: LOG_CATEGORY, type: ChannelType.GuildCategory, permissionOverwrites: overwrites, reason: 'MarkaBot: إنشاء رومات السجلات' });
+
+  const todo = Object.keys(LOG_TYPES).filter((k) => overwrite || !channelFor(guild, k));
+  const made = [];
+  const make = (name) =>
+    guild.channels.create({ name, type: ChannelType.GuildText, parent: category.id, permissionOverwrites: overwrites, reason: 'MarkaBot: إنشاء رومات السجلات' });
+  if (mode === 'single') {
+    if (todo.length) {
+      const existing = category.children?.cache?.find((c) => c.name === '📋・كل-السجلات');
+      const ch = existing || (await make('📋・كل-السجلات'));
+      if (!existing) made.push(ch);
+      for (const k of todo) conf[k] = ch.id;
+    }
+  } else {
+    for (const k of todo) {
+      const name = LOG_TYPES[k].channel;
+      const existing = category.children?.cache?.find((c) => c.name === name);
+      const ch = existing || (await make(name));
+      if (!existing) made.push(ch);
+      conf[k] = ch.id;
+    }
+  }
+  store.save('logsConfig');
+  return { category, made, set: todo.length, skipped: Object.keys(LOG_TYPES).length - todo.length };
+}
 
 function channelFor(guild, type) {
   const id = store.peek('logsConfig', guild.id)?.[type];
@@ -218,4 +264,4 @@ function init(client) {
   });
 }
 
-module.exports = { LOG_TYPES, send, channelFor, init };
+module.exports = { LOG_TYPES, LOG_CATEGORY, send, channelFor, init, autoSetup };
