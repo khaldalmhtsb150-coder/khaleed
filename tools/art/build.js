@@ -508,7 +508,7 @@ async function main() {
   for (const [key, b] of Object.entries(BANNERS)) {
     if (only && only !== 'banners' && only !== key) continue;
     const c = await banner(key, b);
-    fs.writeFileSync(path.join(OUT, 'banner', `${key}.png`), c.toBuffer('image/png'));
+    fs.writeFileSync(path.join(OUT, 'banner', `${key}.jpg`), c.toBuffer('image/jpeg', 90));
   }
   fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify({ icons: Object.keys(ICONS), banners: Object.fromEntries(Object.entries(BANNERS).map(([k, b]) => [k, { accent: b.accent, title: b.title }])) }, null, 2));
   console.log('art built:', Object.keys(ICONS).length, 'icons,', Object.keys(BANNERS).length, 'banners');

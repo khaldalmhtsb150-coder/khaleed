@@ -110,7 +110,7 @@ function buildPanel(guild) {
   else {
     const b = require('../utils/art').banner('tickets');
     if (b) {
-      embed.setImage('attachment://tickets.png');
+      embed.setImage('attachment://tickets.jpg');
       files = [b];
     }
   }

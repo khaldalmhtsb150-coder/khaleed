@@ -19,7 +19,7 @@ function dmPayload(guild, reason) {
     .setColor(art.accentInt('appeal'))
     .setAuthor({ name: guild.name, iconURL: guild.iconURL?.() || undefined })
     .setDescription([`انحظرت من **${guild.name}**`, reason ? `-# السبب: ${reason}` : null, '', 'إذا بتشوف الحظر غلط أو بدك فرصة ثانية، قدّم طلب والإدارة بتراجعه.'].filter((x) => x !== null).join('\n'));
-  if (b) e.setImage('attachment://appeal.png');
+  if (b) e.setImage('attachment://appeal.jpg');
   return {
     embeds: [e],
     files: b ? [b] : [],

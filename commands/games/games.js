@@ -44,7 +44,7 @@ module.exports = {
             `-# ${action === 'month' ? 'الأول بآخر الشهر بياخد رتبة البطل' : 'الفوز 10 نقاط • المشاركة نقطتين'}`,
           ].join('\n')
         )
-        .setImage('attachment://top.png');
+        .setImage('attachment://top.jpg');
       const b = art.banner('top');
       return ctx.reply({ embeds: [e], files: b ? [b] : [], allowedMentions: { parse: [] } });
     }
@@ -57,7 +57,7 @@ module.exports = {
         .embed()
         .setColor(art.accentInt('shop'))
         .setDescription([`### متجر الميزات`, `نقاطك: **${s.points}**`, '', ...Object.entries(games.PERKS).map(([k, d]) => `${pe(k)} **${d.name}** · ${d.cost} نقطة\n-# ${d.desc}`), '', `معك: ${perksLine}`].join('\n'))
-        .setImage('attachment://shop.png');
+        .setImage('attachment://shop.jpg');
       const b = art.banner('shop');
       return ctx.reply({ embeds: [e], files: b ? [b] : [], components: [row] }, { ephemeral: true });
     }

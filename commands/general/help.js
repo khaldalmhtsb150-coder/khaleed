@@ -23,7 +23,7 @@ function overview(client, guild) {
     .setColor(art.accentInt('help'))
     .addFields({ name: '​', value: counts.slice(0, half).join('\n'), inline: true }, { name: '​', value: counts.slice(half).join('\n'), inline: true })
     .setDescription([`اختار القسم من القائمة تحت.`, `-# ${prefix ? `البادئة: ${prefix} · وأوامر / شغالة دائماً` : 'كل الأوامر بالسلاش /'}${process.env.DASHBOARD_URL ? ` · لوحة التحكم: ${process.env.DASHBOARD_URL}` : ''}`].join('\n'));
-  if (art.hasBanner('help')) e.setImage('attachment://help.png');
+  if (art.hasBanner('help')) e.setImage('attachment://help.jpg');
   return e;
 }
 

@@ -31,12 +31,12 @@ function i(key, fallback = '') {
 }
 
 // ---------- banners ----------
-const bannerPath = (key) => path.join(ART, 'banner', `${key}.png`);
+const bannerPath = (key) => path.join(ART, 'banner', `${key}.jpg`);
 const hasBanner = (key) => fs.existsSync(bannerPath(key));
 /** AttachmentBuilder for a ready banner (or null). Name is stable so embeds can use attachment://. */
 function banner(key) {
   if (!hasBanner(key)) return null;
-  return new AttachmentBuilder(bannerPath(key), { name: `${key}.png` });
+  return new AttachmentBuilder(bannerPath(key), { name: `${key}.jpg` });
 }
 const accent = (key, d = '#7c5cff') => manifest.banners?.[key]?.accent || d;
 const accentInt = (key) => parseInt(accent(key).slice(1), 16);

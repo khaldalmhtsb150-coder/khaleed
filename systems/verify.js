@@ -73,7 +73,7 @@ async function publish(guild) {
   const art = require('../utils/art');
   const b = art.banner('verify');
   const e = ui.embed().setColor(art.accentInt('verify')).setDescription(`### ${conf.title}\n${conf.text}`);
-  if (b) e.setImage('attachment://verify.png');
+  if (b) e.setImage('attachment://verify.jpg');
   const btn = new ButtonBuilder().setCustomId('vf_start').setLabel('تحقق').setStyle(ButtonStyle.Success);
   btn.setEmoji(art.icon('verify') || '✅');
   const payload = { embeds: [e], files: b ? [b] : [], attachments: [], components: [new ActionRowBuilder().addComponents(btn)] };
