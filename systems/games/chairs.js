@@ -31,7 +31,7 @@ module.exports = {
           const row = new ActionRowBuilder();
           for (let j = i; j < Math.min(i + 5, total); j++) {
             const who = taken.get(j);
-            row.addComponents(game.button(`seat${round}`, String(j), who ? game.name(who).slice(0, 20) : '🪑', { style: who ? ButtonStyle.Success : ButtonStyle.Secondary, disabled: Boolean(who) }));
+            row.addComponents(game.button(`seat${round}`, String(j), who ? game.name(who).slice(0, 20) : `${j + 1}`, { emoji: who ? undefined : 'chair', style: who ? ButtonStyle.Success : ButtonStyle.Secondary, disabled: Boolean(who) }));
           }
           rows.push(row);
         }

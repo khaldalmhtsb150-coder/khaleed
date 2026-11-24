@@ -12,15 +12,18 @@ const recOf = (gid) => store.guild('appeals', gid); // userId → { status, at, 
 const DAY = 86_400_000;
 
 function dmPayload(guild, reason) {
+  const art = require('../utils/art');
+  const b = art.banner('appeal');
+  const e = ui
+    .embed()
+    .setColor(art.accentInt('appeal'))
+    .setAuthor({ name: guild.name, iconURL: guild.iconURL?.() || undefined })
+    .setDescription([`انحظرت من **${guild.name}**`, reason ? `-# السبب: ${reason}` : null, '', 'إذا بتشوف الحظر غلط أو بدك فرصة ثانية، قدّم طلب والإدارة بتراجعه.'].filter((x) => x !== null).join('\n'));
+  if (b) e.setImage('attachment://appeal.png');
   return {
-    embeds: [
-      ui
-        .embed()
-        .setDescription(
-          [`### 🔨 انحظرت من سيرفر **${guild.name}**`, reason ? `السبب: ${reason}` : null, '', 'إذا بتشوف إنه الحظر غلط، أو بدك فرصة ثانية، بتقدر تقدّم طلب فك حظر والإدارة بتراجعه.'].filter((x) => x !== null).join('\n')
-        ),
-    ],
-    components: [new ActionRowBuilder().addComponents(ui.button(`appeal:open:${guild.id}`, '📝 طلب فك الحظر', { style: ButtonStyle.Primary }))],
+    embeds: [e],
+    files: b ? [b] : [],
+    components: [new ActionRowBuilder().addComponents(ui.button(`appeal:open:${guild.id}`, 'طلب فك الحظر', { emoji: 'appeal', style: ButtonStyle.Primary }))],
   };
 }
 
@@ -88,8 +91,8 @@ async function onComponent(i) {
       ],
       components: [
         new ActionRowBuilder().addComponents(
-          ui.button(`appeal:accept:${gid}:${i.user.id}`, '✅ قبول وفك الحظر', { style: ButtonStyle.Success }),
-          ui.button(`appeal:reject:${gid}:${i.user.id}`, '❌ رفض', { style: ButtonStyle.Danger })
+          ui.button(`appeal:accept:${gid}:${i.user.id}`, 'قبول وفك الحظر', { emoji: 'check', style: ButtonStyle.Success }),
+          ui.button(`appeal:reject:${gid}:${i.user.id}`, 'رفض', { emoji: 'cancel', style: ButtonStyle.Danger })
         ),
       ],
       allowedMentions: { parse: [] },

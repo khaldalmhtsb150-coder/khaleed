@@ -81,9 +81,20 @@ function stored(key) {
   return guildValue(key) || store.get('emojis')[key] || '';
 }
 
+// The bot's own icon set (application emojis, see systems/appEmojis) stands in for the
+// plain symbols when no custom emoji was set for a key.
+const ICON_FOR = { success: 'check', error: 'cancel', crown: 'crown', star: 'star', gift: 'gift', timer: 'timer', ticket: 'ticket', shield: 'shield', lock: 'lock', unlock: 'unlock', show: 'show', hide: 'hide', edit: 'rename', voice: 'voice', announce: 'megaphone', wheel: 'dice', ban: 'kick', settings: 'repair', delete: 'cancel', roles: 'players', joinLeave: 'door', heart: 'life', warning: 'bell' };
+let art = null;
+function appIcon(key) {
+  art = art || require('./art');
+  return art.icon(ICON_FOR[key] || key);
+}
+
 function raw(key) {
   const custom = stored(key);
-  return (custom && CUSTOM_RE.test(custom) && custom) || FALLBACK[key] || '•';
+  if (custom && CUSTOM_RE.test(custom)) return custom;
+  const a = appIcon(key);
+  return a ? `<:${a.name}:${a.id}>` : FALLBACK[key] || '•';
 }
 
 function isCustom(key) {
@@ -93,7 +104,8 @@ function isCustom(key) {
 /** Component emoji object (buttons / select options) — only for custom emojis, symbols are not valid there. */
 function component(key) {
   const m = stored(key).match(CUSTOM_RE);
-  return m ? { id: m[3], name: m[2], animated: m[1] === 'a' } : undefined;
+  if (m) return { id: m[3], name: m[2], animated: m[1] === 'a' };
+  return appIcon(key);
 }
 
 /** Value usable for message reactions — custom only. */

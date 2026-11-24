@@ -70,10 +70,13 @@ async function publish(guild) {
   const role = guild.roles.cache.get(conf.roleId);
   if (!role) throw new Error('اختار رتبة التحقق');
   if (!role.editable) throw new Error('رتبة التحقق أعلى من رتبة البوت');
-  const payload = {
-    embeds: [ui.embed().setDescription(`### ${E.shield} ${conf.title}\n${conf.text}`)],
-    components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('vf_start').setLabel('تحقق').setEmoji('✅').setStyle(ButtonStyle.Success))],
-  };
+  const art = require('../utils/art');
+  const b = art.banner('verify');
+  const e = ui.embed().setColor(art.accentInt('verify')).setDescription(`### ${conf.title}\n${conf.text}`);
+  if (b) e.setImage('attachment://verify.png');
+  const btn = new ButtonBuilder().setCustomId('vf_start').setLabel('تحقق').setStyle(ButtonStyle.Success);
+  btn.setEmoji(art.icon('verify') || '✅');
+  const payload = { embeds: [e], files: b ? [b] : [], attachments: [], components: [new ActionRowBuilder().addComponents(btn)] };
   const old = conf.messageId && (await channel.messages.fetch(conf.messageId).catch(() => null));
   const msg = old ? await old.edit(payload) : await channel.send(payload);
   store.guild('verifyConfig', guild.id).messageId = msg.id;

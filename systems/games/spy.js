@@ -27,7 +27,7 @@ module.exports = {
     });
     await game.send({
       embeds: [E(`## 🤫 برا السالفة\nالفئة: **${category}**\nفي **${spyCount}** برا السالفة بيناتكم. اكبسوا **شوف كلمتك**.\n\nبعد شوي رح أبلّش أختار مين يسأل مين. الأسئلة والأجوبة بالشات.`)],
-      components: [new ActionRowBuilder().addComponents(game.button('word', 'x', 'شوف كلمتك', { style: ButtonStyle.Primary }))],
+      components: [new ActionRowBuilder().addComponents(game.button('word', 'x', 'شوف كلمتك', { emoji: 'show', style: ButtonStyle.Primary }))],
     });
     await game.sleep(15_000);
     // question rounds: random pairs, every 12s, ~90s total

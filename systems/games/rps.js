@@ -36,7 +36,7 @@ module.exports = {
       });
       const m = await game.send({
         embeds: [E(`## ✂️ الجولة ${round} • باقي ${game.alive.size}\nاختاروا خلال **12 ثانية**! اللي ما بيختار بيطلع.`)],
-        components: [new ActionRowBuilder().addComponents(...Object.entries(SIGNS).map(([k, l]) => game.button(token, k, l, { style: ButtonStyle.Primary })))],
+        components: [new ActionRowBuilder().addComponents(...Object.entries(SIGNS).map(([k, l]) => game.button(token, k, l.split(' ')[1], { emoji: { r: 'rock', p: 'paper', s: 'scissors' }[k], style: ButtonStyle.Secondary })))],
       });
       await game.sleep(12_000);
       game.off(token);

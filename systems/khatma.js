@@ -4,6 +4,8 @@
 const { Events, ActionRowBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const store = require('../utils/store');
 const ui = require('../utils/ui');
+const art = require('../utils/art');
+const { AttachmentBuilder } = require('discord.js');
 const { canManageGuild } = require('../utils/perms');
 
 const COLOR = 0x2e9e6b;
@@ -24,7 +26,7 @@ const stats = (k) => {
   return { done: v.filter((j) => j.done).length, taken: v.filter((j) => j.uid && !j.done).length };
 };
 
-function board(gid) {
+function boardEmbed(gid) {
   const k = data(gid).active;
   const { done, taken } = stats(k);
   const pct = Math.round((done / 30) * 100);
@@ -73,12 +75,155 @@ function board(gid) {
   };
 }
 
+/** The board as a picture: 30 tiles (read / reserved / free), a progress ring and the dedication. */
+async function boardImage(guild) {
+  const lib = art.canvas();
+  const d = data(guild.id);
+  const k = d.active;
+  if (!lib || !k) return null;
+  const W = 1200;
+  const H = 800;
+  const c = lib.createCanvas(W, H);
+  const ctx = c.getContext('2d');
+  const acc = '#34d399';
+  art.backdrop(ctx, W, H, acc, { glowX: W * 0.75, glowY: 90, waves: false });
+  const { done, taken } = stats(k);
+  // header (right side)
+  ctx.direction = 'rtl';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = art.hexA(acc, 1);
+  ctx.font = art.font('Bold', 24);
+  ctx.fillText(`الختمة رقم ${AR(d.completed + 1)}`, W - 60, 72);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = art.font('Black', 64);
+  ctx.fillText('الختمة الجماعية', W - 60, 140);
+  if (k.dedication) {
+    ctx.fillStyle = 'rgba(230,226,255,0.78)';
+    ctx.fillText(art.fitText(ctx, k.dedication, 700, 'Medium', 28), W - 60, 186);
+  }
+  // progress ring (left)
+  const cx = 130;
+  const cy = 120;
+  ctx.lineWidth = 16;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 70, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.stroke();
+  if (done) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, 70, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * done) / 30);
+    ctx.strokeStyle = acc;
+    ctx.shadowColor = acc;
+    ctx.shadowBlur = 18;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  ctx.textAlign = 'center';
+  ctx.direction = 'ltr';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = art.font('Black', 44);
+  ctx.fillText(`${Math.round((done / 30) * 100)}%`, cx, cy + 8);
+  ctx.font = art.font('Bold', 20);
+  ctx.fillStyle = 'rgba(230,226,255,0.7)';
+  ctx.fillText(`${done} / 30`, cx, cy + 38);
+  // legend
+  ctx.direction = 'rtl';
+  ctx.textAlign = 'right';
+  ctx.font = art.font('Bold', 22);
+  let lx = W - 60;
+  for (const [label, col, n] of [['مقروء', acc, done], ['محجوز', '#ffc24a', taken], ['فاضي', 'rgba(255,255,255,0.35)', 30 - done - taken]]) {
+    const t = `${label} ${n}`;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(lx - 8, 226, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(240,238,255,0.85)';
+    ctx.fillText(t, lx - 24, 234);
+    lx -= ctx.measureText(t).width + 60;
+  }
+  // tiles: 6 × 5, juz 1 at the top right
+  const cols = 6;
+  const gx = 60;
+  const gy = 270;
+  const gap = 14;
+  const tw = (W - gx * 2 - gap * (cols - 1)) / cols;
+  const th = 88;
+  const check = await art.glyph('check', '#0b2e22');
+  for (let n = 1; n <= 30; n++) {
+    const j = k.juz[n];
+    const col = (n - 1) % cols;
+    const row = Math.floor((n - 1) / cols);
+    const x = W - gx - (col + 1) * tw - col * gap;
+    const y = gy + row * (th + gap);
+    art.rr(ctx, x, y, tw, th, 18);
+    if (j.done) {
+      const g = ctx.createLinearGradient(0, y, 0, y + th);
+      g.addColorStop(0, '#4fe0ad');
+      g.addColorStop(1, '#16a874');
+      ctx.fillStyle = g;
+      ctx.fill();
+    } else if (j.uid) {
+      ctx.fillStyle = 'rgba(255,194,74,0.14)';
+      ctx.fill();
+      ctx.strokeStyle = '#ffc24a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    const dark = j.done;
+    ctx.direction = 'ltr';
+    ctx.textAlign = 'right';
+    ctx.font = art.font('Black', 34);
+    ctx.fillStyle = dark ? '#0b2e22' : '#ffffff';
+    ctx.fillText(AR(n), x + tw - 16, y + 44);
+    ctx.direction = 'rtl';
+    ctx.textAlign = 'right';
+    const who = j.uid ? guild.members.cache.get(j.uid)?.displayName || '' : '';
+    ctx.fillStyle = dark ? 'rgba(11,46,34,0.8)' : j.uid ? '#ffd98a' : 'rgba(230,226,255,0.6)';
+    ctx.fillText(art.fitText(ctx, who || JUZ[n - 1], tw - 30, 'Bold', 20, 14), x + tw - 16, y + 74);
+    if (j.done && check) ctx.drawImage(check, x + 12, y + 12, 30, 30);
+  }
+  return new AttachmentBuilder(c.toBuffer('image/png'), { name: 'khatma.png' });
+}
+
+/** Board message: picture + menus + buttons (falls back to the text board without canvas). */
+async function board(guild, { edit = false } = {}) {
+  const gid = guild.id;
+  const base = boardEmbed(gid);
+  const file = await boardImage(guild).catch(() => null);
+  if (!file) return base;
+  const conf = config(gid);
+  const comps = [
+    base.components[0],
+    base.components[1],
+    new ActionRowBuilder().addComponents(
+      ui.button('kh:done', 'خلّصت جزئي', { emoji: 'check', style: ButtonStyle.Success }),
+      ui.button('kh:release', 'تراجعت', { emoji: 'release' }),
+      ui.button('kh:mine', 'أجزائي', { emoji: 'list' })
+    ),
+  ];
+  const out = {
+    content: `-# اختار جزء من القائمة، ولما تخلّصه اضغط خلّصت • الجزء المحجوز بينفك بعد ${conf.holdHours} ساعة`,
+    embeds: [],
+    files: [file],
+    components: comps,
+  };
+  if (edit) out.attachments = [];
+  return out;
+}
+
 async function refresh(guild) {
   const k = data(guild.id).active;
   if (!k) return;
   const ch = guild.channels.cache.get(k.channelId);
   const msg = ch && (await ch.messages.fetch(k.messageId).catch(() => null));
-  if (msg) await msg.edit(board(guild.id)).catch(() => {});
+  if (msg) await msg.edit(await board(guild, { edit: true })).catch(() => {});
 }
 
 async function start(guild, channel, user, { dedication = '' } = {}) {
@@ -88,7 +233,9 @@ async function start(guild, channel, user, { dedication = '' } = {}) {
   for (let n = 1; n <= 30; n++) juz[n] = { uid: '', at: 0, done: false, reminded: false };
   d.active = { channelId: channel.id, messageId: '', startedBy: user.id, startedByName: user.username, startedAt: Date.now(), dedication: String(dedication || '').slice(0, 200), juz };
   const role = config(guild.id).roleId;
-  const msg = await channel.send({ content: role ? `<@&${role}>` : undefined, allowedMentions: { roles: role ? [role] : [] }, ...board(guild.id) });
+  const view = await board(guild);
+  if (role) view.content = `<@&${role}>\n${view.content || ''}`;
+  const msg = await channel.send({ ...view, allowedMentions: { roles: role ? [role] : [] } });
   d.active.messageId = msg.id;
   store.save('khatma');
   return msg;
@@ -113,25 +260,14 @@ async function finish(guild, { cancelled = false } = {}) {
     const days = Math.max(1, Math.round((Date.now() - k.startedAt) / 86_400_000));
     await ch
       .send({
-        embeds: [
-          ui
-            .embed()
-            .setColor(COLOR)
-            .setDescription(
-              [
-                `## 🎉 ختمنا القرآن الكريم!`,
-                `الحمد لله، هاي الختمة رقم **${AR(d.completed)}** بالسيرفر.`,
-                k.dedication ? `🤍 ${k.dedication}` : null,
-                '',
-                `📖 قرأها **${AR(readers.length)}** عضو خلال **${AR(days)}** يوم:`,
-                ui.trim(readers.map((u) => `<@${u}>`).join(' '), 1500),
-                '',
-                'تقبّل الله منا ومنكم، وجعل القرآن ربيع قلوبنا 🤍',
-              ]
-                .filter((x) => x !== null)
-                .join('\n')
-            ),
-        ],
+        content: [
+          `## ختمنا القرآن الكريم ${art.i('party', '🎉')}`,
+          `الحمد لله، هاي الختمة رقم **${AR(d.completed)}** بالسيرفر${k.dedication ? `\n🤍 ${k.dedication}` : ''}`,
+          `${art.i('book', '📖')} قرأها **${AR(readers.length)}** عضو خلال **${AR(days)}** يوم`,
+          `-# ${ui.trim(readers.map((u) => `<@${u}>`).join(' '), 1400)}`,
+          'تقبّل الله منا ومنكم، وجعل القرآن ربيع قلوبنا 🤍',
+        ].join('\n'),
+        files: [art.banner('khatma')].filter(Boolean),
         allowedMentions: { users: readers.slice(0, 50) },
       })
       .catch(() => {});
@@ -161,7 +297,7 @@ async function onComponent(i) {
     if (mine.length >= conf.maxPerUser) return i.reply({ content: `• معك ${mine.length} أجزاء لسا ما خلصت (${mine.join('، ')}). خلّص وحد أول.`, ephemeral: true });
     Object.assign(k.juz[n], { uid: i.user.id, at: Date.now(), reminded: false });
     store.save('khatma');
-    await i.update(board(gid));
+    await i.update(await board(i.guild, { edit: true }));
     return i.followUp({ content: `📖 الجزء **${n}** (${JUZ[n - 1]}) صار إلك. بالتوفيق، ولما تخلّص اضغط **✅ خلّصت جزئي**.`, ephemeral: true });
   }
   if (action === 'done' || action === 'release') {
@@ -194,7 +330,7 @@ async function apply(i, action, n, fromEphemeral) {
     await i.update({ content: text, components: [] });
     await refresh(i.guild);
   } else {
-    await i.update(board(gid));
+    await i.update(await board(i.guild, { edit: true }));
     await i.followUp({ content: text, ephemeral: true });
   }
   if (stats(k).done === 30) await finish(i.guild);

@@ -1,0 +1,165 @@
+{
+  "icons": [
+    "join",
+    "leave",
+    "start",
+    "cancel",
+    "players",
+    "help",
+    "info",
+    "shop",
+    "trophy",
+    "crown",
+    "medal",
+    "star",
+    "shield",
+    "life",
+    "double",
+    "dice",
+    "random",
+    "withdraw",
+    "check",
+    "lock",
+    "unlock",
+    "show",
+    "hide",
+    "rename",
+    "limit",
+    "permit",
+    "kick",
+    "claim",
+    "book",
+    "release",
+    "list",
+    "ticket",
+    "verify",
+    "appeal",
+    "greet",
+    "mail",
+    "repair",
+    "restore",
+    "box",
+    "bomb",
+    "chair",
+    "mafia",
+    "spy",
+    "rock",
+    "paper",
+    "scissors",
+    "vote",
+    "night",
+    "day",
+    "doctor",
+    "detective",
+    "dead",
+    "timer",
+    "gift",
+    "voice",
+    "backup",
+    "radar",
+    "bell",
+    "party",
+    "hourglass",
+    "userplus",
+    "zap",
+    "chat",
+    "door",
+    "tasks",
+    "megaphone",
+    "sparkles"
+  ],
+  "banners": {
+    "roulette": {
+      "accent": "#b26bff",
+      "title": "روليت"
+    },
+    "mafia": {
+      "accent": "#ff4d5e",
+      "title": "مافيا"
+    },
+    "chairs": {
+      "accent": "#2fd6c3",
+      "title": "الكراسي"
+    },
+    "spy": {
+      "accent": "#8b7bff",
+      "title": "برا السالفة"
+    },
+    "xo": {
+      "accent": "#4aa8ff",
+      "title": "بطولة XO"
+    },
+    "rps": {
+      "accent": "#ffb02e",
+      "title": "حجرة ورقة مقص"
+    },
+    "deathbox": {
+      "accent": "#ff4d6d",
+      "title": "صندوق الموت"
+    },
+    "fasttype": {
+      "accent": "#ffc83a",
+      "title": "أسرع كاتب"
+    },
+    "flags": {
+      "accent": "#3ddc84",
+      "title": "أعلام"
+    },
+    "capitals": {
+      "accent": "#22c7e8",
+      "title": "عواصم"
+    },
+    "unscramble": {
+      "accent": "#a37bff",
+      "title": "فكّك الكلمة"
+    },
+    "math": {
+      "accent": "#ff8a3d",
+      "title": "حساب سريع"
+    },
+    "night": {
+      "accent": "#9b7bff",
+      "title": "سهرة الألعاب"
+    },
+    "shop": {
+      "accent": "#ffb02e",
+      "title": "متجر الألعاب"
+    },
+    "top": {
+      "accent": "#ffcb47",
+      "title": "الترتيب"
+    },
+    "tempvoice": {
+      "accent": "#3fd9c6",
+      "title": "رومك الخاص"
+    },
+    "khatma": {
+      "accent": "#34d399",
+      "title": "الختمة الجماعية"
+    },
+    "tickets": {
+      "accent": "#9a7bff",
+      "title": "مركز الدعم"
+    },
+    "verify": {
+      "accent": "#2fd27a",
+      "title": "التحقق"
+    },
+    "help": {
+      "accent": "#8e9bff",
+      "title": "ماركا بوت"
+    },
+    "appeal": {
+      "accent": "#5fb0ff",
+      "title": "طلب فك الحظر"
+    },
+    "backup": {
+      "accent": "#ffb02e",
+      "title": "إصلاح السيرفر"
+    },
+    "radar": {
+      "accent": "#3fd9e8",
+      "title": "عضو جديد ساكت"
+    }
+  }
+}

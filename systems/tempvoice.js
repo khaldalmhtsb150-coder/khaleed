@@ -13,6 +13,7 @@ const {
 } = require('discord.js');
 const store = require('../utils/store');
 const ui = require('../utils/ui');
+const art = require('../utils/art');
 const { canManageGuild } = require('../utils/perms');
 
 const DEFAULT = { enabled: false, hubId: '', categoryId: '', nameTemplate: '🔊 روم {user}', limit: 0 };
@@ -21,33 +22,35 @@ const rooms = () => store.get('tempRooms'); // channelId → { gid, owner, at }
 const P = PermissionFlagsBits;
 const creating = new Set(); // userId while their room is being made (stops double rooms)
 
-function panel(channel, ownerId) {
-  const locked = channel.permissionOverwrites?.cache?.get(channel.guild.roles.everyone.id)?.deny?.has?.(P.Connect);
-  const hidden = channel.permissionOverwrites?.cache?.get(channel.guild.roles.everyone.id)?.deny?.has?.(P.ViewChannel);
-  const e = ui
-    .embed()
-    .setDescription(
-      [
-        `### 🎛️ لوحة التحكم بروم <@${ownerId}>`,
-        `${locked ? '🔒 مقفل' : '🔓 مفتوح'} • ${hidden ? '🙈 مخفي' : '👁️ ظاهر'} • 👥 الحد: **${channel.userLimit || 'بدون'}**`,
-        ui.hint('بس صاحب الروم (أو الإدارة) بيقدر يستخدم الأزرار. لما يفضى الروم بينحذف لحاله.'),
-      ].join('\n')
-    );
+function panel(channel, ownerId, { first = false } = {}) {
+  const ow = channel.permissionOverwrites?.cache?.get(channel.guild.roles.everyone.id);
+  const locked = ow?.deny?.has?.(P.Connect);
+  const hidden = ow?.deny?.has?.(P.ViewChannel);
   const id = (a) => `tv:${a}:${channel.id}`;
-  return {
-    embeds: [e],
+  const content = [
+    `${art.i('crown', '👑')} <@${ownerId}>`,
+    `-# ${locked ? 'مقفل' : 'مفتوح'} · ${hidden ? 'مخفي' : 'ظاهر'} · الحد ${channel.userLimit || 'بدون'} · لما يفضى بينحذف لحاله`,
+  ].join('\n');
+  const payload = {
+    content,
+    allowedMentions: { parse: [] },
     components: [
       new ActionRowBuilder().addComponents(
-        ui.button(id(locked ? 'unlock' : 'lock'), locked ? '🔓 فتح' : '🔒 قفل'),
-        ui.button(id(hidden ? 'show' : 'hide'), hidden ? '👁️ إظهار' : '🙈 إخفاء'),
-        ui.button(id('rename'), '✏️ الاسم'),
-        ui.button(id('limit'), '👥 الحد'),
-        ui.button(id('claim'), '👑 استلام', { style: ButtonStyle.Success })
+        ui.button(id(locked ? 'unlock' : 'lock'), locked ? 'فتح' : 'قفل', { emoji: locked ? 'unlock' : 'lock' }),
+        ui.button(id(hidden ? 'show' : 'hide'), hidden ? 'إظهار' : 'إخفاء', { emoji: hidden ? 'show' : 'hide' }),
+        ui.button(id('rename'), 'الاسم', { emoji: 'rename' }),
+        ui.button(id('limit'), 'العدد', { emoji: 'limit' }),
+        ui.button(id('claim'), 'استلام', { emoji: 'claim' })
       ),
-      new ActionRowBuilder().addComponents(new UserSelectMenuBuilder().setCustomId(id('permit')).setPlaceholder('✅ اسمح لعضو يدخل حتى لو مقفل').setMaxValues(5)),
-      new ActionRowBuilder().addComponents(new UserSelectMenuBuilder().setCustomId(id('kick')).setPlaceholder('👢 اطرد عضو من الروم').setMaxValues(5)),
+      new ActionRowBuilder().addComponents(new UserSelectMenuBuilder().setCustomId(id('permit')).setPlaceholder('اسمح لعضو يدخل حتى لو مقفل').setMaxValues(5)),
+      new ActionRowBuilder().addComponents(new UserSelectMenuBuilder().setCustomId(id('kick')).setPlaceholder('اطرد عضو من الروم').setMaxValues(5)),
     ],
   };
+  if (first) {
+    const b = art.banner('tempvoice');
+    if (b) payload.files = [b];
+  }
+  return payload;
 }
 
 async function createRoom(member, conf) {
@@ -74,7 +77,7 @@ async function createRoom(member, conf) {
     rooms()[ch.id] = { gid: guild.id, owner: member.id, at: Date.now() };
     store.save('tempRooms');
     await member.voice.setChannel(ch).catch(() => {});
-    await ch.send({ content: `<@${member.id}>`, allowedMentions: { users: [member.id] }, ...panel(ch, member.id) }).catch(() => {});
+    await ch.send({ ...panel(ch, member.id, { first: true }), allowedMentions: { users: [member.id] } }).catch(() => {});
     return ch;
   } finally {
     creating.delete(member.id);
@@ -115,7 +118,8 @@ async function onComponent(i) {
     room.owner = i.user.id;
     store.save('tempRooms');
     await ch.permissionOverwrites.edit(i.user.id, { Connect: true, ViewChannel: true, MoveMembers: true }).catch(() => {});
-    return i.reply({ content: `👑 <@${i.user.id}> صار صاحب الروم.`, allowedMentions: { parse: [] } });
+    i.message?.edit(panel(ch, i.user.id)).catch(() => {});
+    return i.reply({ content: `${art.i('crown', '👑')} <@${i.user.id}> صار صاحب الروم`, allowedMentions: { parse: [] } });
   }
   if (!isOwnerOf(i, room)) return i.reply({ content: '• بس صاحب الروم بيقدر يستخدم اللوحة.', ephemeral: true });
   const everyone = i.guild.roles.everyone.id;
@@ -124,12 +128,12 @@ async function onComponent(i) {
     case 'lock':
     case 'unlock':
       await ch.permissionOverwrites.edit(everyone, { Connect: action === 'lock' ? false : null });
-      await i.reply({ content: action === 'lock' ? '🔒 قفلت الروم.' : '🔓 فتحت الروم.', ephemeral: true });
+      await i.reply({ content: action === 'lock' ? `${art.i('lock', '🔒')} قفلت الروم` : `${art.i('unlock', '🔓')} فتحت الروم`, ephemeral: true });
       return refresh();
     case 'hide':
     case 'show':
       await ch.permissionOverwrites.edit(everyone, { ViewChannel: action === 'hide' ? false : null });
-      await i.reply({ content: action === 'hide' ? '🙈 خبيت الروم.' : '👁️ الروم ظاهر للكل.', ephemeral: true });
+      await i.reply({ content: action === 'hide' ? `${art.i('hide', '🙈')} خبيت الروم` : `${art.i('show', '👁️')} الروم ظاهر للكل`, ephemeral: true });
       return refresh();
     case 'rename':
     case 'limit': {
@@ -144,17 +148,17 @@ async function onComponent(i) {
     case 'renameSet': {
       const name = i.fields.getTextInputValue('v').trim().slice(0, 90);
       await ch.setName(name || ch.name).catch(() => {});
-      return i.reply({ content: `✏️ صار اسم الروم: **${name}**`, ephemeral: true });
+      return i.reply({ content: `${art.i('rename', '✏️')} صار اسم الروم **${name}**`, ephemeral: true });
     }
     case 'limitSet': {
       const n = Math.max(0, Math.min(99, parseInt(i.fields.getTextInputValue('v'), 10) || 0));
       await ch.setUserLimit(n).catch(() => {});
-      await i.reply({ content: `👥 الحد صار: **${n || 'بدون'}**`, ephemeral: true });
+      await i.reply({ content: `${art.i('limit', '👥')} الحد صار **${n || 'بدون'}**`, ephemeral: true });
       return refresh();
     }
     case 'permit':
       for (const uid of i.values) await ch.permissionOverwrites.edit(uid, { Connect: true, ViewChannel: true }).catch(() => {});
-      return i.reply({ content: `✅ سمحت لـ ${i.values.map((u) => `<@${u}>`).join(' ')}`, ephemeral: true, allowedMentions: { parse: [] } });
+      return i.reply({ content: `${art.i('permit', '✅')} سمحت لـ ${i.values.map((u) => `<@${u}>`).join(' ')}`, ephemeral: true, allowedMentions: { parse: [] } });
     case 'kick': {
       const out = [];
       for (const uid of i.values) {
@@ -164,7 +168,7 @@ async function onComponent(i) {
         await ch.permissionOverwrites.edit(uid, { Connect: false }).catch(() => {});
         out.push(`<@${uid}>`);
       }
-      return i.reply({ content: out.length ? `👢 طردت ${out.join(' ')} وما بيقدروا يرجعوا.` : '• ما في حدا أطرده.', ephemeral: true, allowedMentions: { parse: [] } });
+      return i.reply({ content: out.length ? `${art.i('kick', '👢')} طردت ${out.join(' ')} وما بيقدروا يرجعوا` : '• ما في حدا أطرده.', ephemeral: true, allowedMentions: { parse: [] } });
     }
     default:
       return i.reply({ content: '• أمر غير معروف.', ephemeral: true });

@@ -49,19 +49,25 @@ const scramble = (w) => {
 };
 
 function textImage(text) {
-  if (!canvas) return null;
-  const c = canvas.createCanvas(900, 170);
+  const art = require('../../utils/art');
+  const lib = art.canvas();
+  if (!lib) return null;
+  const W = 1000;
+  const H = 220;
+  const c = lib.createCanvas(W, H);
   const ctx = c.getContext('2d');
-  const g = ctx.createLinearGradient(0, 0, 900, 170);
-  g.addColorStop(0, '#1d1640');
-  g.addColorStop(1, '#141a2e');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 900, 170);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `bold 40px ${FONT}`;
+  art.backdrop(ctx, W, H, art.accent('fasttype'), { glowX: W / 2, glowY: H / 2 });
+  art.rr(ctx, 30, 30, W - 60, H - 60, 26);
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fill();
+  ctx.strokeStyle = art.hexA(art.accent('fasttype'), 0.5);
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.direction = 'rtl';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, 450, 88, 860);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(art.fitText(ctx, text, W - 120, 'ExtraBold', 52), W / 2, H / 2 + 4);
   return c.toBuffer('image/png');
 }
 
@@ -113,11 +119,13 @@ function makeType(id) {
     async run(game) {
       const E = (t) => require('./index').embed().setDescription(t);
       const score = new Map();
-      await game.send({ embeds: [E(`## ${META[id].emoji} ${META[id].name}\n${META[id].desc}\n**${ROUNDS} أسئلة**، كل سؤال إله 20 ثانية. جاوبوا بالشات!`)] });
+      const art = require('../../utils/art');
+      const b = art.banner(id);
+      await game.send(b ? { content: `-# ${ROUNDS} أسئلة • 20 ثانية لكل سؤال • جاوبوا بالشات`, files: [b] } : { embeds: [E(`## ${META[id].emoji} ${META[id].name}\n${META[id].desc}\n**${ROUNDS} أسئلة**، كل سؤال إله 20 ثانية. جاوبوا بالشات!`)] });
       await game.sleep(3000);
       for (let r = 1; r <= ROUNDS; r++) {
         const q = Q[id]();
-        const payload = { content: `**سؤال ${r}/${ROUNDS}** • ${q.prompt}` };
+        const payload = { content: `${q.prompt}\n-# سؤال ${r} من ${ROUNDS}` };
         if (q.image) payload.files = [new AttachmentBuilder(q.image, { name: 'q.png' })];
         else if (q.fallback) payload.content += `\n> ${q.fallback}`;
         await game.send(payload);
@@ -128,8 +136,8 @@ function makeType(id) {
           if (!game.players.has(uid)) game.players.set(uid, { id: uid, name: (winner.member?.displayName || winner.author.username).slice(0, 32) });
           score.set(uid, (score.get(uid) || 0) + 1);
           winner.react('✅').catch(() => {});
-          await game.send(`✅ <@${uid}> جاوب صح بـ **${((Date.now() - t0) / 1000).toFixed(1)}** ثانية! الجواب: **${q.answers[0]}**`);
-        } else await game.send(`⏰ خلص الوقت! الجواب كان: **${q.answers[0]}**`);
+          await game.send(`${require('../../utils/art').i('check', '✅')} <@${uid}> جاوب صح — **${q.answers[0]}**\n-# بـ ${((Date.now() - t0) / 1000).toFixed(1)} ثانية`);
+        } else await game.send(`${require('../../utils/art').i('timer', '⏰')} خلص الوقت — الجواب: **${q.answers[0]}**`);
         await game.sleep(2500);
       }
       const board = [...score].sort((a, b) => b[1] - a[1]);
@@ -137,7 +145,7 @@ function makeType(id) {
       const best = board[0][1];
       return {
         winners: board.filter(([, s]) => s === best).map(([u]) => u),
-        title: META[id].name,
+        title: 'الأسرع جواباً',
         text: board.slice(0, 5).map(([u, s], i) => `${['🥇', '🥈', '🥉', '4.', '5.'][i]} <@${u}> — ${s}`).join('\n'),
       };
     },

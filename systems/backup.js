@@ -262,9 +262,9 @@ function previewPayload(guild, idx = 0) {
     ],
     components: [
       new ActionRowBuilder().addComponents(
-        ui.button(`bk:run:${snap.at}:missing`, '🔁 رجّع المحذوف', { style: ButtonStyle.Primary, disabled: !miss.total }),
-        ui.button(`bk:run:${snap.at}:full`, '♻️ إصلاح كامل', { style: ButtonStyle.Danger, disabled: !full.total }),
-        ui.button('bk:cancel', 'إلغاء')
+        ui.button(`bk:run:${snap.at}:missing`, 'رجّع المحذوف', { emoji: 'restore', style: ButtonStyle.Primary, disabled: !miss.total }),
+        ui.button(`bk:run:${snap.at}:full`, 'إصلاح كامل', { emoji: 'repair', style: ButtonStyle.Danger, disabled: !full.total }),
+        ui.button('bk:cancel', 'إلغاء', { emoji: 'cancel' })
       ),
     ],
   };

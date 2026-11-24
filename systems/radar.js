@@ -101,7 +101,7 @@ async function alert(guild, uid, r) {
         .setThumbnail(member.displayAvatarURL?.() || null)
         .setDescription(
           [
-            `### 📡 عضو جديد ما حكى ولا كلمة`,
+            `### ${require('../utils/art').i('radar', '📡')} عضو جديد ما حكى ولا كلمة`,
             `${member} دخل <t:${Math.round(r.joinedAt / 1000)}:R> ولسا ما كتب شي.`,
             sponsor ? `🤝 كفيله: <@${sponsor}>` : null,
             ui.hint('رحّبوا فيه بالاسم بالشات العام — الترحيب الشخصي أكثر شي بيخلي العضو الجديد يثبت.'),
@@ -110,7 +110,7 @@ async function alert(guild, uid, r) {
             .join('\n')
         ),
     ],
-    components: [new ActionRowBuilder().addComponents(ui.button(`rd:greet:${uid}`, '👋 رحّبت فيه', { style: ButtonStyle.Success }), ui.button(`rd:dm:${uid}`, '📨 رسالة خاصة لطيفة'))],
+    components: [new ActionRowBuilder().addComponents(ui.button(`rd:greet:${uid}`, 'رحّبت فيه', { emoji: 'greet', style: ButtonStyle.Success }), ui.button(`rd:dm:${uid}`, 'رسالة خاصة', { emoji: 'mail' }))],
   });
 }
 
@@ -151,7 +151,7 @@ async function onComponent(i) {
     r.greetedBy = i.user.id;
     store.save('radar');
     const row = ActionRowBuilder.from(i.message.components[0]);
-    row.components[0].setDisabled(true).setLabel(`👋 رحّب فيه ${i.member?.displayName || i.user.username}`.slice(0, 80));
+    row.components[0].setDisabled(true).setLabel(`رحّب فيه ${i.member?.displayName || i.user.username}`.slice(0, 80));
     return i.update({ components: [row] });
   }
   if (action === 'dm') {

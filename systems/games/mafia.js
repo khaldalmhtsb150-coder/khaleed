@@ -46,7 +46,7 @@ module.exports = {
       const mates = r === 'mafia' ? [...roles].filter(([id, x]) => x === 'mafia' && id !== i.user.id).map(([id]) => `<@${id}>`) : [];
       return i.reply({ content: `${role.emoji} دورك: **${role.name}**\n${role.tip}${mates.length ? `\nزملاءك بالمافيا: ${mates.join(' ')}` : ''}`, ephemeral: true });
     });
-    const roleRow = () => new ActionRowBuilder().addComponents(game.button('role', 'x', 'شوف دورك', { style: ButtonStyle.Primary }));
+    const roleRow = () => new ActionRowBuilder().addComponents(game.button('role', 'x', 'شوف دورك', { emoji: 'show', style: ButtonStyle.Primary }));
     await game.send({
       embeds: [E([`## 🕵️ وزّعنا الأدوار!`, `بالمدينة **${counts.mafia}** مافيا، ودكتور${game.players.size >= 7 ? '، ومحقق' : ''}، والباقي مواطنين.`, '', 'اكبس **شوف دورك** (بيطلعلك إنت بس). الليلة الأولى بتبلش بعد 20 ثانية.'].join('\n'))],
       components: [roleRow()],
@@ -89,10 +89,10 @@ module.exports = {
         return i.update({ content: '• ما بتقدر.', components: [] });
       });
       const nightRow = new ActionRowBuilder().addComponents(
-        game.button(night, 'kill', 'المافيا', { style: ButtonStyle.Danger }),
-        game.button(night, 'save', 'الدكتور', { style: ButtonStyle.Success, disabled: !hasRole('doctor') }),
-        game.button(night, 'check', 'المحقق', { style: ButtonStyle.Primary, disabled: !hasRole('detective') }),
-        game.button('role', 'x', 'شوف دورك')
+        game.button(night, 'kill', 'المافيا', { emoji: 'mafia', style: ButtonStyle.Danger }),
+        game.button(night, 'save', 'الدكتور', { emoji: 'doctor', style: ButtonStyle.Success, disabled: !hasRole('doctor') }),
+        game.button(night, 'check', 'المحقق', { emoji: 'detective', style: ButtonStyle.Primary, disabled: !hasRole('detective') }),
+        game.button('role', 'x', 'شوف دورك', { emoji: 'show' })
       );
       const nm = await game.send({ embeds: [E(`## 🌙 الليلة ${day}\nالمدينة نايمة… كل واحد عنده دور يكبس زرّه بسرية.\n⏳ الليل بيخلص <t:${Math.ceil((Date.now() + 35_000) / 1000)}:R>`)], components: [nightRow] });
       await game.sleep(35_000);
@@ -119,7 +119,7 @@ module.exports = {
       const votes = new Map();
       const vote = `vote${day}`;
       const voteRows = game.pickerRows(vote, game.aliveList(), { placeholder: 'صوّت مين يطلع' });
-      voteRows.push(new ActionRowBuilder().addComponents(game.button(vote, 'skip', 'ما بدي أصوّت')));
+      voteRows.push(new ActionRowBuilder().addComponents(game.button(vote, 'skip', 'ما بدي أصوّت', { emoji: 'withdraw' })));
       game.on(vote, async (i, choice) => {
         if (!game.alive.has(i.user.id)) return i.reply({ content: '• بس الأحياء بيصوّتوا.', ephemeral: true });
         if (choice === 'skip') votes.set(i.user.id, null);

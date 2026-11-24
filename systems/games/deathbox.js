@@ -23,7 +23,7 @@ module.exports = {
         content: `<@${p}>`,
         allowedMentions: { users: [p] },
         embeds: [E(`## 📦 الجولة ${round} • باقي ${ids.length}\nالدور على <@${p}>! افتح صندوق خلال **15 ثانية**.`)],
-        components: [new ActionRowBuilder().addComponents([0, 1, 2, 3, 4].map((k) => game.button(token, String(k), `${k + 1}`, { style: ButtonStyle.Secondary })))],
+        components: [new ActionRowBuilder().addComponents([0, 1, 2, 3, 4].map((k) => game.button(token, String(k), `${k + 1}`, { emoji: 'box', style: ButtonStyle.Secondary })))],
       });
       const res = await game.waitFor(token, { who: p, timeout: 15_000, deny: 'مش دورك.' });
       const open = res ? Number(res.choice) : Math.floor(Math.random() * 5);

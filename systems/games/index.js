@@ -1,11 +1,12 @@
 // Games engine: one game per channel, a lobby with join/leave buttons, then the game runs with
 // buttons and menus routed through `gm:<gameId>:<token>:<choice>`. Wins give points + XP;
 // points buy perks used inside games (no betting anywhere). Monthly champion role and game nights.
-const { Events, ActionRowBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+const { Events, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const store = require('../../utils/store');
 const ui = require('../../utils/ui');
+const art = require('../../utils/art');
 
-const COLOR = 0xf0a33c;
+const COLOR = 0x8b6dff;
 const SCALE = Number(process.env.GAMES_TIME_SCALE || 1); // tests run games fast
 const DEFAULT = {
   enabled: true,
@@ -236,32 +237,46 @@ async function award(game, winners) {
 }
 
 // ---------- lobby ----------
-function lobbyView(game, left) {
+/** Icon-only button when the bot's icon is there, otherwise a short text label. */
+function iconButton(game, token, choice, key, fallback, style = ButtonStyle.Secondary, disabled = false) {
+  const em = art.icon(key);
+  if (!em) return game.button(token, choice, fallback, { style, disabled });
+  return new ButtonBuilder().setCustomId(game.cid(token, choice)).setEmoji(em).setStyle(style).setDisabled(disabled);
+}
+
+function playersLine(ids, max = 15) {
+  if (!ids.length) return '';
+  return ids.slice(0, max).map((id) => `<@${id}>`).join(' ') + (ids.length > max ? `  +${ids.length - max}` : '');
+}
+
+function lobbyView(game, left, { first = false, state = 'open' } = {}) {
   const t = game.type;
   const ids = [...game.players.keys()];
-  const list = ids.length ? ids.map((id, i) => `\`${String(i + 1).padStart(2, '0')}\` <@${id}>`).join('  ') : ui.hint('لسا ما حدا دخل');
-  const e = embed().setDescription(
-    ui.trim(
-      [
-        `## ${t.emoji} ${t.name}`,
-        t.desc,
-        '',
-        `**اللاعبين (${ids.length}/${t.max})**`,
-        list,
-        '',
-        left > 0 ? `⏳ اللعبة بتبلش <t:${Math.ceil((Date.now() + left) / 1000)}:R> • لازم ${t.min} لاعبين على الأقل` : '⏳ جاري البدء…',
-        ui.hint(`صاحب اللعبة: ${game.name(game.host)} • ${t.howto || ''}`),
-      ].join('\n'),
-      4000
-    )
-  );
-  const row = new ActionRowBuilder().addComponents(
-    game.button('lobby', 'join', 'دخول', { style: ButtonStyle.Success }),
-    game.button('lobby', 'leave', 'خروج'),
-    game.button('lobby', 'start', 'ابدأ الآن', { style: ButtonStyle.Primary, disabled: ids.length < t.min }),
-    game.button('lobby', 'cancel', 'إلغاء', { style: ButtonStyle.Danger })
-  );
-  return { embeds: [e], components: [row] };
+  const count = `**( ${ids.length} / ${t.max} )**`;
+  let head;
+  if (state === 'open') head = `${count} • ${art.i('hourglass', '⏳')} <t:${Math.ceil((Date.now() + left) / 1000)}:R>`;
+  else if (state === 'started') head = `${count} • ${art.i('start', '▶️')} بلشت اللعبة`;
+  else head = `${count} • ${art.i('cancel', '✕')} ${state}`;
+  const lines = [head];
+  if (ids.length) lines.push(`-# ${playersLine(ids)}`);
+  else if (state === 'open') lines.push(`-# بدها ${t.min} لاعبين على الأقل`);
+  const payload = { content: lines.join('\n'), components: [], allowedMentions: { parse: [] } };
+  if (state === 'open') {
+    payload.components = [
+      new ActionRowBuilder().addComponents(
+        game.button('lobby', 'join', 'دخول', { emoji: 'join', style: ButtonStyle.Success }),
+        game.button('lobby', 'leave', 'خروج', { emoji: 'leave', style: ButtonStyle.Danger }),
+        game.button('lobby', 'start', 'ابدأ', { emoji: 'start', style: ButtonStyle.Primary, disabled: ids.length < t.min })
+      ),
+      new ActionRowBuilder().addComponents(iconButton(game, 'lobby', 'players', 'players', 'اللاعبين'), iconButton(game, 'lobby', 'help', 'help', 'الشرح'), iconButton(game, 'lobby', 'cancel', 'cancel', 'إلغاء')),
+    ];
+  }
+  if (first) {
+    const b = art.banner(t.id);
+    if (b) payload.files = [b];
+    else payload.embeds = [embed().setDescription(`## ${t.emoji} ${t.name}\n${t.desc}`)];
+  }
+  return payload;
 }
 
 const isManager = (member) => member?.permissions?.has('ManageGuild') || require('../../utils/perms').canManageGuild(member);
@@ -283,6 +298,14 @@ async function runLobby(game) {
   const early = new Promise((r) => (startNow = r));
   game.on('lobby', async (i, choice) => {
     const uid = i.user.id;
+    if (choice === 'players') {
+      const ids = [...game.players.keys()];
+      return i.reply({ content: ids.length ? ids.map((id, n) => `\`${String(n + 1).padStart(2, '0')}\` <@${id}>`).join('\n') : 'لسا ما حدا دخل.', ephemeral: true, allowedMentions: { parse: [] } });
+    }
+    if (choice === 'help') {
+      const t = game.type;
+      return i.reply({ content: [`### ${t.emoji} ${t.name}`, t.desc, t.howto ? `-# ${t.howto}` : null, `-# من ${t.min} لـ ${t.max} لاعب • الفوز +${POINTS.win} نقاط و XP`].filter(Boolean).join('\n'), ephemeral: true });
+    }
     if (choice === 'join') {
       if (i.user.bot) return i.deferUpdate();
       if (game.players.has(uid)) return i.reply({ content: '• إنت داخل أصلاً.', ephemeral: true });
@@ -309,17 +332,35 @@ async function runLobby(game) {
       return startNow();
     }
   });
-  msg = await game.send(lobbyView(game, wait));
+  msg = await game.send(lobbyView(game, wait, { first: true }));
   await Promise.race([new Promise((r) => game.timers.add(setTimeout(r, wait))), early]);
   game.off('lobby');
   clearTimeout(editTimer);
   game.started = true;
   const ok = !game.cancelled && game.players.size >= game.type.min;
-  const view = lobbyView(game, 0);
-  view.components = [];
-  if (!ok) view.embeds[0].setFooter({ text: game.cancelled ? 'انلغت اللعبة' : `انلغت: ما اكتمل العدد (${game.players.size}/${game.type.min})` });
-  await msg.edit(view).catch(() => {});
+  const view = lobbyView(game, 0, { state: ok ? 'started' : game.cancelled ? 'انلغت اللعبة' : `انلغت، ما اكتمل العدد (بدها ${game.type.min})` });
+  await msg.edit({ content: view.content, components: [] }).catch(() => {});
   return ok;
+}
+
+/** The end-of-game post: a winner card (avatars + crown) and one short line. */
+async function announce(game, result) {
+  const winners = result.winners || [];
+  const conf = config(game.guild.id);
+  const reward = `+${POINTS.win} نقاط • +${conf.winXp} XP للفائز • +${POINTS.play} للمشاركة`;
+  const head = winners.length ? `${art.i('trophy', '🏆')} **${result.title || 'انتهت اللعبة'}** — مبروك ${winners.map((id) => `<@${id}>`).join(' ')}` : `${art.i('cancel', '✕')} **${result.title || 'انتهت اللعبة'}** — ما في فائز هالمرة`;
+  const content = [head, result.text ? result.text : null, `-# ${reward}`].filter(Boolean).join('\n');
+  let card = null;
+  if (winners.length) {
+    const list = [];
+    for (const id of winners.slice(0, 5)) {
+      const m = game.guild.members.cache.get(id) || (await game.guild.members.fetch?.(id).catch(() => null));
+      list.push({ name: m?.displayName || game.name(id), avatar: m?.displayAvatarURL?.({ extension: 'png', size: 256 }) || null });
+    }
+    card = await art.winnerCard({ gameKey: game.type.id, gameTitle: game.type.name, title: result.title || 'الفائز', winners: list, reward: '' }).catch(() => null);
+  }
+  const { AttachmentBuilder } = require('discord.js');
+  await game.send({ content: ui.trim(content, 1900), files: card ? [new AttachmentBuilder(card, { name: 'winner.png' })] : [], allowedMentions: { users: winners } });
 }
 
 /** Starts a game in a channel; resolves when it ends. */
@@ -344,17 +385,7 @@ async function start(typeId, channel, hostId, { quiet = false } = {}) {
       const result = (await type.run(game)) || { winners: [] };
       if (!game.stopped) {
         await award(game, result.winners || []);
-        const names = (result.winners || []).map((id) => `<@${id}>`).join(' ');
-        await game.send({
-          embeds: [
-            embed().setDescription(
-              [`## 🏆 ${result.title || 'انتهت اللعبة'}`, names ? `مبروك ${names}! (+${POINTS.win} نقاط • +${config(game.guild.id).winXp} XP)` : 'ما في فائز هالمرة.', result.text ? `\n${result.text}` : '', ui.hint(`كل اللاعبين أخدوا +${POINTS.play} نقاط مشاركة • /games للترتيب والمتجر`)]
-                .filter(Boolean)
-                .join('\n')
-            ),
-          ],
-          allowedMentions: { users: result.winners || [] },
-        });
+        await announce(game, result);
       }
       return result;
     } catch (e) {
@@ -447,9 +478,9 @@ async function runNight(guild, conf, client) {
   try {
     const list = conf.night.games.filter((g) => TYPES.has(g));
     await ch.send({
-      content: conf.night.roleId ? `<@&${conf.night.roleId}>` : undefined,
       allowedMentions: { roles: conf.night.roleId ? [conf.night.roleId] : [] },
-      embeds: [embed().setDescription([`## 🎉 سهرة الألعاب بلشت!`, '', `الليلة: ${list.map((g) => `${TYPES.get(g).emoji} ${TYPES.get(g).name}`).join(' ← ')}`, '', 'كل لعبة بتعطي نقاط، وبآخر السهرة بنعلن الأبطال 🏆'].join('\n'))],
+      content: [conf.night.roleId ? `<@&${conf.night.roleId}>` : null, `**سهرة الألعاب بلشت** ${art.i('party', '🎉')}`, `-# الليلة: ${list.map((g) => TYPES.get(g).name).join('  ←  ')}`].filter(Boolean).join('\n'),
+      files: [art.banner('night')].filter(Boolean),
     });
     for (const id of list) {
       if (byChannel.has(ch.id)) break;
@@ -461,8 +492,19 @@ async function runNight(guild, conf, client) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
     const medals = ['🥇', '🥈', '🥉'];
+    let card = null;
+    if (podium.length) {
+      const list = [];
+      for (const [u] of podium) {
+        const m = guild.members.cache.get(u) || (await guild.members.fetch(u).catch(() => null));
+        list.push({ name: m?.displayName || 'لاعب', avatar: m?.displayAvatarURL?.({ extension: 'png', size: 256 }) || null });
+      }
+      card = await art.winnerCard({ gameKey: 'night', gameTitle: 'سهرة الألعاب', title: 'أبطال السهرة', winners: list }).catch(() => null);
+    }
+    const { AttachmentBuilder } = require('discord.js');
     await ch.send({
-      embeds: [embed().setDescription(['## 🏆 أبطال السهرة', '', podium.length ? podium.map(([u, p], i) => `${medals[i]} <@${u}> — **${p}** نقطة`).join('\n') : 'ما حدا لعب الليلة 😅', '', ui.hint('شكراً لكل اللي شاركوا • نشوفكم بالسهرة الجاي')].join('\n'))],
+      content: [`${art.i('trophy', '🏆')} **أبطال السهرة**`, podium.length ? podium.map(([u, p], i) => `${medals[i]} <@${u}> — ${p} نقطة`).join('\n') : 'ما حدا لعب الليلة.', '-# شكراً لكل اللي شاركوا، نشوفكم بالسهرة الجاي'].join('\n'),
+      files: card ? [new AttachmentBuilder(card, { name: 'night.png' })] : [],
       allowedMentions: { users: podium.map(([u]) => u) },
     });
     return true;
@@ -485,9 +527,8 @@ async function nightTick(client) {
       gs.nightReminded = now.date;
       store.save('gamesState');
       ch.send({
-        content: conf.night.roleId ? `<@&${conf.night.roleId}>` : undefined,
         allowedMentions: { roles: conf.night.roleId ? [conf.night.roleId] : [] },
-        embeds: [embed().setDescription(`## ⏰ سهرة الألعاب بعد نص ساعة!\nجهّزوا حالكم، الساعة **${conf.night.time}** بنبلّش 🎮`)],
+        content: [conf.night.roleId ? `<@&${conf.night.roleId}>` : null, `${art.i('bell', '⏰')} **سهرة الألعاب بعد نص ساعة**`, `-# الساعة ${conf.night.time} بنبلّش، جهّزوا حالكم`].filter(Boolean).join('\n'),
       }).catch(() => {});
     }
     if (now.hm === conf.night.time && gs.nightRan !== now.date) {
@@ -520,6 +561,8 @@ function init(client) {
 }
 
 module.exports = {
+  iconButton,
+  announce,
   init,
   config,
   DEFAULT,

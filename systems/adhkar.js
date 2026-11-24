@@ -191,7 +191,7 @@ function randomCard(gid) {
   const e = embed().setDescription(
     [`### ${KIND_ICON[it.kind] || '🤍'} ${it.kind}`, '', `> **${it.text}**`, '', it.virtue ? `✨ ${it.virtue}` : null, ui.hint(it.source)].filter((x) => x !== null).join('\n')
   );
-  const row = new ActionRowBuilder().addComponents(ui.button('azk_open:tsb', '📿 المسبحة'), ui.button('azk_open:menu', '📖 الأذكار'));
+  const row = new ActionRowBuilder().addComponents(ui.button('azk_open:tsb', 'المسبحة', { emoji: 'sparkles' }), ui.button('azk_open:menu', 'الأذكار', { emoji: 'book' }));
   return { embeds: [e], components: [row] };
 }
 
@@ -210,7 +210,7 @@ function sabahMasaCard(cat) {
       `اكبس الزر تحت، وبتفتحلك **${c.name}** (${c.items.length} ذكراً) مع عدّاد لكل ذكر.`,
     ].join('\n')
   );
-  const row = new ActionRowBuilder().addComponents(ui.button(`azk_open:${cat}`, `اقرأ ${c.name}`, { style: ButtonStyle.Success }), ui.button('azk_open:tsb', '📿 المسبحة'));
+  const row = new ActionRowBuilder().addComponents(ui.button(`azk_open:${cat}`, `اقرأ ${c.name}`, { style: ButtonStyle.Success }), ui.button('azk_open:tsb', 'المسبحة', { emoji: 'sparkles' }));
   return { embeds: [e], components: [row] };
 }
 
@@ -218,7 +218,7 @@ function fridayCard() {
   const e = embed().setDescription(
     ['### 🕌 جمعة مباركة', '', `> **${FRIDAY.text}**`, ui.hint(FRIDAY.source), '', '**لا تنسى بهاليوم:**', ...FRIDAY.points.map((p) => `• ${p}`)].join('\n')
   );
-  return { embeds: [e], components: [new ActionRowBuilder().addComponents(ui.button('azk_open:menu', '📖 الأذكار'), ui.button('azk_open:tsb', '📿 المسبحة'))] };
+  return { embeds: [e], components: [new ActionRowBuilder().addComponents(ui.button('azk_open:menu', 'الأذكار', { emoji: 'book' }), ui.button('azk_open:tsb', 'المسبحة', { emoji: 'sparkles' }))] };
 }
 
 async function post(guild, conf, payload) {

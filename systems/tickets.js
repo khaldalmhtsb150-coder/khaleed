@@ -105,7 +105,15 @@ function buildPanel(guild) {
         rules,
       ].join('\n')
     );
+  let files = [];
   if (conf.bannerUrl) embed.setImage(conf.bannerUrl);
+  else {
+    const b = require('../utils/art').banner('tickets');
+    if (b) {
+      embed.setImage('attachment://tickets.png');
+      files = [b];
+    }
+  }
 
   const departments = (conf.departments?.length ? conf.departments : DEFAULT_DEPARTMENTS).slice(0, premium.limit(guild.id, 'ticketDepartments'));
   const menu = new StringSelectMenuBuilder()
@@ -120,7 +128,7 @@ function buildPanel(guild) {
         return opt;
       })
     );
-  return { embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] };
+  return { embeds: [embed], files, components: [new ActionRowBuilder().addComponents(menu)] };
 }
 
 function parseEmoji(value) {

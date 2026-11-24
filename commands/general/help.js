@@ -1,6 +1,9 @@
 const { ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 const ui = require('../../utils/ui');
 const E = require('../../utils/emojis');
+const art = require('../../utils/art');
+
+const CAT_ICON = { general: 'info', giveaway: 'gift', invites: 'dice', levels: 'star', community: 'players', adhkar: 'book', games: 'start', greetings: 'greet', channels: 'lock', moderation: 'shield', logs: 'tasks', tickets: 'ticket', config: 'repair', owner: 'crown' };
 const store = require('../../utils/store');
 const { isOwner } = require('../../utils/perms');
 
@@ -11,24 +14,17 @@ function registry() {
 function overview(client, guild) {
   const { CATEGORIES, commands } = registry();
   const prefix = guild ? store.get('prefixes')[guild.id] : null;
-  const counts = Object.keys(CATEGORIES)
-    .filter((c) => c !== 'owner')
-    .map((c) => `${E.dot} **${CATEGORIES[c]}** — ${commands.filter((x) => x.category === c).size} أمر`)
-    .join('\n');
-  return ui
+  const cats = Object.keys(CATEGORIES).filter((c) => c !== 'owner');
+  const counts = cats.map((c) => `${art.i(CAT_ICON[c], E.dot)} ${CATEGORIES[c]} · **${commands.filter((x) => x.category === c).size}**`);
+  // two columns read better than one long list
+  const half = Math.ceil(counts.length / 2);
+  const e = ui
     .embed()
-    .setAuthor({ name: client.user.username, iconURL: client.user.displayAvatarURL() })
-    .setDescription(
-      [
-        `### ${E.settings} قائمة الأوامر`,
-        'اختر القسم من القائمة بالأسفل لعرض أوامره.',
-        '',
-        counts,
-        '',
-        ui.hint(prefix ? `بادئة السيرفر: ${prefix} — أوامر السلاش متاحة دائماً.` : 'البوت يعمل بأوامر السلاش /. يمكن تفعيل بادئة نصية عبر /setprefix.'),
-        process.env.DASHBOARD_URL ? ui.hint(`لوحة التحكم: ${process.env.DASHBOARD_URL}`) : '',
-      ].join('\n')
-    );
+    .setColor(art.accentInt('help'))
+    .addFields({ name: '​', value: counts.slice(0, half).join('\n'), inline: true }, { name: '​', value: counts.slice(half).join('\n'), inline: true })
+    .setDescription([`اختار القسم من القائمة تحت.`, `-# ${prefix ? `البادئة: ${prefix} · وأوامر / شغالة دائماً` : 'كل الأوامر بالسلاش /'}${process.env.DASHBOARD_URL ? ` · لوحة التحكم: ${process.env.DASHBOARD_URL}` : ''}`].join('\n'));
+  if (art.hasBanner('help')) e.setImage('attachment://help.png');
+  return e;
 }
 
 function menu(userId, selected) {
@@ -40,7 +36,12 @@ function menu(userId, selected) {
       .addOptions(
         Object.entries(CATEGORIES)
           .filter(([key]) => key !== 'owner' || isOwner(userId))
-          .map(([value, label]) => ({ label, value, default: value === selected }))
+          .map(([value, label]) => {
+            const o = { label, value, default: value === selected };
+            const em = art.icon(CAT_ICON[value]);
+            if (em) o.emoji = em;
+            return o;
+          })
       )
   );
 }
@@ -54,9 +55,12 @@ function categoryEmbed(category, guild) {
     const names = [!c.prefixOnly ? `\`/${c.name}\`` : null, prefix && !c.slashOnly ? `\`${prefix}${[c.name, ...(c.aliases || [])].join(` | ${prefix}`)}\`` : null]
       .filter(Boolean)
       .join(' · ');
-    return `${names}${args ? ` \`${args}\`` : ''}\n${ui.hint(c.description)}`;
+    return `${names}${args ? ` \`${args}\`` : ''}\n-# ${c.description}`;
   });
-  return ui.embed().setDescription([`### ${CATEGORIES[category]}`, '', lines.join('\n') || '• لا توجد أوامر.'].join('\n'));
+  return ui
+    .embed()
+    .setColor(art.accentInt('help'))
+    .setDescription(ui.trim([`### ${art.i(CAT_ICON[category], '')} ${CATEGORIES[category]}`, '', lines.join('\n') || '• لا توجد أوامر.'].join('\n'), 4000));
 }
 
 module.exports = {
@@ -65,7 +69,8 @@ module.exports = {
   description: 'عرض قائمة أوامر البوت',
   cooldown: 3,
   async run(ctx) {
-    await ctx.reply({ embeds: [overview(ctx.client, ctx.guild)], components: [menu(ctx.user.id)] });
+    const b = art.banner('help');
+    await ctx.reply({ embeds: [overview(ctx.client, ctx.guild)], files: b ? [b] : [], components: [menu(ctx.user.id)] });
   },
   components: [
     {
@@ -74,7 +79,7 @@ module.exports = {
         const owner = interaction.customId.slice('help_menu_'.length);
         if (owner !== interaction.user.id) return interaction.reply({ content: '• استخدم أمر المساعدة الخاص بك.', ephemeral: true });
         const cat = interaction.values[0];
-        return interaction.update({ embeds: [categoryEmbed(cat, interaction.guild)], components: [menu(owner, cat)] });
+        return interaction.update({ embeds: [categoryEmbed(cat, interaction.guild)], components: [menu(owner, cat)], attachments: [] });
       },
     },
   ],
