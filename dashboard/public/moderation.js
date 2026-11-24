@@ -1081,6 +1081,10 @@
     kafeel: () => [['kafeel', { enabled: checked('kf-enabled'), channelId: val('kf-channel'), sponsorRoleId: val('kf-role'), goalMessages: val('kf-goal'), days: val('kf-days'), rewardXp: val('kf-xp'), maxPerSponsor: val('kf-max') }]],
     wrapped: () => [['wrapped', { enabled: checked('wr-enabled'), channelId: val('wr-channel'), city: val('wr-city'), weekly: checked('wr-weekly'), accent: val('wr-accent') }]],
     games: () => [['games', { enabled: checked('gm-enabled'), channels: chipState.games, starterRoleId: val('gm-starter'), lobbySeconds: val('gm-lobby'), winXp: val('gm-winxp'), playXp: val('gm-playxp'), perks: checked('gm-perks'), championRoleId: val('gm-champ'), night: { enabled: checked('gm-night'), channelId: val('gm-nch'), day: val('gm-nday'), time: val('gm-ntime'), roleId: val('gm-nrole'), games: [...document.querySelectorAll('[data-ngame]:checked')].map((c) => c.dataset.ngame) } }]],
+    tempVoice: () => [['tempVoice', { enabled: checked('tv-enabled'), hubId: val('tv-hub'), categoryId: val('tv-cat'), nameTemplate: val('tv-name'), limit: val('tv-limit') }]],
+    appeals: () => [['appeals', { enabled: checked('ap-enabled'), channelId: val('ap-channel'), cooldownDays: val('ap-cool') }]],
+    khatma: () => [['khatma', { channelId: val('kh-channel'), roleId: val('kh-role'), maxPerUser: val('kh-max'), holdHours: val('kh-hours') }]],
+    radar: () => [['radar', { enabled: checked('rd-enabled'), channelId: val('rd-channel'), silentHours: val('rd-hours'), roleId: val('rd-role'), mentionSponsor: checked('rd-sponsor') }]],
     adhkar: () => [['adhkar', { enabled: checked('az-enabled'), channelId: val('az-channel'), interval: val('az-interval'), skipIdle: checked('az-idle'), sabahMasa: checked('az-sm'), friday: checked('az-fri'), roleId: val('az-role') }]],
     prayer: () => [['prayer', { enabled: checked('pr-enabled'), channelId: val('pr-channel'), city: val('pr-city'), roleId: val('pr-role'), prayers: [...document.querySelectorAll('[data-prayer]:checked')].map((c) => c.dataset.prayer), ramadan: checked('pr-ramadan'), suhoorMinutes: val('pr-suhoor') }]],
     automod: () => {
@@ -1356,6 +1360,25 @@
       if (ba) {
         if (document.querySelectorAll('[data-boost]').length >= 30) return toast('الحد 30', 'error');
         return document.getElementById('lv-boosts').insertAdjacentHTML('beforeend', boostRow(ba.dataset.boostAdd));
+      }
+      if (e.target.closest('#tv-setup')) {
+        try {
+          const r = await api(`/api/tempvoice/${id}/setup`, { method: 'POST', body: {} });
+          toast('جهزت الرومات المؤقتة ✓', 'success');
+          S.tempVoice = r.config;
+          M = await api(`/api/guild-metadata/${id}`);
+          document.getElementById('sec-tempvoice').outerHTML = sTempVoice();
+        } catch (err) { toast(err.message, 'error', 5000); }
+        return;
+      }
+      if (e.target.closest('#kh-start')) {
+        try {
+          await api(`/api/khatma/${id}/start`, { method: 'POST', body: { dedication: val('kh-ded') } });
+          toast('بلشت الختمة 📖', 'success');
+          S.khatma = (await api(`/api/settings/${id}`)).khatma;
+          document.getElementById('sec-khatma').outerHTML = sKhatma();
+        } catch (err) { toast(err.message, 'error', 5000); }
+        return;
       }
       if (e.target.closest('#wr-post')) {
         try { await api(`/api/wrapped/${id}/post`, { method: 'POST', body: {} }); toast('انتشر الملخص', 'success'); } catch (err) { toast(err.message, 'error', 5000); }
@@ -1638,8 +1661,8 @@
   // ---------- groups (one per sidebar item) ----------
   const GROUPS = {
     settings: { sections: ['sec-general'], ar: ['إعدادات السيرفر', 'البادئة ورتبة مدراء البوت.'], en: ['Server settings', 'Prefix and the bot manager role.'] },
-    moderation: { sections: ['sec-mod-note', 'sec-automod', 'sec-verify', 'sec-jail', 'sec-protection', 'sec-vanity', 'sec-purge'], ar: ['الإشراف والحماية', 'AutoMod، التحقق، السجن، الحماية والمسح التلقائي.'], en: ['Moderation', 'AutoMod, verification, jail, protection and auto purge.'] },
-    community: { sections: ['sec-games', 'sec-kafeel', 'sec-wrapped', 'sec-prayer', 'sec-adhkar'], ar: ['المجتمع', 'الألعاب، الكفيل، ملخص السيرفر، أوقات الصلاة ورمضان، والأذكار.'], en: ['Community', 'Games, sponsors, server summary, prayer times & Ramadan, and adhkar.'] },
+    moderation: { sections: ['sec-mod-note', 'sec-automod', 'sec-verify', 'sec-jail', 'sec-appeals', 'sec-protection', 'sec-vanity', 'sec-purge'], ar: ['الإشراف والحماية', 'AutoMod، التحقق، السجن، طلبات فك الحظر، الحماية والمسح التلقائي.'], en: ['Moderation', 'AutoMod, verification, jail, ban appeals, protection and auto purge.'] },
+    community: { sections: ['sec-games', 'sec-tempvoice', 'sec-radar', 'sec-kafeel', 'sec-khatma', 'sec-wrapped', 'sec-prayer', 'sec-adhkar'], ar: ['المجتمع', 'الألعاب، الرومات المؤقتة، رادار الجداد، الكفيل، الختمة، الملخص، الصلاة والأذكار.'], en: ['Community', 'Games, temp voice, newcomer radar, sponsors, khatma, summary, prayer and adhkar.'] },
     staff: { sections: ['sec-staff'], ar: ['أداء الإدارة', 'تقرير شهري لنشاط كل إداري.'], en: ['Staff report', 'A monthly activity report for every staff member.'] },
     rolemenus: { sections: ['sec-rolemenus'], ar: ['رتب بالأزرار', 'لوحات يختار منها الأعضاء رتبهم.'], en: ['Role menus', 'Panels where members pick their roles.'] },
     embeds: { sections: ['sec-embeds'], ar: ['صانع الإمبد', 'صمم رسائل مرتبة وابعتها أو جدولها.'], en: ['Embed builder', 'Design messages and send or schedule them.'] },
@@ -2263,6 +2286,98 @@
     );
   }
 
+  function sTempVoice() {
+    const T = S.tempVoice || {};
+    const voiceOpts = (sel) => options(M.voice || [], sel, { placeholder: 'اختر روم صوتي', prefix: '🔊 ' });
+    return card(
+      'sec-tempvoice',
+      'الرومات الصوتية المؤقتة 🔊',
+      'العضو بيدخل روم معيّن، والبوت بيعمله روم خاص فيه وبينقله عليه. صاحب الروم بيتحكم فيه من لوحة: قفل، إخفاء، اسم، عدد، سماح، طرد واستلام. ولما يفضى بينحذف لحاله.',
+      'voice',
+      `${toggle('tv-enabled', T.enabled, 'تشغيل الرومات المؤقتة')}
+      <div class="inline-form"><button type="button" class="btn ghost" id="tv-setup">${icon('zap')} جهّزها لحالك</button><span class="faint">بيعمل كاتيقوري وروم "➕ اعمل رومك" وبيشغّل الميزة.</span></div>
+      <div class="row mt">
+        ${field('الروم اللي بيدخله العضو', `<select class="select" id="tv-hub">${voiceOpts(T.hubId)}</select>`)}
+        ${field('الكاتيقوري', `<select class="select" id="tv-cat">${catOpts(T.categoryId)}</select>`, 'فاضي = نفس كاتيقوري الروم الأساسي')}
+      </div>
+      <div class="row">
+        ${field('اسم الروم', `<input class="input" id="tv-name" maxlength="80" value="${esc(T.nameTemplate || '🔊 روم {user}')}">`, '<code>{user}</code> = اسم العضو')}
+        ${field('الحد الأعلى للأعضاء', `<input class="input ltr" type="number" id="tv-limit" min="0" max="99" value="${T.limit ?? 0}">`, '0 = بدون حد. صاحب الروم بيقدر يغيّره')}
+      </div>
+      <div class="help">البوت بحاجة صلاحيتي <b>Manage Channels</b> و <b>Move Members</b>. بتقدر كمان تستخدم أمر <code>/voice-setup</code>.</div>`,
+      'tempVoice'
+    );
+  }
+  function sAppeals() {
+    const A = S.appeals || {};
+    return card(
+      'sec-appeals',
+      'طلبات فك الحظر 📝',
+      'اللي بينحظر بيوصله زر بالخاص، بيعبّي طلب قصير، والطلب بيوصل لروم الإدارة بزرين: قبول أو رفض. القبول بيفك الحظر وبيبعتله رابط رجوع لمرة وحدة.',
+      'gavel',
+      `${toggle('ap-enabled', A.enabled, 'تشغيل طلبات فك الحظر')}
+      <div class="row">
+        ${field('روم الطلبات (للإدارة)', `<select class="select" id="ap-channel">${textOpts(A.channelId, 'اختر روم')}</select>`)}
+        ${field('بعد الرفض بيستنى (أيام)', `<input class="input ltr" type="number" id="ap-cool" min="1" max="90" value="${A.cooldownDays ?? 7}">`)}
+      </div>
+      ${A.pending ? `<div class="help">📬 في <b>${A.pending}</b> طلب لسا ما انرد عليه.</div>` : ''}
+      <div class="help">الحظر بأمر البوت (<code>/ban</code>) بيبعت الزر قبل الحظر عشان يوصل. الحظر اليدوي من ديسكورد بنحاول فيه كمان، بس الخاص ما بيوصل إلا إذا العضو معنا بسيرفر ثاني.</div>`,
+      'appeals'
+    );
+  }
+  function sKhatma() {
+    const K = S.khatma || {};
+    const a = K.active;
+    return card(
+      'sec-khatma',
+      'الختمة الجماعية 📖',
+      'لوحة فيها 30 جزء. كل عضو بيحجز جزء ويقرأه ويضغط "خلّصت". الجزء اللي بيتأخر بيوصله تذكير وبينفك لحاله. ولما تكمل الأجزاء بنحتفل بالختمة.',
+      'list',
+      `<div class="kh-stat">${a ? `📖 ختمة شغالة: <b>${a.done}/30</b> مقروء • <b>${a.taken}</b> محجوز${a.dedication ? ` • 🤍 ${esc(a.dedication)}` : ''}` : 'ما في ختمة شغالة هلأ.'} • ختمنا لحد هلأ: <b>${K.completed || 0}</b></div>
+      <div class="row">
+        ${field('روم الختمة', `<select class="select" id="kh-channel">${textOpts(K.channelId, 'اختر روم')}</select>`)}
+        ${field('منشن رتبة لما تبدأ ختمة', `<select class="select" id="kh-role">${roleOpts(K.roleId, 'بدون')}</select>`)}
+      </div>
+      <div class="row">
+        ${field('أقصى أجزاء محجوزة للعضو', `<input class="input ltr" type="number" id="kh-max" min="1" max="10" value="${K.maxPerUser ?? 2}">`)}
+        ${field('الجزء بينفك بعد (ساعة)', `<input class="input ltr" type="number" id="kh-hours" min="6" max="336" value="${K.holdHours ?? 48}">`, 'التذكير بيوصل بالخاص قبلها')}
+      </div>
+      ${a ? '' : `<div class="inline-form mt"><input class="input" id="kh-ded" maxlength="200" placeholder="إهداء الختمة (اختياري) — مثل: على روح المرحوم فلان"><button type="button" class="btn primary" id="kh-start">${icon('send')} ابدأ ختمة</button></div>`}
+      <div class="help">احفظ الروم أول قبل ما تبدأ. الأعضاء بيشوفوا وين وصلت الختمة بأمر <code>/khatma</code>.</div>`,
+      'khatma'
+    );
+  }
+  function sRadar() {
+    const R = S.radar || {};
+    const r = R.report || {};
+    const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+    const stat = (n, label, sub = '') => `<div class="rd-stat"><b>${n}</b><span>${label}</span>${sub ? `<small>${sub}</small>` : ''}</div>`;
+    return card(
+      'sec-radar',
+      'رادار الأعضاء الجداد 📡',
+      'بيتابع كل عضو جديد بأول أيامه. إذا دخل وضل ساكت، بيوصل تنبيه للإدارة (ومعه كفيله) عشان حدا يرحب فيه بالاسم قبل ما يطلع.',
+      'activity',
+      `<div class="rd-grid">
+        ${stat(r.joined || 0, 'دخلوا آخر 30 يوم')}
+        ${stat(`${pct(r.spoke, r.joined)}٪`, 'حكوا ولو كلمة', `${r.spoke || 0} عضو`)}
+        ${stat(`${pct(r.stayed, r.oldCount)}٪`, 'ثبتوا بعد أسبوع', `${r.stayed || 0} من ${r.oldCount || 0}`)}
+        ${stat(r.quickLeave || 0, 'طلعوا بأول يوم')}
+        ${stat(r.silentNow || 0, 'صامتين هلأ')}
+      </div>
+      ${toggle('rd-enabled', R.enabled, 'تنبيهات الأعضاء الصامتين')}
+      <div class="row">
+        ${field('روم التنبيهات', `<select class="select" id="rd-channel">${textOpts(R.channelId, 'اختر روم')}</select>`)}
+        ${field('بعد كم ساعة صمت', `<input class="input ltr" type="number" id="rd-hours" min="2" max="168" value="${R.silentHours ?? 24}">`)}
+      </div>
+      <div class="row">
+        ${field('منشن رتبة (مثل فريق الترحيب)', `<select class="select" id="rd-role">${roleOpts(R.roleId, 'بدون')}</select>`)}
+        <div>${toggle('rd-sponsor', R.mentionSponsor !== false, 'منشن الكفيل', 'إذا العضو إله كفيل من نظام الكفيل')}</div>
+      </div>
+      <div class="help">"ثبت" = مرّ عليه أسبوع، لسا موجود، وكتب 5 رسائل وأكثر. الأرقام بتبلش من يوم التحديث. التقرير الكامل بأمر <code>/radar</code>.</div>`,
+      'radar'
+    );
+  }
+
   function sAdhkar() {
     const A = S.adhkar || {};
     const iv = [[0, 'بدون'], [15, 'كل ربع ساعة'], [30, 'كل نص ساعة'], [60, 'كل ساعة'], [120, 'كل ساعتين'], [180, 'كل 3 ساعات'], [360, 'كل 6 ساعات'], [720, 'كل 12 ساعة'], [1440, 'مرة باليوم']];
@@ -2337,7 +2452,7 @@
     if (!P) throw new Error('لوحة التحكم تحدّثت لكن البوت ما زال يعمل بالنسخة القديمة — أعد تشغيل البوت من الاستضافة ثم حدّث الصفحة');
     if (!EMO?.canEdit) EMO = null;
     document.getElementById('cards').innerHTML = [
-      sPremium(), sGeneral(), sBotProfile(), sWelcome(), sTickets(), sGwManage(), sGiveaway(), sModNote(), sAutomod(), sVerify(), sProtection(), sJail(), sVanity(), sPurge(), sRoleMenus(), sEmbeds(), sKafeel(), sWrapped(), sGames(), sPrayer(), sAdhkar(), sStaff(), sLogs(), sInvites(), sAutoLine(), sFeedback(), sReplies(), sLevels(), sGuildEmojis(), sEmojis(),
+      sPremium(), sGeneral(), sBotProfile(), sWelcome(), sTickets(), sGwManage(), sGiveaway(), sModNote(), sAutomod(), sVerify(), sProtection(), sJail(), sVanity(), sPurge(), sRoleMenus(), sEmbeds(), sKafeel(), sWrapped(), sGames(), sTempVoice(), sKhatma(), sRadar(), sAppeals(), sPrayer(), sAdhkar(), sStaff(), sLogs(), sInvites(), sAutoLine(), sFeedback(), sReplies(), sLevels(), sGuildEmojis(), sEmojis(),
     ].join('');
     arrangeGroups();
     renderChips('autoline');

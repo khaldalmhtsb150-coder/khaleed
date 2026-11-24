@@ -28,6 +28,10 @@ const kafeel = require('../systems/kafeel');
 const prayer = require('../systems/prayer');
 const adhkar = require('../systems/adhkar');
 const gamesSys = require('../systems/games');
+const tempvoice = require('../systems/tempvoice');
+const appealsSys = require('../systems/appeals');
+const khatmaSys = require('../systems/khatma');
+const radarSys = require('../systems/radar');
 const staffSys = require('../systems/staff');
 const wrapped = require('../systems/wrapped');
 const who = (req) => ({ id: req.session.user.id, name: req.session.user.globalName || req.session.user.username });
@@ -189,6 +193,14 @@ function readSettings(guild) {
     prayer: prayer.config(id),
     adhkar: adhkar.config(id),
     games: gamesSys.config(id),
+    tempVoice: tempvoice.config(id),
+    appeals: { ...appealsSys.config(id), pending: Object.values(store.peek('appeals', id) || {}).filter((a) => a.status === 'pending').length },
+    khatma: (() => {
+      const d = store.peek('khatma', id) || {};
+      const k = d.active;
+      return { ...khatmaSys.config(id), completed: d.completed || 0, active: k ? { channelId: k.channelId, done: Object.values(k.juz).filter((j) => j.done).length, taken: Object.values(k.juz).filter((j) => j.uid && !j.done).length, dedication: k.dedication } : null };
+    })(),
+    radar: { ...radarSys.config(id), report: (({ pct, ...r }) => r)(radarSys.report(id, 30)) },
     prayerCities: Object.fromEntries(Object.entries(prayer.CITIES).map(([k, c]) => [k, c.name])),
     wrapped: wrapped.config(id),
     staffReport: staffSys.canReport(id),
@@ -441,6 +453,36 @@ function writeSettings(guild, module, d) {
       if (conf.night.enabled && !conf.night.channelId) throw new Error('اختار روم سهرة الألعاب');
       if (conf.night.enabled && !conf.night.games.length) throw new Error('اختار لعبة وحدة على الأقل للسهرة');
       return store.save('gamesConfig');
+    }
+    case 'tempVoice': {
+      const conf = store.guild('tempVoice', id, { ...tempvoice.DEFAULT });
+      Object.assign(conf, {
+        enabled: bool(d.enabled),
+        hubId: channelIn(guild, d.hubId, [ChannelType.GuildVoice]) || '',
+        categoryId: channelIn(guild, d.categoryId, [ChannelType.GuildCategory]) || '',
+        nameTemplate: String(d.nameTemplate || tempvoice.DEFAULT.nameTemplate).slice(0, 80),
+        limit: int(d.limit, 0, 99, 0),
+      });
+      if (conf.enabled && !conf.hubId) throw new Error('اختار الروم الصوتي اللي بيدخله العضو، أو اضغط "جهّزها لحالك"');
+      return store.save('tempVoice');
+    }
+    case 'appeals': {
+      const conf = store.guild('appealsConfig', id, { ...appealsSys.DEFAULT });
+      Object.assign(conf, { enabled: bool(d.enabled), channelId: channelIn(guild, d.channelId) || '', cooldownDays: int(d.cooldownDays, 1, 90, 7) });
+      if (conf.enabled && !conf.channelId) throw new Error('اختار روم الإدارة اللي بتوصله طلبات فك الحظر');
+      return store.save('appealsConfig');
+    }
+    case 'khatma': {
+      const conf = store.guild('khatmaConfig', id, { ...khatmaSys.DEFAULT });
+      Object.assign(conf, { channelId: channelIn(guild, d.channelId) || '', roleId: roleIn(guild, d.roleId) || '', maxPerUser: int(d.maxPerUser, 1, 10, 2), holdHours: int(d.holdHours, 6, 336, 48) });
+      store.save('khatmaConfig');
+      return khatmaSys.refresh(guild).catch(() => {});
+    }
+    case 'radar': {
+      const conf = store.guild('radarConfig', id, { ...radarSys.DEFAULT });
+      Object.assign(conf, { enabled: bool(d.enabled), channelId: channelIn(guild, d.channelId) || '', roleId: roleIn(guild, d.roleId) || '', silentHours: int(d.silentHours, 2, 168, 24), mentionSponsor: bool(d.mentionSponsor) });
+      if (conf.enabled && !conf.channelId) throw new Error('اختار روم تنبيهات الرادار');
+      return store.save('radarConfig');
     }
     case 'adhkar': {
       const conf = store.guild('adhkarConfig', id, {});
@@ -1071,6 +1113,30 @@ function start(client) {
     const ok = await wrapped.post(req.guild, wrapped.monthKey());
     if (!ok) return res.status(400).json({ error: 'اختار قناة الملخص واحفظ أول' });
     res.json({ ok: true });
+  });
+
+  // temp voice: create the hub + category in one click
+  app.post('/api/tempvoice/:id/setup', needGuild, csrf, async (req, res) => {
+    try {
+      const { hub } = await tempvoice.setup(req.guild);
+      res.json({ ok: true, hubId: hub.id, config: tempvoice.config(req.guild.id) });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // khatma: start a new one from the dashboard
+  app.post('/api/khatma/:id/start', needGuild, csrf, async (req, res) => {
+    const conf = khatmaSys.config(req.guild.id);
+    const ch = req.guild.channels.cache.get(conf.channelId);
+    if (!ch) return res.status(400).json({ error: 'اختار روم الختمة واحفظ أول' });
+    try {
+      const w = who(req);
+      await khatmaSys.start(req.guild, ch, { id: w.id, username: w.name }, { dedication: String(req.body?.dedication || '').slice(0, 200) });
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
   });
 
   // leaderboards for the Levels page

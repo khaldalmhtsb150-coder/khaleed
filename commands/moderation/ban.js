@@ -1,5 +1,6 @@
 const E = require('../../utils/emojis');
 const hierarchy = require('./_hierarchy');
+const appeals = require('../../systems/appeals');
 
 module.exports = {
   name: 'ban',
@@ -17,7 +18,9 @@ module.exports = {
     const member = await ctx.guild.members.fetch(user.id).catch(() => null);
     const blocked = hierarchy(ctx, member, 'حظر');
     if (blocked) return ctx.fail(blocked);
-    await member?.send(`${E.ban} تم حظرك من **${ctx.guild.name}**\n${E.dot} السبب: ${reason}`).catch(() => {});
+    // with appeals on, the DM carries an "appeal" button; it must go out before the ban (after it the DM usually fails)
+    const appealed = appeals.config(ctx.guild.id).enabled ? await appeals.notify(ctx.guild, user, reason).catch(() => false) : false;
+    if (!appealed) await member?.send(`${E.ban} تم حظرك من **${ctx.guild.name}**\n${E.dot} السبب: ${reason}`).catch(() => {});
     await ctx.guild.members.ban(user.id, { reason: `${ctx.user.tag}: ${reason}`, deleteMessageSeconds: 0 });
     return ctx.reply({ content: `${E.ban} تم حظر ${user} — ${reason}`, allowedMentions: { parse: [] } });
   },
