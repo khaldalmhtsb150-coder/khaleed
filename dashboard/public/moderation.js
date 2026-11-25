@@ -1134,7 +1134,7 @@
     gameArt: () => (isPrem('gameArt') ? [['gameArt', Object.fromEntries([...document.querySelectorAll('[data-ga-url]')].map((i) => [i.dataset.gaUrl, i.value.trim()]))]] : []),
     warns: () => [['warns', { expireDays: val('w-exp'), dm: checked('w-dm'), steps: [...document.querySelectorAll('[data-wstep]')].map((r) => Object.fromEntries([...r.querySelectorAll('[data-k]')].map((i) => [i.dataset.k, i.value]))).filter((x) => x.count) }]],
     radar: () => [['radar', { enabled: checked('rd-enabled'), channelId: val('rd-channel'), silentHours: val('rd-hours'), roleId: val('rd-role'), mentionSponsor: checked('rd-sponsor') }]],
-    adhkar: () => [['adhkar', { enabled: checked('az-enabled'), channelId: val('az-channel'), interval: val('az-interval'), skipIdle: checked('az-idle'), sabahMasa: checked('az-sm'), friday: checked('az-fri'), roleId: val('az-role') }]],
+    adhkar: () => [['adhkar', { enabled: checked('az-enabled'), channelId: val('az-channel'), interval: val('az-interval'), sabahMasa: checked('az-sm'), friday: checked('az-fri'), roleId: val('az-role') }]],
     prayer: () => [['prayer', { enabled: checked('pr-enabled'), channelId: val('pr-channel'), city: val('pr-city'), roleId: val('pr-role'), prayers: [...document.querySelectorAll('[data-prayer]:checked')].map((c) => c.dataset.prayer), ramadan: checked('pr-ramadan'), suhoorMinutes: val('pr-suhoor') }]],
     automod: () => {
       const g = (x) => document.getElementById(x);
@@ -2577,8 +2577,7 @@
         <div>${toggle('az-sm', A.sabahMasa !== false, 'أذكار الصباح والمساء', 'بعد الفجر وبعد العصر بـ 20 دقيقة، حسب مدينة قسم أوقات الصلاة')}</div>
         <div>${toggle('az-fri', A.friday !== false, 'تذكير الجمعة', 'سورة الكهف، والصلاة على النبي ﷺ، وساعة الإجابة')}</div>
       </div>
-      ${toggle('az-idle', A.skipIdle !== false, 'لا تكدّس الأذكار', 'إذا ما حدا كتب بالقناة من آخر ذكر، البوت ما بينزل ذكر جديد')}
-      <div class="help">كل منشور فيه أزرار بتفتح لكل عضو الأذكار مع عدّاد، والمسبحة الإلكترونية، برسالة خاصة فيه. والأعضاء بيقدروا يستخدموا <code>/azkar</code> و <code>/tasbeeh</code> بأي وقت.</div>`,
+      <div class="help">كل ذكر بينزل كبطاقة مزخرفة بخط نسخ مشكول، وتحتها زر «ذكرتُ الله / آمين» بعدّاد مشترك، وزر للنص، والمسبحة، والأذكار كاملة. والأعضاء بيقدروا يستخدموا <code>/azkar</code> و <code>/tasbeeh</code> بأي وقت.</div>`,
       'adhkar'
     );
   }

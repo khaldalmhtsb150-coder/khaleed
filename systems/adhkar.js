@@ -1,14 +1,14 @@
 // Adhkar: a reader with a counter (morning, evening, sleep, ...), an electronic tasbeeh,
 // and automatic posts in a channel: a dhikr/verse/du'a every N minutes, morning & evening adhkar
 // after Fajr and Asr (by the server's prayer city), and a Friday reminder.
-const { Events, ActionRowBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+const { Events, ActionRowBuilder, AttachmentBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const store = require('../utils/store');
 const ui = require('../utils/ui');
 const prayer = require('./prayer');
 const { CATEGORIES, RANDOM, FRIDAY, TASBEEH } = require('../utils/adhkarData');
 
-const COLOR = 0x2e8b6e; // calm green for everything religious
-const DEFAULT = { enabled: false, channelId: '', interval: 60, skipIdle: true, sabahMasa: true, friday: true, roleId: '', city: '' };
+const COLOR = 0xc9a24f; // the gold of the cards, for the reader and the menus
+const DEFAULT = { enabled: false, channelId: '', interval: 60, sabahMasa: true, friday: true, roleId: '', city: '' };
 const config = (gid) => ({ ...DEFAULT, ...(store.peek('adhkarConfig', gid) || {}) });
 const state = (gid) => store.guild('adhkarState', gid, {});
 const cityOf = (gid) => {
@@ -16,7 +16,6 @@ const cityOf = (gid) => {
   return prayer.CITIES[c] ? c : 'amman';
 };
 const embed = () => ui.embed().setColor(COLOR);
-const KIND_ICON = { ذكر: '🤍', آية: '📖', دعاء: '🤲' };
 
 // ---------- reader ----------
 const CAT_KEYS = Object.keys(CATEGORIES);
@@ -183,50 +182,125 @@ function topTasbeeh(gid, n = 10) {
 }
 
 // ---------- automatic posts ----------
-function randomCard(gid) {
+// Each post is a drawn card (utils/adhkarCard) with the text in a Naskh face, plus a few quiet buttons:
+// a shared "I said it / آمين" counter, the text as plain words, the tasbeeh and the full adhkar.
+const card = require('../utils/adhkarCard');
+
+const SABAH_TEXT = { text: 'أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ', source: 'رواه مسلم' };
+const MASA_TEXT = { text: 'أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ', source: 'رواه مسلم' };
+const FRIDAY_HINTS = 'سورة الكهف  ۞  الصلاة على النبي ﷺ  ۞  ساعة الإجابة';
+// what the shared button says under each kind of post
+const SAID = { ذكر: 'ذكرتُ الله', آية: 'قرأتُها', دعاء: 'آمين', friday: 'صلّيتُ على النبي ﷺ' };
+
+const cache = new Map(); // drawn cards, so the same dhikr isn't drawn twice
+async function drawn(key, opts) {
+  if (cache.has(key)) return cache.get(key);
+  const buf = await card.render(opts).catch((e) => (console.error('[adhkar card]', e.message), null));
+  if (buf) {
+    cache.set(key, buf);
+    if (cache.size > 60) cache.delete(cache.keys().next().value);
+  }
+  return buf;
+}
+
+function saidButton(kind, n = 0) {
+  return ui.button(`azk_said:${kind}`, n ? `${SAID[kind] || 'ذكرتُ الله'} · ${n}` : SAID[kind] || 'ذكرتُ الله', { style: ButtonStyle.Success });
+}
+
+/** Builds the message: the card as an image when we can draw, otherwise a calm embed. */
+function payload(buf, file, fallback, rows) {
+  if (buf) return { files: [new AttachmentBuilder(buf, { name: file })], embeds: [], components: rows };
+  return { embeds: [fallback], components: rows };
+}
+
+function plainEmbed(title, it) {
+  return embed().setDescription(
+    [`### ${title}`, '', `> **${it.text}**`, ui.hint(it.source), it.virtue ? `\n${it.virtue}` : null].filter((x) => x !== null).join('\n')
+  );
+}
+
+function nextRandom(gid) {
   const st = state(gid);
   // go through the whole list in a shuffled order before repeating anything
   if (!Array.isArray(st.bag) || !st.bag.length) st.bag = RANDOM.map((_, i) => i).sort(() => Math.random() - 0.5);
-  const it = RANDOM[st.bag.pop()] || RANDOM[0];
-  const e = embed().setDescription(
-    [`### ${KIND_ICON[it.kind] || '🤍'} ${it.kind}`, '', `> **${it.text}**`, '', it.virtue ? `✨ ${it.virtue}` : null, ui.hint(it.source)].filter((x) => x !== null).join('\n')
-  );
-  const row = new ActionRowBuilder().addComponents(ui.button('azk_open:tsb', 'المسبحة', { emoji: 'sparkles' }), ui.button('azk_open:menu', 'الأذكار', { emoji: 'book' }));
-  return { embeds: [e], components: [row] };
+  const idx = st.bag.pop();
+  return RANDOM[idx] ? idx : 0;
 }
 
-function sabahMasaCard(cat) {
+async function randomCard(gid, idx = nextRandom(gid)) {
+  const it = RANDOM[idx];
+  const buf = await drawn(`r${idx}`, { theme: card.KIND_THEME[it.kind], text: it.text, source: it.source, virtue: it.virtue });
+  const row = new ActionRowBuilder().addComponents(
+    saidButton(it.kind),
+    ui.button(`azk_txt:r:${idx}`, 'النص'),
+    ui.button('azk_open:tsb', 'المسبحة', { emoji: 'sparkles' }),
+    ui.button('azk_open:menu', 'الأذكار', { emoji: 'book' })
+  );
+  return payload(buf, 'dhikr.png', plainEmbed(it.kind, it), [row]);
+}
+
+async function sabahMasaCard(cat) {
   const c = CATEGORIES[cat];
   const morning = cat === 'sabah';
-  const e = embed().setDescription(
-    [
-      `### ${c.emoji} حان وقت ${c.name}`,
-      '',
-      '> **فَسُبْحَانَ اللَّهِ حِينَ تُمْسُونَ وَحِينَ تُصْبِحُونَ**',
-      ui.hint('الروم: 17'),
-      '',
-      morning ? 'ابدأ يومك بذكر الله، وخلّي الأذكار حصنك لآخر النهار 🤍' : 'اختم نهارك بذكر الله، وخلّي الأذكار حصنك لحد الصبح 🤍',
-      '',
-      `اكبس الزر تحت، وبتفتحلك **${c.name}** (${c.items.length} ذكراً) مع عدّاد لكل ذكر.`,
-    ].join('\n')
+  const it = morning ? SABAH_TEXT : MASA_TEXT;
+  const buf = await drawn(cat, { theme: cat, text: it.text, source: it.source });
+  const row = new ActionRowBuilder().addComponents(
+    ui.button(`azk_open:${cat}`, `اقرأ ${c.name}`, { style: ButtonStyle.Success }),
+    ui.button(`azk_txt:${cat}`, 'النص'),
+    ui.button('azk_open:tsb', 'المسبحة', { emoji: 'sparkles' })
   );
-  const row = new ActionRowBuilder().addComponents(ui.button(`azk_open:${cat}`, `اقرأ ${c.name}`, { style: ButtonStyle.Success }), ui.button('azk_open:tsb', 'المسبحة', { emoji: 'sparkles' }));
-  return { embeds: [e], components: [row] };
+  return payload(buf, `${cat}.png`, plainEmbed(c.name, it), [row]);
 }
 
-function fridayCard() {
-  const e = embed().setDescription(
-    ['### 🕌 جمعة مباركة', '', `> **${FRIDAY.text}**`, ui.hint(FRIDAY.source), '', '**لا تنسى بهاليوم:**', ...FRIDAY.points.map((p) => `• ${p}`)].join('\n')
+async function fridayCard() {
+  const buf = await drawn('friday', { theme: 'friday', text: FRIDAY.text, source: FRIDAY.source, virtue: FRIDAY_HINTS, virtueLabel: 'لَا تَنْسَ' });
+  const row = new ActionRowBuilder().addComponents(
+    saidButton('friday'),
+    ui.button('azk_txt:friday', 'النص'),
+    ui.button('azk_open:menu', 'الأذكار', { emoji: 'book' })
   );
-  return { embeds: [e], components: [new ActionRowBuilder().addComponents(ui.button('azk_open:menu', 'الأذكار', { emoji: 'book' }), ui.button('azk_open:tsb', 'المسبحة', { emoji: 'sparkles' }))] };
+  return payload(buf, 'jumuah.png', plainEmbed('جمعة مباركة', { ...FRIDAY, virtue: FRIDAY.points.map((p) => `• ${p}`).join('\n') }), [row]);
 }
 
-async function post(guild, conf, payload) {
+/** The shared counter: each person counts once per post. */
+async function onSaid(interaction) {
+  const kind = interaction.customId.split(':')[1];
+  const st = state(interaction.guildId);
+  st.said ||= {};
+  const id = interaction.message?.id;
+  const list = (st.said[id] ||= []);
+  if (list.includes(interaction.user.id)) {
+    return interaction.reply({ content: kind === 'دعاء' ? 'آمين، تقبّل الله منك 🤍' : 'تقبّل الله منك، سجّلناها لك قبل 🤍', ephemeral: true });
+  }
+  list.push(interaction.user.id);
+  if (list.length > 5000) list.splice(0, list.length - 5000);
+  const keys = Object.keys(st.said);
+  if (keys.length > 40) for (const k of keys.slice(0, keys.length - 40)) delete st.said[k];
+  store.save('adhkarState');
+  const rows = (interaction.message?.components || []).map((r) => ActionRowBuilder.from(r));
+  if (rows[0]?.components?.length) rows[0].components[0] = saidButton(kind, list.length);
+  return interaction.update({ components: rows });
+}
+
+/** The words as plain text, for copying or for screen readers. */
+async function onText(interaction) {
+  const [, what, idx] = interaction.customId.split(':');
+  let it;
+  if (what === 'r') it = RANDOM[Number(idx)];
+  else if (what === 'sabah') it = SABAH_TEXT;
+  else if (what === 'masa') it = MASA_TEXT;
+  else if (what === 'friday') it = { ...FRIDAY, virtue: FRIDAY.points.map((p) => `• ${p}`).join('\n') };
+  if (!it) return interaction.reply({ content: 'ما لقيت النص.', ephemeral: true });
+  return interaction.reply({ content: [it.text, ui.hint(it.source), it.virtue ? `\n${it.virtue}` : null].filter(Boolean).join('\n'), ephemeral: true });
+}
+
+async function post(guild, conf, payloadP) {
   const ch = guild.channels.cache.get(conf.channelId);
   if (!ch?.isTextBased()) return null;
+  const payload = await payloadP;
   const msg = await ch
     .send({ ...payload, content: conf.roleId ? `<@&${conf.roleId}>` : undefined, allowedMentions: { roles: conf.roleId ? [conf.roleId] : [] } })
-    .catch(() => null);
+    .catch((e) => (console.error('[adhkar post]', e.message), null));
   if (msg) state(guild.id).lastMsgId = msg.id;
   return msg;
 }
@@ -268,10 +342,8 @@ async function tickGuild(guild, now = new Date()) {
   if (conf.interval > 0 && ms - (st.lastRandom || 0) >= every) {
     st.lastRandom = ms;
     changed = true;
-    const ch = guild.channels.cache.get(conf.channelId);
-    // nobody wrote since our last post → don't stack posts in a quiet channel
-    const idle = conf.skipIdle && st.lastMsgId && ch?.lastMessageId === st.lastMsgId;
-    if (!idle) await post(guild, conf, randomCard(guild.id));
+    // posts go out on time even if the channel was quiet; a dhikr channel is meant to be a stream
+    await post(guild, conf, randomCard(guild.id));
   }
 
   if (changed) store.save('adhkarState');
@@ -303,5 +375,7 @@ module.exports = {
     { prefix: 'azk_cat:', type: 'select', handle: onCat },
     { prefix: 'azk_open:', type: 'button', handle: onOpen },
     { prefix: 'tsb:', type: 'button', handle: onTasbeeh },
+    { prefix: 'azk_said:', type: 'button', handle: onSaid },
+    { prefix: 'azk_txt:', type: 'button', handle: onText },
   ],
 };

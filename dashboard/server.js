@@ -517,7 +517,6 @@ function writeSettings(guild, module, d) {
         enabled: bool(d.enabled),
         channelId: channelIn(guild, d.channelId) || '',
         interval: iv === 0 ? 0 : Math.max(15, iv),
-        skipIdle: bool(d.skipIdle),
         sabahMasa: bool(d.sabahMasa),
         friday: bool(d.friday),
         roleId: roleIn(guild, d.roleId) || '',
