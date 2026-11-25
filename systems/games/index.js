@@ -544,7 +544,7 @@ function register(type) {
 }
 
 function init(client) {
-  for (const f of ['roulette', 'mafia', 'chairs', 'spy', 'xo', 'rps', 'deathbox', 'mini']) {
+  for (const f of ['roulette', 'mafia', 'chairs', 'spy', 'xo', 'rps', 'deathbox', 'rebelka', 'mini']) {
     const mod = require(`./${f}`);
     (Array.isArray(mod) ? mod : [mod]).forEach(register);
   }

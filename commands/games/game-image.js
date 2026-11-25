@@ -4,7 +4,7 @@ const store = require('../../utils/store');
 const media = require('../../utils/media');
 const premium = require('../../utils/premium');
 
-const NAMES = { roulette: 'روليت (اللوبي)', rouletteWheel: 'روليت (خلفية العجلة)', mafia: 'مافيا', chairs: 'الكراسي', spy: 'برا السالفة', xo: 'بطولة XO', rps: 'حجرة ورقة مقص', deathbox: 'صندوق الموت', fasttype: 'أسرع كاتب', flags: 'أعلام', capitals: 'عواصم', unscramble: 'فكّك الكلمة', math: 'حساب سريع', night: 'سهرة الألعاب' };
+const NAMES = { roulette: 'روليت (اللوبي)', rouletteWheel: 'روليت (خلفية العجلة)', mafia: 'مافيا', chairs: 'الكراسي', spy: 'برا السالفة', xo: 'بطولة XO', rps: 'حجرة ورقة مقص', deathbox: 'صندوق الموت', rebelka: 'ريبلكا', fasttype: 'أسرع كاتب', flags: 'أعلام', capitals: 'عواصم', unscramble: 'فكّك الكلمة', math: 'حساب سريع', night: 'سهرة الألعاب' };
 
 module.exports = {
   name: 'game-image',

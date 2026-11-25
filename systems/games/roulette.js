@@ -8,13 +8,19 @@ const art = require('../../utils/art');
 
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-async function spin(game, ids, title) {
+async function spin(game, ids, title, { scale = 0.8 } = {}) {
   const chosen = pick(ids);
-  const labels = ids.map((id, i) => `${i + 1}. ${game.name(id)}`);
+  const seen = new Map();
+  const labels = ids.map((id) => {
+    const n = game.name(id).slice(0, 16);
+    const k = (seen.get(n) || 0) + 1;
+    seen.set(n, k);
+    return k > 1 ? `${n} ${k}` : n;
+  });
   const winLabel = labels[ids.indexOf(chosen)];
   const st = require('../../utils/store');
   const bg = (premium.has(game.guild.id, 'gameArt') && st.peek('gameArt', game.guild.id)?.rouletteWheel) || (premium.has(game.guild.id, 'wheelImage') ? st.peek('wheelConfig', game.guild.id)?.image || '' : '');
-  const pic = await wheelImage.render(labels, winLabel, { maxSlices: 30, frames: 32, background: bg }).catch(() => null);
+  const pic = await wheelImage.render(labels, winLabel, { maxSlices: 30, frames: 32, background: bg, scale: ids.length > 14 ? 1 : scale }).catch(() => null);
   if (pic) {
     const m = await game.send({ content: title, files: [new AttachmentBuilder(pic.gif, { name: 'roulette.gif' })] });
     await game.sleep(pic.duration + 400);
@@ -63,13 +69,13 @@ module.exports = {
       const rows = game.pickerRows(`kick${round}`, others, { placeholder: canDouble ? 'اختار واحد (أو اتنين بالطرد المزدوج)' : 'اختار مين يطلع', max: canDouble ? 2 : 1 });
       rows.push(
         new ActionRowBuilder().addComponents(
-          game.button(`kick${round}`, 'random', 'عشوائي', { emoji: 'random' }),
+          game.button(`kick${round}`, 'random', 'خلّي العجلة تختار', { emoji: 'random', style: ButtonStyle.Primary }),
           game.button(`kick${round}`, 'withdraw', 'انسحاب', { emoji: 'withdraw', style: ButtonStyle.Danger })
         )
       );
       const ask = await game.send({
         allowedMentions: { users: [chosen] },
-        content: [`<@${chosen}> العجلة وقفت عليك! اختار مين يطلع`, `-# عندك <t:${Math.ceil(Date.now() / 1000) + 20}:R>${canDouble ? ' • معك طرد مزدوج، بتقدر تختار اتنين' : ''}`].join('\n'),
+        content: [`<@${chosen}> العجلة وقفت عليك! اختار مين يطلع، أو خلّي العجلة تختار عنك`, `-# عندك <t:${Math.ceil(Date.now() / 1000) + 20}:R>${canDouble ? ' • معك طرد مزدوج، بتقدر تختار اتنين' : ''}`].join('\n'),
         components: rows,
       });
       const res = await game.waitFor(`kick${round}`, { who: chosen, timeout: 20_000, deny: 'مش إنت اللي عليك الدور.' });
@@ -85,8 +91,10 @@ module.exports = {
           targets = [chosen];
           lead = `${art.i('withdraw', '🏳️')} <@${chosen}> انسحب من اللعبة`;
         } else if (res.choice === 'random') {
-          targets = [pick(others)];
-          lead = `${art.i('random', '🎲')} <@${chosen}> اختار عشوائي`;
+          // a small wheel of the others decides — nobody can blame the chooser
+          const t = await spin(game, others, `-# <@${chosen}> خلّى العجلة تختار مين يطلع`, { scale: 0.6 });
+          targets = [t];
+          lead = `${art.i('random', '🎲')} العجلة اختارت <@${t}>`;
         } else {
           targets = res.values.filter((v) => others.includes(v)).slice(0, canDouble ? 2 : 1);
           if (targets.length === 2) usePerk(game.guild.id, chosen, 'double');

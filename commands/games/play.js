@@ -2,13 +2,13 @@ const games = require('../../systems/games');
 
 const CHOICES = [
   ['roulette', '🎡 روليت'], ['mafia', '🕵️ مافيا'], ['chairs', '🪑 كراسي'], ['spy', '🤫 برا السالفة'], ['xo', '❌ بطولة XO'],
-  ['rps', '✂️ حجرة ورقة مقص'], ['deathbox', '📦 صندوق الموت'], ['fasttype', '⌨️ أسرع كاتب'], ['flags', '🏳️ أعلام'],
+  ['rps', '✂️ حجرة ورقة مقص'], ['deathbox', '📦 صندوق الموت'], ['rebelka', '🔤 ريبلكا'], ['fasttype', '⌨️ أسرع كاتب'], ['flags', '🏳️ أعلام'],
   ['capitals', '🏛️ عواصم'], ['unscramble', '🔤 فكك الكلمة'], ['math', '🧮 حساب سريع'],
 ];
 
 module.exports = {
   name: 'play',
-  aliases: ['لعبة', 'العب', 'روليت', 'مافيا', 'كراسي'],
+  aliases: ['لعبة', 'العب', 'روليت', 'مافيا', 'كراسي', 'ريبلكا'],
   description: 'ابدأ لعبة: روليت، مافيا، كراسي، برا السالفة، XO والمزيد',
   cooldown: 5,
   options: [{ name: 'game', type: 'string', description: 'اللعبة', label: 'اللعبة', choices: CHOICES.map(([value, name]) => ({ name, value })) }],
@@ -17,7 +17,7 @@ module.exports = {
     // prefix aliases: "روليت" / "مافيا" / "كراسي" start that game directly
     if (!id && ctx.message) {
       const said = ctx.message.content;
-      id = [['روليت', 'roulette'], ['مافيا', 'mafia'], ['كراسي', 'chairs']].find(([w]) => said.includes(w))?.[1] || null;
+      id = [['روليت', 'roulette'], ['مافيا', 'mafia'], ['كراسي', 'chairs'], ['ريبلكا', 'rebelka']].find(([w]) => said.includes(w))?.[1] || null;
     }
     const byArabic = id ? CHOICES.find(([, n]) => n.includes(id)) : null;
     if (!games.TYPES.has(id) && byArabic) id = byArabic[0];

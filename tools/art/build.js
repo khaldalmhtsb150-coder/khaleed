@@ -464,6 +464,7 @@ const BANNERS = {
   xo: { accent: '#4aa8ff', kicker: 'XO CUP', title: 'بطولة XO', line: 'إقصائيات لحد ما يضل بطل واحد', chips: ['حتى 16 لاعب', 'بطولة'], art: 'xo' },
   rps: { accent: '#ffb02e', kicker: 'ROCK · PAPER · SCISSORS', title: 'حجرة ورقة مقص', line: 'كل جولة، الإشارة الخسرانة بتطلع', chips: ['حتى 25 لاعب', 'حظ وذكاء'], art: 'rps' },
   deathbox: { accent: '#ff4d6d', kicker: 'DEATH BOX', title: 'صندوق الموت', line: 'خمس صناديق، اثنين منهم فخ', chips: ['حتى 20 لاعب', 'حظ'], art: 'boxes' },
+  rebelka: { accent: '#3fd9c6', kicker: 'REBELKA', title: 'ريبلكا', line: 'إنسان، حيوان، نبات، جماد، بلاد', chips: ['حتى 20 لاعب', 'كل الحروف'], art: 'letters' },
   fasttype: { accent: '#ffc83a', kicker: 'FAST TYPE', title: 'أسرع كاتب', line: 'أول واحد بيكتب الجملة صح بياخد النقطة', chips: ['5 جولات', 'كل الشات'], main: 'keyboard', sats: [['timer', 'slate'], ['zap', 'amber']] },
   flags: { accent: '#3ddc84', kicker: 'FLAGS', title: 'أعلام', line: 'شوف العلم واكتب اسم الدولة', chips: ['5 جولات', 'كل الشات'], main: 'flag', sats: [['earth', 'blue'], ['timer', 'slate']] },
   capitals: { accent: '#22c7e8', kicker: 'CAPITALS', title: 'عواصم', line: 'اكتب عاصمة الدولة قبل الكل', chips: ['5 جولات', 'كل الشات'], main: 'landmark', sats: [['map-pin', 'red'], ['timer', 'slate']] },
@@ -482,6 +483,36 @@ const BANNERS = {
   radar: { accent: '#3fd9e8', kicker: 'NEWCOMER RADAR', title: 'عضو جديد ساكت', line: 'رحّبوا فيه قبل ما يطلع', chips: [], main: 'radar', sats: [['user-plus', 'green'], ['hand', 'amber'], ['bell', 'amber']] },
 };
 
+function lettersArt(ctx, accent) {
+  const tiles = [['ب', 150, 215, -10, '#2fd6c3'], ['ر', 320, 175, 6, '#9a7bff'], ['ك', 470, 255, -4, '#ffb02e'], ['ل', 215, 390, 8, '#ff5d8f'], ['ن', 395, 410, -7, '#4aa8ff']];
+  for (const [ch, x, y, rot, col] of tiles) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((rot * Math.PI) / 180);
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 28;
+    ctx.shadowOffsetY = 12;
+    rr(ctx, -72, -72, 144, 144, 34);
+    const g = ctx.createLinearGradient(0, -72, 0, 72);
+    g.addColorStop(0, col);
+    g.addColorStop(1, hexA(col, 0.7));
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = F('Black', 100);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.direction = 'rtl';
+    ctx.fillText(ch, 0, 14);
+    ctx.direction = 'ltr';
+    ctx.restore();
+  }
+}
+
 async function banner(key, b) {
   const c = createCanvas(W, H);
   const ctx = c.getContext('2d');
@@ -490,6 +521,7 @@ async function banner(key, b) {
   else if (b.art === 'xo') xoArt(ctx, b.accent);
   else if (b.art === 'rps') await rpsArt(ctx);
   else if (b.art === 'boxes') await boxesArt(ctx, b.accent);
+  else if (b.art === 'letters') lettersArt(ctx, b.accent);
   else await stage(ctx, b.accent, b.main, b.sats);
   textBlock(ctx, b, b.accent);
   brandMark(ctx, W - 260, H - 82, 1);

@@ -216,7 +216,7 @@ function drawFrame(ctx, disc, angle, result, accent) {
 /**
  * @returns {Promise<{gif: Buffer, png: Buffer, duration: number} | null>}
  */
-async function render(rewards, winner, { background = '', accent = '#7950E8', maxSlices = MAX_SLICES, frames: frameCount = 46 } = {}) {
+async function render(rewards, winner, { background = '', accent = '#7950E8', maxSlices = MAX_SLICES, frames: frameCount = 46, scale = 1 } = {}) {
   if (!canvas) return null;
   const { slices, win } = slicesFor(rewards, winner, maxSlices);
   const disc = drawDisc(slices, await loadBg(background), accent);
@@ -228,6 +228,17 @@ async function render(rewards, winner, { background = '', accent = '#7950E8', ma
 
   const c = canvas.createCanvas(W, H);
   const ctx = c.getContext('2d');
+  // optional smaller output (e.g. the compact roulette wheel): draw full size, copy each frame down
+  const sw = Math.round(W * scale);
+  const sh = Math.round(H * scale);
+  const small = scale < 1 ? canvas.createCanvas(sw, sh) : null;
+  const sctx = small?.getContext('2d');
+  const grab = () => {
+    if (!small) return Buffer.from(ctx.getImageData(0, 0, W, H).data);
+    sctx.clearRect(0, 0, sw, sh);
+    sctx.drawImage(c, 0, 0, sw, sh);
+    return Buffer.from(sctx.getImageData(0, 0, sw, sh).data);
+  };
   const frames = [];
   const N = frameCount;
   for (let f = 0; f <= N; f++) {
@@ -235,14 +246,14 @@ async function render(rewards, winner, { background = '', accent = '#7950E8', ma
     const eased = 1 - Math.pow(1 - t, 3.2);
     drawFrame(ctx, disc, start + (target - start) * eased, null, accent);
     // frames get slower towards the end, like a real wheel
-    frames.push({ data: Buffer.from(ctx.getImageData(0, 0, W, H).data), delay: 45 + Math.round(70 * t * t) });
+    frames.push({ data: grab(), delay: 45 + Math.round(70 * t * t) });
   }
   const final = start + target - start;
   drawFrame(ctx, disc, final, slices[win], accent);
-  frames.push({ data: Buffer.from(ctx.getImageData(0, 0, W, H).data), delay: 60_000 });
-  const png = c.toBuffer('image/png');
+  frames.push({ data: grab(), delay: 60_000 });
+  const png = (small || c).toBuffer('image/png');
   const duration = frames.slice(0, -1).reduce((s, f) => s + f.delay, 0);
-  return { gif: gif.encode(W, H, frames, { loop: false }), png, duration };
+  return { gif: gif.encode(small ? sw : W, small ? sh : H, frames, { loop: false }), png, duration };
 }
 
 module.exports = { render, available, slicesFor };

@@ -11,43 +11,43 @@ const { Events, AuditLogEvent, ChannelType, PermissionsBitField, PermissionFlags
 const store = require('../utils/store');
 const ui = require('../utils/ui');
 const E = require('../utils/emojis');
-const art = require('../utils/art');
 const { ts } = require('../utils/time');
 
 const LOG_GROUPS = {
-  members: { label: 'الأعضاء', channel: '👥・سجل-الأعضاء' },
-  messages: { label: 'الرسائل', channel: '💬・سجل-الرسائل' },
-  moderation: { label: 'العقوبات والحماية', channel: '🔨・سجل-العقوبات' },
-  server: { label: 'السيرفر', channel: '⚙️・سجل-السيرفر' },
-  voice: { label: 'الصوت', channel: '🔊・سجل-الصوت' },
-  bot: { label: 'البوت', channel: '🤖・سجل-البوت' },
+  members: { label: 'الأعضاء', channel: 'سجل-الأعضاء' },
+  messages: { label: 'الرسائل', channel: 'سجل-الرسائل' },
+  moderation: { label: 'العقوبات والحماية', channel: 'سجل-العقوبات' },
+  server: { label: 'السيرفر', channel: 'سجل-السيرفر' },
+  voice: { label: 'الصوت', channel: 'سجل-الصوت' },
+  bot: { label: 'البوت', channel: 'سجل-البوت' },
 };
 
 const LOG_TYPES = {
-  member_join: { group: 'members', label: 'دخول الأعضاء', icon: 'userplus', emoji: 'joinLeave', channel: '📥・دخول' },
-  member_leave: { group: 'members', label: 'خروج الأعضاء', icon: 'door', emoji: 'joinLeave', channel: '📤・خروج' },
-  member_update: { group: 'members', label: 'الألقاب والأسماء والصور', icon: 'rename', emoji: 'edit', channel: '👤・الأعضاء' },
-  role_changes: { group: 'members', label: 'إعطاء وسحب الرتب', icon: 'players', emoji: 'roles', channel: '🎭・رتب-الأعضاء' },
-  boosts: { group: 'members', label: 'البوستات', icon: 'sparkles', emoji: 'star', channel: '💎・البوست' },
-  message_delete: { group: 'messages', label: 'الرسائل المحذوفة', icon: 'cancel', emoji: 'delete', channel: '🗑️・المحذوف' },
-  message_edit: { group: 'messages', label: 'الرسائل المعدلة والمثبتة', icon: 'rename', emoji: 'edit', channel: '✏️・المعدّل' },
-  moderation_actions: { group: 'moderation', label: 'العقوبات: حظر، طرد، تايم أوت، تحذير', icon: 'kick', emoji: 'ban', channel: '🔨・العقوبات' },
-  automod: { group: 'moderation', label: 'الأوتومود وقواعده', icon: 'shield', emoji: 'shield', channel: '🛡️・الأوتومود' },
-  channel_changes: { group: 'server', label: 'القنوات وصلاحياتها', icon: 'tasks', emoji: 'settings', channel: '📁・القنوات' },
-  server_roles: { group: 'server', label: 'إنشاء وتعديل وحذف الرتب', icon: 'crown', emoji: 'roles', channel: '🧩・الرتب' },
-  server_updates: { group: 'server', label: 'إعدادات السيرفر', icon: 'repair', emoji: 'settings', channel: '⚙️・السيرفر' },
-  emojis_stickers: { group: 'server', label: 'الإيموجي والملصقات والأصوات', icon: 'star', emoji: 'star', channel: '😀・الإيموجي' },
-  invites: { group: 'server', label: 'روابط الدعوة', icon: 'mail', emoji: 'announce', channel: '🔗・الدعوات' },
-  integrations: { group: 'server', label: 'البوتات والويب هوك والتكاملات', icon: 'zap', emoji: 'settings', channel: '🤖・بوتات-وويب-هوك' },
-  threads: { group: 'server', label: 'الثريدات', icon: 'chat', emoji: 'edit', channel: '🧵・الثريدات' },
-  events: { group: 'server', label: 'الفعاليات والستيج', icon: 'party', emoji: 'timer', channel: '📅・الفعاليات' },
-  voice_changes: { group: 'voice', label: 'الرومات الصوتية', icon: 'voice', emoji: 'voice', channel: '🔊・الصوت' },
-  bot_commands: { group: 'bot', label: 'أوامر البوت المستخدمة', icon: 'list', emoji: 'settings', channel: '⌨️・أوامر-البوت' },
-  ticket_logs: { group: 'bot', label: 'التذاكر', icon: 'ticket', emoji: 'ticket', channel: '🎫・التذاكر' },
+  member_join: { group: 'members', label: 'دخول الأعضاء', icon: 'userplus', emoji: 'joinLeave', channel: 'سجل-الدخول' },
+  member_leave: { group: 'members', label: 'خروج الأعضاء', icon: 'door', emoji: 'joinLeave', channel: 'سجل-الخروج' },
+  member_update: { group: 'members', label: 'الألقاب والأسماء والصور', icon: 'rename', emoji: 'edit', channel: 'سجل-الأعضاء' },
+  role_changes: { group: 'members', label: 'إعطاء وسحب الرتب', icon: 'players', emoji: 'roles', channel: 'سجل-رتب-الأعضاء' },
+  boosts: { group: 'members', label: 'البوستات', icon: 'sparkles', emoji: 'star', channel: 'سجل-البوستات' },
+  message_delete: { group: 'messages', label: 'الرسائل المحذوفة', icon: 'cancel', emoji: 'delete', channel: 'سجل-المحذوف' },
+  message_edit: { group: 'messages', label: 'الرسائل المعدلة والمثبتة', icon: 'rename', emoji: 'edit', channel: 'سجل-التعديلات' },
+  moderation_actions: { group: 'moderation', label: 'العقوبات: حظر، طرد، تايم أوت، تحذير', icon: 'kick', emoji: 'ban', channel: 'سجل-العقوبات' },
+  automod: { group: 'moderation', label: 'الأوتومود وقواعده', icon: 'shield', emoji: 'shield', channel: 'سجل-الأوتومود' },
+  channel_changes: { group: 'server', label: 'القنوات وصلاحياتها', icon: 'tasks', emoji: 'settings', channel: 'سجل-القنوات' },
+  server_roles: { group: 'server', label: 'إنشاء وتعديل وحذف الرتب', icon: 'crown', emoji: 'roles', channel: 'سجل-الرتب' },
+  server_updates: { group: 'server', label: 'إعدادات السيرفر', icon: 'repair', emoji: 'settings', channel: 'سجل-الإعدادات' },
+  emojis_stickers: { group: 'server', label: 'الإيموجي والملصقات والأصوات', icon: 'star', emoji: 'star', channel: 'سجل-الإيموجي' },
+  invites: { group: 'server', label: 'روابط الدعوة', icon: 'mail', emoji: 'announce', channel: 'سجل-الدعوات' },
+  integrations: { group: 'server', label: 'البوتات والويب هوك والتكاملات', icon: 'zap', emoji: 'settings', channel: 'سجل-البوتات' },
+  threads: { group: 'server', label: 'الثريدات', icon: 'chat', emoji: 'edit', channel: 'سجل-الثريدات' },
+  events: { group: 'server', label: 'الفعاليات والستيج', icon: 'party', emoji: 'timer', channel: 'سجل-الفعاليات' },
+  voice_changes: { group: 'voice', label: 'الرومات الصوتية', icon: 'voice', emoji: 'voice', channel: 'سجل-الصوت' },
+  bot_commands: { group: 'bot', label: 'أوامر البوت المستخدمة', icon: 'list', emoji: 'settings', channel: 'سجل-الأوامر' },
+  ticket_logs: { group: 'bot', label: 'التذاكر', icon: 'ticket', emoji: 'ticket', channel: 'سجل-التذاكر' },
 };
 // keys from the old version → still honoured until the server picks new channels
 const LEGACY = { member_join: 'member_join_leave', member_leave: 'member_join_leave', message_delete: 'message_edit_delete', message_edit: 'message_edit_delete', member_update: 'nickname_changes', server_roles: 'channel_changes' };
-const LOG_CATEGORY = '📋 سجلات ماركا';
+const LOG_CATEGORY = 'السجلات';
+const OLD_CATEGORY = '📋 سجلات ماركا';
 
 const COLORS = { create: 0x2fd27a, delete: 0xff5d6c, update: 0xffb02e, info: 0x7c86ff, mod: 0xd42d43 };
 
@@ -84,7 +84,8 @@ async function autoSetup(guild, { mode = 'separate', overwrite = false } = {}) {
   if (managerRoleId && guild.roles.cache.has(managerRoleId)) {
     overwrites.push({ id: managerRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory], deny: [PermissionFlagsBits.SendMessages] });
   }
-  let category = guild.channels.cache.find((c) => c.type === ChannelType.GuildCategory && c.name === LOG_CATEGORY);
+  let category = guild.channels.cache.find((c) => c.type === ChannelType.GuildCategory && (c.name === LOG_CATEGORY || c.name === OLD_CATEGORY));
+  if (category && category.name !== LOG_CATEGORY) await category.setName(LOG_CATEGORY).catch(() => {});
   if (!category) category = await guild.channels.create({ name: LOG_CATEGORY, type: ChannelType.GuildCategory, permissionOverwrites: overwrites, reason: 'MarkaBot: إنشاء رومات السجلات' });
 
   const todo = Object.keys(LOG_TYPES).filter((k) => overwrite || !channelFor(guild, k));
@@ -98,8 +99,16 @@ async function autoSetup(guild, { mode = 'separate', overwrite = false } = {}) {
     byName.set(name, ch);
     return ch;
   };
+  // channels made by the old version (emoji names) are renamed instead of duplicated
+  if (!overwrite) {
+    for (const k of Object.keys(LOG_TYPES)) {
+      const ch = channelFor(guild, k);
+      const want = LOG_TYPES[k].channel;
+      if (ch && ch.parentId === category.id && /・/.test(ch.name) && mode === 'separate') await ch.setName(want).catch(() => {});
+    }
+  }
   for (const k of todo) {
-    const name = mode === 'single' ? '📋・كل-السجلات' : mode === 'grouped' ? LOG_GROUPS[LOG_TYPES[k].group].channel : LOG_TYPES[k].channel;
+    const name = mode === 'single' ? 'كل-السجلات' : mode === 'grouped' ? LOG_GROUPS[LOG_TYPES[k].group].channel : LOG_TYPES[k].channel;
     conf[k] = (await get(name)).id;
   }
   for (const old of new Set(Object.values(LEGACY))) if (old in conf && !(old in LOG_TYPES)) delete conf[old];
@@ -304,107 +313,102 @@ async function onAudit(entry, guild) {
     recentDeletes.set(`${entry.extra?.channel?.id}:${entry.targetId}`, { executorId: entry.executorId, at: Date.now() });
     return;
   }
-  if (entry.action === A.MessageBulkDelete) return; // the bulk-delete transcript says it all
+  if (entry.action === A.MessageBulkDelete) return; // the bulk-delete transcript covers it
   let meta = ACTIONS[entry.action];
   if (entry.action === A.MemberUpdate) meta = routeMemberUpdate(entry) || meta;
-  if (!meta) meta = ['server_updates', `إجراء إداري (${A[entry.action] || entry.action})`, 'info', 'info'];
-  const [type, title, kind, icon] = meta;
+  if (!meta) meta = ['server_updates', `إجراء إداري (${A[entry.action] || entry.action})`, 'info'];
+  const [type, title, kind] = meta;
   if (!channelFor(guild, type)) return;
 
-  const lines = [`${art.i(icon, '')} **${title}**`];
-  const target = targetText(entry, guild);
-  if (target) lines.push(`**الهدف:** ${target}`);
-  lines.push(`**بواسطة:** ${entry.executorId ? `<@${entry.executorId}>` : 'غير معروف'}${entry.executor?.bot ? ' (بوت)' : ''}`);
-  const ex = extraText({ ...entry, guildId: guild.id });
-  if (ex) lines.push(ex);
-  if (entry.reason) lines.push(`**السبب:** ${ui.trim(entry.reason, 300)}`);
-  const ch = changeLines(entry.changes);
-  if (ch.length) lines.push('', ...ch);
-
-  const e = ui
-    .embed()
-    .setColor(COLORS[kind] || COLORS.info)
-    .setDescription(ui.trim(lines.join('\n'), 4000))
-    .setFooter({ text: [entry.targetId && `الهدف: ${entry.targetId}`, entry.executorId && `المنفذ: ${entry.executorId}`].filter(Boolean).join(' • ') || 'MarkaBot' })
-    .setTimestamp(entry.createdTimestamp || Date.now());
-  const ex2 = entry.executor;
-  if (ex2?.username) e.setAuthor({ name: ex2.globalName || ex2.username, iconURL: ex2.displayAvatarURL?.() });
+  const e = ui.embed().setColor(COLORS[kind] || COLORS.info).setTitle(title).setTimestamp(entry.createdTimestamp || Date.now());
+  const ex = entry.executor;
+  if (ex?.username) e.setAuthor({ name: ex.username, iconURL: ex.displayAvatarURL?.() });
   if (entry.targetType === 'User' && entry.target?.displayAvatarURL) e.setThumbnail(entry.target.displayAvatarURL());
+  const fields = [];
+  const target = targetText(entry, guild);
+  if (target) fields.push({ name: 'الهدف', value: target, inline: true });
+  fields.push({ name: 'بواسطة', value: entry.executorId ? `<@${entry.executorId}>${ex?.bot ? ' · بوت' : ''}` : 'غير معروف', inline: true });
+  const extra = extraText({ ...entry, guildId: guild.id });
+  if (extra) fields.push({ name: 'تفاصيل', value: ui.trim(extra.replace(/\*\*/g, ''), 1024), inline: false });
+  if (entry.reason) fields.push({ name: 'السبب', value: ui.trim(entry.reason, 1024), inline: false });
+  e.addFields(fields);
+  const ch = changeLines(entry.changes);
+  if (ch.length) e.setDescription(ui.trim(ch.join('\n'), 4000));
+  e.setFooter({ text: [entry.targetId && `الهدف ${entry.targetId}`, entry.executorId && `المنفذ ${entry.executorId}`].filter(Boolean).join(' · ') || ' ' });
   await send(guild, type, e);
 }
 
 // ---------- gateway-side logs ----------
-function memberEmbed(user, color) {
+function userCard(user, color, title) {
   return ui
     .embed()
     .setColor(color)
-    .setAuthor({ name: user.globalName || user.username || 'عضو', iconURL: user.displayAvatarURL?.() })
-    .setThumbnail(user.displayAvatarURL?.({ size: 256 }) || null)
-    .setFooter({ text: `ID: ${user.id}` })
+    .setTitle(title)
+    .setAuthor({ name: user.username || 'عضو', iconURL: user.displayAvatarURL?.() })
+    .setFooter({ text: `ID ${user.id}` })
     .setTimestamp();
 }
+const dateAndAgo = (t) => `${ts(t, 'D')} · ${ts(t, 'R')}`;
 
 async function onJoin(member) {
   if (!channelFor(member.guild, 'member_join')) return;
-  const age = Date.now() - member.user.createdTimestamp;
   await new Promise((r) => setTimeout(r, 2500)); // let the invite tracker work out who invited them
   let inviter = null;
   try {
     inviter = require('./invites').findInviter(member.guild.id, member.id);
   } catch {}
-  const lines = [
-    `${art.i('userplus', '')} **دخل عضو جديد**`,
-    `${member} \`${member.user.username}\`${member.user.bot ? ' (بوت)' : ''}`,
-    `**عمر الحساب:** ${ts(member.user.createdTimestamp, 'R')}${age < 7 * 86_400_000 ? ` ${E.warning} حساب جديد` : ''}`,
-    inviter ? `**دعاه:** <@${inviter.inviterId}>` : null,
-    `**صار عددنا:** ${member.guild.memberCount}`,
-  ];
-  send(member.guild, 'member_join', memberEmbed(member.user, COLORS.create).setDescription(lines.filter(Boolean).join('\n')));
+  const age = Date.now() - member.user.createdTimestamp;
+  const e = userCard(member.user, COLORS.create, member.user.bot ? 'انضمام بوت' : 'انضمام عضو')
+    .setThumbnail(member.user.displayAvatarURL?.({ size: 256 }) || null)
+    .setDescription(`${member} \`${member.user.username}\``)
+    .addFields(
+      { name: 'تاريخ إنشاء الحساب', value: `${dateAndAgo(member.user.createdTimestamp)}${age < 7 * 86_400_000 ? '\n⚠️ حساب جديد' : ''}`, inline: true },
+      { name: 'دعوة من', value: inviter ? `<@${inviter.inviterId}>` : 'غير معروف', inline: true },
+      { name: 'عدد الأعضاء', value: `${member.guild.memberCount}`, inline: true }
+    );
+  send(member.guild, 'member_join', e);
 }
 
 async function onLeave(member) {
   if (!channelFor(member.guild, 'member_leave')) return;
   const roles = member.roles?.cache?.filter((r) => r.id !== member.guild.id);
-  const lines = [
-    `${art.i('door', '')} **طلع عضو**`,
-    `${member.user} \`${member.user.username}\``,
-    member.joinedTimestamp ? `**كان معنا من:** ${ts(member.joinedTimestamp, 'R')}` : null,
-    roles?.size ? `**رتبه:** ${ui.trim(roles.map((r) => `${r}`).join(' '), 900)}` : null,
-    `**صار عددنا:** ${member.guild.memberCount}`,
-    '-# إذا انطرد أو انحظر، بتلاقي مين عملها بسجل العقوبات',
-  ];
-  send(member.guild, 'member_leave', memberEmbed(member.user, COLORS.delete).setDescription(lines.filter(Boolean).join('\n')));
+  const e = userCard(member.user, COLORS.delete, member.user.bot ? 'مغادرة بوت' : 'مغادرة عضو')
+    .setThumbnail(member.user.displayAvatarURL?.({ size: 256 }) || null)
+    .setDescription(`${member.user} \`${member.user.username}\``)
+    .addFields(
+      { name: 'انضم', value: member.joinedTimestamp ? dateAndAgo(member.joinedTimestamp) : 'غير معروف', inline: true },
+      { name: 'عدد الأعضاء', value: `${member.guild.memberCount}`, inline: true },
+      { name: `الرتب (${roles?.size || 0})`, value: roles?.size ? ui.trim(roles.map((r) => `${r}`).join(' '), 1024) : 'لا يوجد', inline: false }
+    );
+  send(member.guild, 'member_leave', e);
 }
 
 function onMemberUpdate(oldM, newM) {
   const g = newM.guild;
-  // boosts
   if (!oldM.premiumSince && newM.premiumSince) {
-    send(g, 'boosts', memberEmbed(newM.user, 0xff73fa).setDescription(`${art.i('sparkles', '💎')} **${newM} عمل بوست للسيرفر!**\n**عدد البوستات:** ${g.premiumSubscriptionCount ?? '—'} • **اللفل:** ${g.premiumTier ?? 0}`));
+    send(g, 'boosts', userCard(newM.user, 0xf47fff, 'بوست جديد').setDescription(`${newM} عمل بوست للسيرفر`).addFields({ name: 'عدد البوستات', value: `${g.premiumSubscriptionCount ?? '—'}`, inline: true }, { name: 'المستوى', value: `${g.premiumTier ?? 0}`, inline: true }));
   } else if (oldM.premiumSince && !newM.premiumSince) {
-    send(g, 'boosts', memberEmbed(newM.user, COLORS.delete).setDescription(`${art.i('sparkles', '💎')} **${newM} شال البوست**\n**كان مبوست من:** ${ts(oldM.premiumSinceTimestamp, 'R')}`));
+    send(g, 'boosts', userCard(newM.user, COLORS.delete, 'إلغاء بوست').setDescription(`${newM} شال البوست`).addFields({ name: 'كان مبوست منذ', value: dateAndAgo(oldM.premiumSinceTimestamp), inline: true }));
   }
-  // server avatar (nickname, roles and timeouts come from the audit log with who did it)
   if (!oldM.partial && oldM.avatar !== newM.avatar) {
-    const e = memberEmbed(newM.user, COLORS.update).setDescription(`${art.i('rename', '')} **غيّر صورته بالسيرفر**\n${newM}`);
-    if (newM.avatar) e.setImage(newM.displayAvatarURL({ size: 512 }));
+    const e = userCard(newM.user, COLORS.update, 'تغيير صورة السيرفر').setDescription(`${newM}`);
+    if (newM.avatar) e.setThumbnail(newM.displayAvatarURL({ size: 512 }));
     send(g, 'member_update', e);
   }
-  // finished membership screening
-  if (oldM.pending && !newM.pending) send(g, 'member_join', memberEmbed(newM.user, COLORS.create).setDescription(`${art.i('check', '')} **${newM} وافق على قوانين السيرفر**`));
+  if (oldM.pending && !newM.pending) send(g, 'member_join', userCard(newM.user, COLORS.create, 'موافقة على القوانين').setDescription(`${newM}`));
 }
 
 function onUserUpdate(oldU, newU, client) {
-  const lines = [];
-  if (oldU.username !== newU.username) lines.push(`**اليوزر:** \`${oldU.username}\` ← \`${newU.username}\``);
-  if (oldU.globalName !== newU.globalName) lines.push(`**الاسم الظاهر:** \`${oldU.globalName || '—'}\` ← \`${newU.globalName || '—'}\``);
+  const fields = [];
+  if (oldU.username !== newU.username) fields.push({ name: 'اسم المستخدم', value: `\`${oldU.username}\` ← \`${newU.username}\``, inline: false });
+  if (oldU.globalName !== newU.globalName) fields.push({ name: 'الاسم الظاهر', value: `\`${oldU.globalName || '—'}\` ← \`${newU.globalName || '—'}\``, inline: false });
   const avatar = oldU.avatar !== newU.avatar;
-  if (avatar) lines.push('**غيّر صورته**');
-  if (!lines.length) return;
+  if (!fields.length && !avatar) return;
   for (const g of client.guilds.cache.values()) {
     if (!g.members.cache.has(newU.id) || !channelFor(g, 'member_update')) continue;
-    const e = memberEmbed(newU, COLORS.update).setDescription([`${art.i('rename', '')} **تحديث حساب**`, `<@${newU.id}>`, ...lines].join('\n'));
-    if (avatar) e.setImage(newU.displayAvatarURL({ size: 512 }));
+    const e = userCard(newU, COLORS.update, avatar && !fields.length ? 'تغيير الصورة الشخصية' : 'تحديث الحساب').setDescription(`<@${newU.id}>`);
+    if (fields.length) e.addFields(fields);
+    if (avatar) e.setThumbnail(newU.displayAvatarURL({ size: 512 }));
     send(g, 'member_update', e);
   }
 }
@@ -414,27 +418,33 @@ async function onMessageDelete(message) {
   await new Promise((r) => setTimeout(r, 1500)); // the audit entry (deleted by a moderator?) arrives right after
   const key = `${message.channelId}:${message.author?.id}`;
   const by = recentDeletes.get(key);
-  if (by && Date.now() - by.at < 5000) recentDeletes.delete(key);
+  const byMod = by && Date.now() - by.at < 5000;
+  if (byMod) recentDeletes.delete(key);
   const mentions = message.mentions?.users?.filter((u) => !u.bot && u.id !== message.author?.id);
   const ghost = mentions?.size && Date.now() - message.createdTimestamp < 60_000;
-  const lines = [
-    `${art.i('cancel', '')} **${ghost ? 'منشن وهمي (Ghost Ping)' : 'انحذفت رسالة'}**`,
-    `**الكاتب:** ${message.author ? `${message.author} \`${message.author.username}\`` : 'غير معروف (الرسالة قديمة)'}`,
-    `**القناة:** ${message.channel} • **انكتبت:** ${message.createdTimestamp ? ts(message.createdTimestamp, 'R') : '—'}`,
-    by && Date.now() - by.at < 5000 ? `**حذفها:** <@${by.executorId}>` : null,
-    ghost ? `**منشن:** ${mentions.map((u) => `${u}`).join(' ')}` : null,
-    message.reference?.messageId ? `**كانت رد على:** [رسالة](https://discord.com/channels/${message.guild.id}/${message.reference.channelId}/${message.reference.messageId})` : null,
-    '',
-    message.content ? `>>> ${ui.trim(message.content, 1800)}` : message.partial ? '-# المحتوى مش محفوظ (الرسالة انبعتت قبل تشغيل البوت)' : '-# بدون نص',
+  const e = ui
+    .embed()
+    .setColor(COLORS.delete)
+    .setTitle(ghost ? 'منشن مخفي (Ghost Ping)' : 'رسالة محذوفة')
+    .setDescription(message.content ? ui.trim(message.content, 4000) : message.partial ? '*المحتوى غير محفوظ — الرسالة أقدم من آخر تشغيل للبوت*' : '*بدون نص*')
+    .setFooter({ text: `الكاتب ${message.author?.id || '—'} · الرسالة ${message.id}` })
+    .setTimestamp();
+  if (message.author) e.setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() });
+  const fields = [
+    { name: 'الكاتب', value: message.author ? `${message.author}` : 'غير معروف', inline: true },
+    { name: 'القناة', value: `${message.channel}`, inline: true },
   ];
-  const e = ui.embed().setColor(COLORS.delete).setDescription(lines.filter((x) => x !== null).join('\n')).setFooter({ text: `الكاتب: ${message.author?.id || '—'} • الرسالة: ${message.id}` }).setTimestamp();
-  if (message.author) e.setAuthor({ name: message.author.globalName || message.author.username, iconURL: message.author.displayAvatarURL() });
+  if (byMod) fields.push({ name: 'حذفها', value: `<@${by.executorId}>`, inline: true });
+  if (message.createdTimestamp) fields.push({ name: 'أُرسلت', value: ts(message.createdTimestamp, 'R'), inline: true });
+  if (ghost) fields.push({ name: 'المنشن', value: mentions.map((u) => `${u}`).join(' '), inline: false });
+  if (message.reference?.messageId) fields.push({ name: 'رد على', value: `[رسالة](https://discord.com/channels/${message.guild.id}/${message.reference.channelId}/${message.reference.messageId})`, inline: true });
   if (message.attachments?.size) {
-    e.addFields({ name: `المرفقات (${message.attachments.size})`, value: ui.trim(message.attachments.map((a) => `[${a.name}](${a.proxyURL || a.url})`).join('\n'), 1000) });
+    fields.push({ name: `المرفقات (${message.attachments.size})`, value: ui.trim(message.attachments.map((a) => `[${a.name}](${a.proxyURL || a.url})`).join('\n'), 1024), inline: false });
     const img = message.attachments.find((a) => a.contentType?.startsWith('image/'));
     if (img) e.setImage(img.proxyURL || img.url);
   }
-  if (message.stickers?.size) e.addFields({ name: 'ملصقات', value: message.stickers.map((s) => s.name).join('، ') });
+  if (message.stickers?.size) fields.push({ name: 'ملصقات', value: message.stickers.map((x) => x.name).join('، '), inline: false });
+  e.addFields(fields);
   send(message.guild, 'message_delete', e);
 }
 
@@ -454,7 +464,9 @@ async function onBulkDelete(messages, channel) {
   const e = ui
     .embed()
     .setColor(COLORS.delete)
-    .setDescription([`${art.i('cancel', '')} **مسح جماعي**`, `**القناة:** ${channel}`, `**العدد:** ${messages.size} رسالة`, by ? `**بواسطة:** <@${by}>` : null, '-# كل الرسائل بالملف المرفق'].filter(Boolean).join('\n'))
+    .setTitle('حذف جماعي')
+    .addFields({ name: 'القناة', value: `${channel}`, inline: true }, { name: 'العدد', value: `${messages.size}`, inline: true }, { name: 'بواسطة', value: by ? `<@${by}>` : 'غير معروف', inline: true })
+    .setFooter({ text: 'نص الرسائل بالملف المرفق' })
     .setTimestamp();
   send(guild, 'message_delete', { embeds: [e], files: [new AttachmentBuilder(Buffer.from(`﻿${text}`, 'utf8'), { name: `deleted-${channel.name}-${Date.now()}.txt` })] });
 }
@@ -465,10 +477,16 @@ function onMessageUpdate(oldMsg, newMsg) {
   const e = ui
     .embed()
     .setColor(COLORS.update)
-    .setAuthor({ name: newMsg.author.globalName || newMsg.author.username, iconURL: newMsg.author.displayAvatarURL() })
-    .setDescription([`${art.i('rename', '')} **تعديل رسالة** • [روح للرسالة](${newMsg.url})`, `**الكاتب:** ${newMsg.author} • **القناة:** ${newMsg.channel}`].join('\n'))
-    .addFields({ name: 'قبل', value: ui.trim(oldMsg.content || '—', 1024) }, { name: 'بعد', value: ui.trim(newMsg.content || '—', 1024) })
-    .setFooter({ text: `الكاتب: ${newMsg.author.id} • الرسالة: ${newMsg.id}` })
+    .setTitle('تعديل رسالة')
+    .setURL(newMsg.url)
+    .setAuthor({ name: newMsg.author.username, iconURL: newMsg.author.displayAvatarURL() })
+    .addFields(
+      { name: 'الكاتب', value: `${newMsg.author}`, inline: true },
+      { name: 'القناة', value: `${newMsg.channel}`, inline: true },
+      { name: 'قبل', value: ui.trim(oldMsg.content || '—', 1024), inline: false },
+      { name: 'بعد', value: ui.trim(newMsg.content || '—', 1024), inline: false }
+    )
+    .setFooter({ text: `الكاتب ${newMsg.author.id} · الرسالة ${newMsg.id}` })
     .setTimestamp();
   send(newMsg.guild, 'message_edit', e);
 }
@@ -477,42 +495,38 @@ function onVoice(o, n) {
   const member = n.member || o.member;
   const g = n.guild;
   if (!member || !channelFor(g, 'voice_changes')) return;
-  const lines = [];
+  let title = null;
+  let desc = '';
   let color = COLORS.info;
   if (o.channelId !== n.channelId) {
-    if (!o.channelId) {
-      lines.push(`${art.i('voice', '')} **دخل روم صوتي**`, `${member} ← ${n.channel}`);
-      color = COLORS.create;
-    } else if (!n.channelId) {
-      lines.push(`${art.i('voice', '')} **طلع من الصوت**`, `${member} من ${o.channel}`);
-      color = COLORS.delete;
-    } else {
-      lines.push(`${art.i('voice', '')} **انتقل بين الرومات**`, `${member}: ${o.channel} ← ${n.channel}`);
-      color = COLORS.update;
-    }
-  } else {
-    if (!o.streaming && n.streaming) lines.push(`${art.i('voice', '')} **بلّش بث شاشة**`, `${member} بـ ${n.channel}`);
-    else if (o.streaming && !n.streaming) lines.push(`${art.i('voice', '')} **وقّف بث الشاشة**`, `${member} بـ ${n.channel}`);
-    else if (!o.selfVideo && n.selfVideo) lines.push(`${art.i('voice', '')} **فتح الكاميرا**`, `${member} بـ ${n.channel}`);
-    else if (o.selfVideo && !n.selfVideo) lines.push(`${art.i('voice', '')} **سكّر الكاميرا**`, `${member} بـ ${n.channel}`);
-  }
-  if (!lines.length) return;
-  send(g, 'voice_changes', ui.embed().setColor(color).setAuthor({ name: member.displayName, iconURL: member.displayAvatarURL() }).setDescription(lines.join('\n')).setFooter({ text: `ID: ${member.id}` }).setTimestamp());
+    if (!o.channelId) [title, desc, color] = ['دخول روم صوتي', `${member} ← ${n.channel}`, COLORS.create];
+    else if (!n.channelId) [title, desc, color] = ['مغادرة روم صوتي', `${member} من ${o.channel}`, COLORS.delete];
+    else [title, desc, color] = ['تنقّل بين الرومات', `${member}\n${o.channel} ← ${n.channel}`, COLORS.update];
+  } else if (o.streaming !== n.streaming) [title, desc] = [n.streaming ? 'بدء مشاركة الشاشة' : 'إيقاف مشاركة الشاشة', `${member} · ${n.channel}`];
+  else if (o.selfVideo !== n.selfVideo) [title, desc] = [n.selfVideo ? 'تشغيل الكاميرا' : 'إيقاف الكاميرا', `${member} · ${n.channel}`];
+  if (!title) return;
+  send(g, 'voice_changes', ui.embed().setColor(color).setTitle(title).setAuthor({ name: member.user.username, iconURL: member.displayAvatarURL() }).setDescription(desc).setFooter({ text: `ID ${member.id}` }).setTimestamp());
 }
 
 function onAutoMod(ex) {
   const g = ex.guild;
   if (!channelFor(g, 'automod')) return;
   const ACT = { 1: 'منع الرسالة', 2: 'تنبيه بقناة', 3: 'تايم أوت', 4: 'منع التفاعل' };
-  const TRIG = { 1: 'كلمات ممنوعة', 3: 'سبام', 4: 'قائمة جاهزة', 5: 'منشن كثير', 6: 'بروفايل العضو' };
-  const lines = [
-    `${art.i('shield', '')} **الأوتومود تدخّل**`,
-    `**العضو:** <@${ex.userId}> • **القناة:** ${ex.channelId ? `<#${ex.channelId}>` : '—'}`,
-    `**القاعدة:** ${TRIG[ex.ruleTriggerType] || ex.ruleTriggerType} • **الإجراء:** ${ACT[ex.action?.type] || ex.action?.type}`,
-    ex.matchedKeyword ? `**الكلمة:** \`${ex.matchedKeyword}\`` : null,
-    ex.content ? `>>> ${ui.trim(ex.content, 1500)}` : null,
-  ];
-  send(g, 'automod', ui.embed().setColor(COLORS.mod).setDescription(lines.filter(Boolean).join('\n')).setFooter({ text: `ID: ${ex.userId}` }).setTimestamp());
+  const TRIG = { 1: 'كلمات ممنوعة', 3: 'سبام', 4: 'قائمة جاهزة', 5: 'منشن كثير', 6: 'ملف العضو' };
+  const e = ui
+    .embed()
+    .setColor(COLORS.mod)
+    .setTitle('تدخّل الأوتومود')
+    .addFields(
+      { name: 'العضو', value: `<@${ex.userId}>`, inline: true },
+      { name: 'القناة', value: ex.channelId ? `<#${ex.channelId}>` : '—', inline: true },
+      { name: 'الإجراء', value: `${ACT[ex.action?.type] || ex.action?.type}`, inline: true },
+      { name: 'القاعدة', value: `${TRIG[ex.ruleTriggerType] || ex.ruleTriggerType}${ex.matchedKeyword ? ` · \`${ex.matchedKeyword}\`` : ''}`, inline: false }
+    )
+    .setFooter({ text: `ID ${ex.userId}` })
+    .setTimestamp();
+  if (ex.content) e.setDescription(ui.trim(ex.content, 4000));
+  send(g, 'automod', e);
 }
 
 /** Called after every bot command (utils/commands). */
@@ -521,31 +535,30 @@ function logCommand(ctx) {
   if (!g || !channelFor(g, 'bot_commands')) return;
   const opts = Object.entries(ctx.options || {})
     .map(([k, v]) => `${k}: ${v?.id ? (v.username ? `@${v.username}` : v.name ? `#${v.name}` : v.id) : ui.trim(String(v), 80)}`)
-    .join(' • ');
-  send(
-    g,
-    'bot_commands',
-    ui
-      .embed()
-      .setColor(COLORS.info)
-      .setAuthor({ name: ctx.member?.displayName || ctx.user.username, iconURL: ctx.user.displayAvatarURL?.() })
-      .setDescription([`${art.i('list', '')} **${ctx.isSlash ? '/' : ctx.prefix}${ctx.command.name}**`, `**بـ:** ${ctx.channel}`, opts ? `-# ${opts}` : null].filter(Boolean).join('\n'))
-      .setFooter({ text: `ID: ${ctx.user.id}` })
-      .setTimestamp()
-  );
+    .join('\n');
+  const e = ui
+    .embed()
+    .setColor(COLORS.info)
+    .setTitle(`${ctx.isSlash ? '/' : ctx.prefix}${ctx.command.name}`)
+    .setAuthor({ name: ctx.user.username, iconURL: ctx.user.displayAvatarURL?.() })
+    .addFields({ name: 'العضو', value: `${ctx.user}`, inline: true }, { name: 'القناة', value: `${ctx.channel}`, inline: true })
+    .setFooter({ text: `ID ${ctx.user.id}` })
+    .setTimestamp();
+  if (opts) e.setDescription(`\`\`\`\n${ui.trim(opts, 1000)}\n\`\`\``);
+  send(g, 'bot_commands', e);
 }
 
 /** Bot-made moderation actions that don't show up in Discord's audit log (warnings, jail, notes…). */
-function modAction(guild, { title, target, by, reason, extra, icon = 'kick', color = COLORS.mod }) {
-  send(
-    guild,
-    'moderation_actions',
-    ui
-      .embed()
-      .setColor(color)
-      .setDescription([`${art.i(icon, '')} **${title}**`, target ? `**العضو:** <@${target}> \`${target}\`` : null, by ? `**بواسطة:** <@${by}>` : null, reason ? `**السبب:** ${ui.trim(reason, 400)}` : null, extra || null].filter(Boolean).join('\n'))
-      .setTimestamp()
-  );
+function modAction(guild, { title, target, by, reason, extra, color = COLORS.mod }) {
+  const e = ui.embed().setColor(color).setTitle(title).setTimestamp();
+  const fields = [];
+  if (target) fields.push({ name: 'العضو', value: `<@${target}>`, inline: true });
+  if (by) fields.push({ name: 'بواسطة', value: `<@${by}>`, inline: true });
+  if (reason) fields.push({ name: 'السبب', value: ui.trim(reason, 1024), inline: false });
+  if (extra) fields.push({ name: 'تفاصيل', value: ui.trim(String(extra).replace(/\*\*/g, ''), 1024), inline: false });
+  e.addFields(fields);
+  if (target) e.setFooter({ text: `ID ${target}` });
+  send(guild, 'moderation_actions', e);
 }
 
 /** Old configs (3 merged types) → the new split types, once. */

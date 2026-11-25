@@ -2409,7 +2409,7 @@
 
   function sGameArt() {
     const A = S.gameArt || {};
-    const games = [['roulette', 'روليت (اللوبي)'], ['rouletteWheel', 'روليت (خلفية العجلة)'], ['mafia', 'مافيا'], ['chairs', 'الكراسي'], ['spy', 'برا السالفة'], ['xo', 'بطولة XO'], ['rps', 'حجرة ورقة مقص'], ['deathbox', 'صندوق الموت'], ['fasttype', 'أسرع كاتب'], ['flags', 'أعلام'], ['capitals', 'عواصم'], ['unscramble', 'فكّك الكلمة'], ['math', 'حساب سريع'], ['night', 'سهرة الألعاب']];
+    const games = [['roulette', 'روليت (اللوبي)'], ['rouletteWheel', 'روليت (خلفية العجلة)'], ['mafia', 'مافيا'], ['chairs', 'الكراسي'], ['spy', 'برا السالفة'], ['xo', 'بطولة XO'], ['rps', 'حجرة ورقة مقص'], ['deathbox', 'صندوق الموت'], ['rebelka', 'ريبلكا'], ['fasttype', 'أسرع كاتب'], ['flags', 'أعلام'], ['capitals', 'عواصم'], ['unscramble', 'فكّك الكلمة'], ['math', 'حساب سريع'], ['night', 'سهرة الألعاب']];
     const line = ([k, n]) => `<div class="ga-row" data-ga="${k}">
         <div class="ga-prev">${A[k] ? `<img src="${esc(A[k])}" alt="">` : `<img src="/art/${k === 'rouletteWheel' ? 'roulette' : k}.jpg" alt="" onerror="this.remove()">`}</div>
         <div class="ga-body"><b>${n}</b>

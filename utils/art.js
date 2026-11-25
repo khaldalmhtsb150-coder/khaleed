@@ -34,7 +34,7 @@ function i(key, fallback = '') {
 const bannerPath = (key) => path.join(ART, 'banner', `${key}.jpg`);
 const hasBanner = (key) => fs.existsSync(bannerPath(key));
 /** AttachmentBuilder for a ready banner (or null). Name is stable so embeds can use attachment://. */
-const GAME_ART_KEYS = ['roulette', 'mafia', 'chairs', 'spy', 'xo', 'rps', 'deathbox', 'fasttype', 'flags', 'capitals', 'unscramble', 'math', 'night'];
+const GAME_ART_KEYS = ['roulette', 'mafia', 'chairs', 'spy', 'xo', 'rps', 'deathbox', 'rebelka', 'fasttype', 'flags', 'capitals', 'unscramble', 'math', 'night'];
 /** A premium server's own picture for this key (uploaded /media/... file or https link), or null. */
 function customArt(key, gid) {
   if (!gid) return null;

@@ -2,7 +2,22 @@
 // Most rounds wins. Typing race sentences are drawn as an image so they can't be copy-pasted.
 const path = require('path');
 const { AttachmentBuilder } = require('discord.js');
-const { FLAGS, CAPITALS, WORDS, SENTENCES } = require('./words');
+const { FLAGS, CAPITALS, WORDS, SENTENCES } = require('./content');
+const store = require('../../utils/store');
+
+/** Random item that wasn't used recently in this server (remembers ~80% of the list). */
+function pickFresh(gid, key, list) {
+  const all = store.get('gamesRecent');
+  const g = (all[gid] = all[gid] || {});
+  const recent = new Set(g[key] || []);
+  const keep = Math.max(1, Math.floor(list.length * 0.8));
+  let pool = list.map((_, i) => i).filter((i) => !recent.has(i));
+  if (!pool.length) pool = list.map((_, i) => i);
+  const idx = pool[Math.floor(Math.random() * pool.length)];
+  g[key] = [...(g[key] || []), idx].slice(-keep);
+  store.save('gamesRecent');
+  return list[idx];
+}
 
 let canvas = null;
 for (const name of ['canvas', '@napi-rs/canvas']) {
@@ -73,20 +88,20 @@ function textImage(text) {
 
 /** question factories: return { prompt, answers, image? } */
 const Q = {
-  fasttype: () => {
-    const s = pick(SENTENCES);
+  fasttype: (gid) => {
+    const s = pickFresh(gid, 'sentences', SENTENCES);
     return { prompt: '⌨️ أول واحد بيكتب الجملة صح بيفوز:', answers: [s], image: textImage(s), fallback: s };
   },
-  flags: () => {
-    const [flag, names] = pick(FLAGS);
+  flags: (gid) => {
+    const [flag, names] = pickFresh(gid, 'flags', FLAGS);
     return { prompt: `🏳️ علم أي دولة هاد؟\n# ${flag}`, answers: names };
   },
-  capitals: () => {
-    const [country, caps] = pick(CAPITALS);
+  capitals: (gid) => {
+    const [country, caps] = pickFresh(gid, 'capitals', CAPITALS);
     return { prompt: `🏛️ شو عاصمة **${country}**؟`, answers: caps };
   },
-  unscramble: () => {
-    const w = pick(WORDS);
+  unscramble: (gid) => {
+    const w = pickFresh(gid, 'words', WORDS);
     return { prompt: `🔤 رتّب الحروف وطلّع الكلمة:\n# ${[...scramble(w)].join(' ')}`, answers: [w] };
   },
   math: () => {
@@ -124,7 +139,7 @@ function makeType(id) {
       await game.send(b ? { content: `-# ${ROUNDS} أسئلة • 20 ثانية لكل سؤال • جاوبوا بالشات`, files: [b] } : { embeds: [E(`## ${META[id].emoji} ${META[id].name}\n${META[id].desc}\n**${ROUNDS} أسئلة**، كل سؤال إله 20 ثانية. جاوبوا بالشات!`)] });
       await game.sleep(3000);
       for (let r = 1; r <= ROUNDS; r++) {
-        const q = Q[id]();
+        const q = Q[id](game.guild.id);
         const payload = { content: `${q.prompt}\n-# سؤال ${r} من ${ROUNDS}` };
         if (q.image) payload.files = [new AttachmentBuilder(q.image, { name: 'q.png' })];
         else if (q.fallback) payload.content += `\n> ${q.fallback}`;

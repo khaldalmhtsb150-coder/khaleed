@@ -81,6 +81,8 @@ const DEFAULTS = {
   warnings: {},
   warnConfig: {},
   gameArt: {},
+  rebelkaLearned: {},
+  gamesRecent: {},
   staffActivity: {},
   staffReportLast: {},
   wrappedConfig: {},

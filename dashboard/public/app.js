@@ -93,6 +93,27 @@ const AVA_FB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://ww
     } catch {}
     location.reload();
   };
+  // ---------- theme ----------
+  const THEMES = ['night', 'light', 'noir'];
+  let theme = 'night';
+  try {
+    theme = localStorage.getItem('mk-theme') || 'night';
+  } catch {}
+  if (!THEMES.includes(theme)) theme = 'night';
+  document.documentElement.dataset.theme = theme;
+  const themeLabel = { night: lang === 'ar' ? 'ليلي' : 'Night', light: lang === 'ar' ? 'فاتح' : 'Light', noir: lang === 'ar' ? 'أسود وذهبي' : 'Noir' };
+  const themePick = () => `<div class="theme-pick" role="group" aria-label="Theme">${THEMES.map((k) => `<button type="button" data-theme-set="${k}" class="${theme === k ? 'on' : ''}" title="${themeLabel[k]}" aria-label="${themeLabel[k]}"></button>`).join('')}</div>`;
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-theme-set]');
+    if (!b) return;
+    theme = b.dataset.themeSet;
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem('mk-theme', theme);
+    } catch {}
+    document.querySelectorAll('[data-theme-set]').forEach((x) => x.classList.toggle('on', x.dataset.themeSet === theme));
+  });
+
   const langSwitch = () =>
     `<div class="lang-switch" role="group" aria-label="Language"><button type="button" data-lang="ar" class="${lang === 'ar' ? 'on' : ''}">ع</button><button type="button" data-lang="en" class="${lang === 'en' ? 'on' : ''}">EN</button></div>`;
   document.addEventListener('click', (e) => {
@@ -163,6 +184,7 @@ const AVA_FB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://ww
         <a href="/invite" target="_blank" rel="noopener">${t('invite')}</a>
       </nav>
       <div class="top-actions">
+        ${themePick()}
         ${langSwitch()}
         ${
           user
@@ -308,6 +330,7 @@ const AVA_FB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://ww
   /** Marks the active nav item (used by the settings page when the hash changes). */
   function setActiveNav(key) {
     document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === key));
+    document.documentElement.dataset.sec = key || '';
   }
 
   function options(list, selected, { placeholder = 'بدون', label = (x) => x.name, prefix = '' } = {}) {
