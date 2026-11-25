@@ -48,6 +48,7 @@ const FEATURES = {
   wheelImage: 'صورة خاصة لعجلة الحظ',
   backupPlus: 'نسخ احتياطية للسيرفر لآخر 7 أيام (المجاني 3)',
   youtubePlus: 'تنبيهات يوتيوب لحد 10 قنوات (المجاني 2)',
+  gameArt: 'صور خاصة لكل لعبة وعجلة الروليت',
 };
 
 const LIMIT_LABELS = {

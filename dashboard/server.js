@@ -37,7 +37,7 @@ const ytSys = require('../systems/youtube');
 const staffSys = require('../systems/staff');
 const wrapped = require('../systems/wrapped');
 const who = (req) => ({ id: req.session.user.id, name: req.session.user.globalName || req.session.user.username });
-const MODULE_NAMES = { giveaway: 'القيفاواي', protection: 'الحماية', prefix: 'البادئة', general: 'الإعدادات العامة', greetings: 'الترحيب النصي', welcome: 'الترحيب المتقدم', autoLine: 'الخط التلقائي', feedback: 'الآراء', jail: 'السجن', tickets: 'التذاكر', vanity: 'حماية الرابط', logs: 'السجلات', invites: 'الدعوات', replies: 'الردود التلقائية', levels: 'المستويات', automod: 'AutoMod', verify: 'التحقق', purge: 'المسح التلقائي', kafeel: 'الكفيل', prayer: 'أوقات الصلاة', adhkar: 'الأذكار', games: 'الألعاب', wrapped: 'ملخص السيرفر', tempVoice: 'الرومات المؤقتة', appeals: 'طلبات فك الحظر', khatma: 'الختمة الجماعية', radar: 'رادار الأعضاء الجداد', backup: 'النسخ الاحتياطي' };
+const MODULE_NAMES = { giveaway: 'القيفاواي', protection: 'الحماية', prefix: 'البادئة', general: 'الإعدادات العامة', greetings: 'الترحيب النصي', welcome: 'الترحيب المتقدم', autoLine: 'الخط التلقائي', feedback: 'الآراء', jail: 'السجن', tickets: 'التذاكر', vanity: 'حماية الرابط', logs: 'السجلات', invites: 'الدعوات', replies: 'الردود التلقائية', levels: 'المستويات', automod: 'AutoMod', verify: 'التحقق', purge: 'المسح التلقائي', kafeel: 'الكفيل', prayer: 'أوقات الصلاة', adhkar: 'الأذكار', games: 'الألعاب', wrapped: 'ملخص السيرفر', tempVoice: 'الرومات المؤقتة', appeals: 'طلبات فك الحظر', khatma: 'الختمة الجماعية', radar: 'رادار الأعضاء الجداد', backup: 'النسخ الاحتياطي', warns: 'التحذيرات', gameArt: 'صور الألعاب' };
 
 const VIEWS = path.join(__dirname, 'views');
 const API = 'https://discord.com/api/v10';
@@ -183,11 +183,13 @@ function readSettings(guild) {
     },
     tickets: { ...tickets.DEFAULT_CONFIG, ...(store.peek('ticketConfig', id) || {}) },
     vanity: { ...p('linkProtection', { vanityProtect: false, punishment: 'ban', whitelist: [] }), current: guild.vanityURLCode || null },
-    logs: p('logsConfig'),
+    logs: Object.fromEntries(Object.keys(LOG_TYPES).map((k) => [k, require('../systems/logs').channelFor(guild, k)?.id || ''])),
     invites: { ...p('inviteConfig', { logChannelId: '', minAccountAgeDays: 30, pointHoldHours: 0 }), wheelEnabled: store.peek('wheelConfig', id)?.enabled !== false, wheelImage: store.peek('wheelConfig', id)?.image || '' },
     replies: p('customReplies', { enabled: false, replies: [] }),
     giveaway: p('giveawayConfig', giveaways.DEFAULT_CONFIG),
     protection: protection.config(id),
+    warns: require('../systems/warns').config(id),
+    nukeActions: Object.fromEntries(Object.entries(protection.NUKE_ACTIONS).map(([k, a]) => [k, a.label])),
     levels: levels.config(id),
     shopGuild: require('../systems/shop').config().guildId === id,
     automod: automod.config(id),
@@ -195,6 +197,7 @@ function readSettings(guild) {
     prayer: prayer.config(id),
     adhkar: adhkar.config(id),
     games: gamesSys.config(id),
+    gameArt: p('gameArt'),
     tempVoice: tempvoice.config(id),
     appeals: { ...appealsSys.config(id), pending: Object.values(store.peek('appeals', id) || {}).filter((a) => a.status === 'pending').length },
     khatma: (() => {
@@ -458,6 +461,20 @@ function writeSettings(guild, module, d) {
       if (conf.night.enabled && !conf.night.games.length) throw new Error('اختار لعبة وحدة على الأقل للسهرة');
       return store.save('gamesConfig');
     }
+    case 'gameArt': {
+      needPremium(guild, 'gameArt');
+      const ga = store.guild('gameArt', id);
+      for (const key of [...require('../utils/art').GAME_ART_KEYS, 'rouletteWheel']) {
+        if (!(key in d)) continue;
+        const v = d[key] ? imageRef(d[key]) : '';
+        if (v) ga[key] = v;
+        else {
+          delete ga[key];
+          media.remove(`game-${key}-${id}`);
+        }
+      }
+      return store.save('gameArt');
+    }
     case 'tempVoice': {
       const conf = store.guild('tempVoice', id, { ...tempvoice.DEFAULT });
       Object.assign(conf, {
@@ -656,7 +673,25 @@ function writeSettings(guild, module, d) {
       }
       conf.alertChannelId = channelIn(guild, d.alertChannelId) || '';
       if (premium.has(id, 'impersonation')) conf.impersonation = { enabled: bool(d.impersonation?.enabled), action: oneOf(d.impersonation?.action, ['alert', 'timeout', 'kick', 'ban'], 'alert') };
+      if (premium.has(id, 'antiNuke')) {
+        conf.antiBot = { enabled: bool(d.antiBot?.enabled), allowVerified: bool(d.antiBot?.allowVerified), punishAdder: bool(d.antiBot?.punishAdder) };
+        conf.dangerousPerms = { enabled: bool(d.dangerousPerms?.enabled) };
+        conf.serverLock = { enabled: bool(d.serverLock?.enabled) };
+      }
+      conf.antiScam = { enabled: bool(d.antiScam?.enabled), action: oneOf(d.antiScam?.action, ['delete', 'timeout', 'kick', 'ban'], 'timeout') };
+      conf.dehoist = { enabled: bool(d.dehoist?.enabled) };
       return store.save('protectionConfig');
+    }
+    case 'warns': {
+      const conf = store.guild('warnConfig', id, {});
+      conf.expireDays = int(d.expireDays, 0, 365, 0);
+      conf.dm = bool(d.dm);
+      conf.steps = (Array.isArray(d.steps) ? d.steps : [])
+        .map((x) => ({ count: int(x.count, 1, 50, 3), action: oneOf(x.action, ['timeout', 'kick', 'ban'], 'timeout'), minutes: int(x.minutes, 1, 40320, 60) }))
+        .filter((x, i, a) => a.findIndex((y) => y.count === x.count) === i)
+        .sort((a, b) => a.count - b.count)
+        .slice(0, 6);
+      return store.save('warnConfig');
     }
     default:
       throw new Error('وحدة غير معروفة');
@@ -678,6 +713,7 @@ function start(client) {
   app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
   app.use('/media', express.static(media.UPLOADS, { maxAge: '7d', index: false, dotfiles: 'deny' }));
   app.use('/fonts', express.static(path.join(__dirname, '..', 'assets', 'fonts'), { maxAge: '30d' }));
+  app.use('/art', express.static(path.join(__dirname, '..', 'assets', 'art', 'banner'), { maxAge: '7d', index: false }));
 
   const view = (name) => (req, res) => res.sendFile(path.join(VIEWS, `${name}.html`));
   const needLogin = (req, res, next) => {
@@ -859,7 +895,9 @@ function start(client) {
         .filter((r) => r.id !== g.id)
         .sort((a, b) => b.position - a.position)
         .map((r) => ({ id: r.id, name: r.name, color: r.hexColor, managed: r.managed, editable: r.editable, members: r.members.size })),
-      logTypes: Object.entries(LOG_TYPES).map(([key, t]) => ({ key, label: t.label })),
+      logTypes: Object.entries(LOG_TYPES).map(([key, t]) => ({ key, label: t.label, group: t.group })),
+      logGroups: Object.fromEntries(Object.entries(require('../systems/logs').LOG_GROUPS).map(([k, g]) => [k, g.label])),
+      auditLog: Boolean(g.members.me?.permissions.has(PermissionFlagsBits.ViewAuditLog)),
     });
   });
 
@@ -890,9 +928,9 @@ function start(client) {
 
   app.post('/api/logs/:id/auto', needGuild, csrf, async (req, res) => {
     try {
-      const mode = req.body?.mode === 'single' ? 'single' : 'separate';
+      const mode = ['single', 'grouped'].includes(req.body?.mode) ? req.body.mode : 'separate';
       const r = await require('../systems/logs').autoSetup(req.guild, { mode, overwrite: Boolean(req.body?.overwrite) });
-      res.json({ ok: true, made: r.made.length, set: r.set, skipped: r.skipped });
+      res.json({ ok: true, made: r.made.length, set: r.set, skipped: r.skipped, warn: r.warn });
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
@@ -1278,6 +1316,15 @@ function start(client) {
         wc.image = media.saveDataUri(req.body.data, `wheel-${req.guild.id}`);
         store.save('wheelConfig');
         return res.json({ ok: true, url: wc.image });
+      }
+      if (req.body.kind === 'game') {
+        if (!premium.has(req.guild.id, 'gameArt')) throw new Error(premium.lockedText('gameArt'));
+        const key = String(req.body.key || '');
+        if (![...require('../utils/art').GAME_ART_KEYS, 'rouletteWheel'].includes(key)) throw new Error('لعبة غير معروفة');
+        const ga = store.guild('gameArt', req.guild.id);
+        ga[key] = media.saveDataUri(req.body.data, `game-${key}-${req.guild.id}`);
+        store.save('gameArt');
+        return res.json({ ok: true, url: ga[key] });
       }
       if (req.body.kind !== 'welcome') throw new Error('نوع غير معروف');
       const conf = store.guild('welcome', req.guild.id);

@@ -98,6 +98,7 @@ function parseSlashOptions(command, interaction) {
       case 'integer': v = o.getInteger(def.name); break;
       case 'number': v = o.getNumber(def.name); break;
       case 'boolean': v = o.getBoolean(def.name); break;
+      case 'attachment': v = o.getAttachment(def.name); break;
       default: v = o.getString(def.name);
     }
     if (v !== null && v !== undefined) out[def.name] = v;

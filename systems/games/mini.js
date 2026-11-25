@@ -120,7 +120,7 @@ function makeType(id) {
       const E = (t) => require('./index').embed().setDescription(t);
       const score = new Map();
       const art = require('../../utils/art');
-      const b = art.banner(id);
+      const b = art.banner(id, game.guild.id);
       await game.send(b ? { content: `-# ${ROUNDS} أسئلة • 20 ثانية لكل سؤال • جاوبوا بالشات`, files: [b] } : { embeds: [E(`## ${META[id].emoji} ${META[id].name}\n${META[id].desc}\n**${ROUNDS} أسئلة**، كل سؤال إله 20 ثانية. جاوبوا بالشات!`)] });
       await game.sleep(3000);
       for (let r = 1; r <= ROUNDS; r++) {

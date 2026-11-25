@@ -14,7 +14,8 @@ module.exports = {
       type: 'string',
       description: 'روم لكل نوع، أو روم وحدة لكل السجلات',
       choices: [
-        { name: 'روم لكل نوع (مرتب)', value: 'separate' },
+        { name: 'روم لكل نوع (20 روم مرتبة)', value: 'separate' },
+        { name: 'روم لكل قسم (6 رومات)', value: 'grouped' },
         { name: 'روم وحدة لكل السجلات', value: 'single' },
       ],
     },
@@ -30,8 +31,11 @@ module.exports = {
           `${E.success} تم إعداد السجلات بكاتيجوري **${r.category.name}**`,
           `${E.dot} رومات جديدة: **${r.made.length}**${r.made.length ? ` (${r.made.map((c) => `${c}`).join(' ')})` : ''}`,
           `${E.dot} أنواع انربطت: **${r.set}**${r.skipped ? ` • ضلت زي ما هي: **${r.skipped}**` : ''}`,
+          r.warn ? `${E.warning} ${r.warn}` : null,
           ui.hint('الرومات مخفية عن الأعضاء. اللي معه Manage Server أو رتبة المدراء من الإعدادات بيشوفها.'),
-        ].join('\n')
+        ]
+          .filter(Boolean)
+          .join('\n')
       );
     } catch (e) {
       return ctx.fail(e.message);

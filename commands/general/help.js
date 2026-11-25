@@ -3,7 +3,7 @@ const ui = require('../../utils/ui');
 const E = require('../../utils/emojis');
 const art = require('../../utils/art');
 
-const CAT_ICON = { general: 'info', giveaway: 'gift', invites: 'dice', levels: 'star', community: 'players', adhkar: 'book', games: 'start', greetings: 'greet', channels: 'lock', moderation: 'shield', logs: 'tasks', tickets: 'ticket', config: 'repair', owner: 'crown' };
+const CAT_ICON = { general: 'info', giveaway: 'gift', invites: 'dice', levels: 'star', community: 'players', adhkar: 'book', games: 'start', greetings: 'greet', channels: 'lock', moderation: 'kick', protection: 'shield', logs: 'tasks', tickets: 'ticket', config: 'repair', owner: 'crown' };
 const store = require('../../utils/store');
 const { isOwner } = require('../../utils/perms');
 

@@ -14,6 +14,19 @@ const NUKE_ACTIONS = {
   ban: { label: 'الحظر', event: AuditLogEvent.MemberBanAdd },
   kick: { label: 'الطرد', event: AuditLogEvent.MemberKick },
   webhookCreate: { label: 'إنشاء الويب هوك', event: AuditLogEvent.WebhookCreate },
+  webhookDelete: { label: 'حذف الويب هوك', event: AuditLogEvent.WebhookDelete },
+  channelUpdate: { label: 'تعديل القنوات', event: AuditLogEvent.ChannelUpdate, off: true },
+  overwriteUpdate: { label: 'تعديل صلاحيات القنوات', event: AuditLogEvent.ChannelOverwriteUpdate, off: true },
+  roleUpdate: { label: 'تعديل الرتب', event: AuditLogEvent.RoleUpdate, off: true },
+  memberRoleUpdate: { label: 'إعطاء وسحب الرتب', event: AuditLogEvent.MemberRoleUpdate, off: true },
+  unban: { label: 'فك الحظر', event: AuditLogEvent.MemberBanRemove },
+  memberPrune: { label: 'تنظيف الأعضاء (Prune)', event: AuditLogEvent.MemberPrune },
+  emojiDelete: { label: 'حذف الإيموجي', event: AuditLogEvent.EmojiDelete },
+  stickerDelete: { label: 'حذف الملصقات', event: AuditLogEvent.StickerDelete },
+  inviteDelete: { label: 'حذف روابط الدعوة', event: AuditLogEvent.InviteDelete, off: true },
+  threadDelete: { label: 'حذف الثريدات', event: AuditLogEvent.ThreadDelete, off: true },
+  timeout: { label: 'التايم أوت', event: AuditLogEvent.MemberUpdate, off: true },
+  guildUpdate: { label: 'تعديل إعدادات السيرفر', event: AuditLogEvent.GuildUpdate, off: true },
 };
 
 const DEFAULT = {
@@ -25,16 +38,23 @@ const DEFAULT = {
     seconds: 60,
     punishment: 'strip',
     whitelist: [],
-    watch: Object.fromEntries(Object.keys(NUKE_ACTIONS).map((k) => [k, true])),
+    watch: Object.fromEntries(Object.entries(NUKE_ACTIONS).map(([k, a]) => [k, !a.off])),
   },
   impersonation: { enabled: false, action: 'alert' },
+  antiBot: { enabled: false, allowVerified: false, punishAdder: true },
+  dangerousPerms: { enabled: false },
+  serverLock: { enabled: false },
+  antiScam: { enabled: true, action: 'timeout' },
+  dehoist: { enabled: false },
 };
+const EXTRA = ['antiBot', 'dangerousPerms', 'serverLock', 'antiScam', 'dehoist'];
 
 function config(guildId) {
   const c = store.guild('protectionConfig', guildId, DEFAULT);
   c.antiRaid = { ...DEFAULT.antiRaid, ...c.antiRaid };
   c.antiNuke = { ...DEFAULT.antiNuke, ...c.antiNuke, watch: { ...DEFAULT.antiNuke.watch, ...(c.antiNuke?.watch || {}) } };
   c.impersonation = { ...DEFAULT.impersonation, ...(c.impersonation || {}) };
+  for (const k of EXTRA) c[k] = { ...DEFAULT[k], ...(c[k] || {}) };
   return c;
 }
 
@@ -127,8 +147,9 @@ async function onAudit(entry, guild) {
   if (!premium.has(guild.id, 'antiNuke')) return;
   const conf = config(guild.id).antiNuke;
   if (!conf.enabled) return;
-  const type = Object.keys(NUKE_ACTIONS).find((k) => NUKE_ACTIONS[k].event === entry.action);
-  if (!type || !conf.watch[type]) return;
+  const type = Object.keys(NUKE_ACTIONS).find((k) => NUKE_ACTIONS[k].event === entry.action && conf.watch[k]);
+  if (!type) return;
+  if (type === 'timeout' && !entry.changes?.some((c) => c.key === 'communication_disabled_until' && c.new)) return;
   const executorId = entry.executorId;
   if (!executorId || executorId === guild.client.user.id || executorId === guild.ownerId || isOwner(executorId)) return;
   if (conf.whitelist.includes(executorId)) return;
@@ -145,21 +166,8 @@ async function onAudit(entry, guild) {
   punished.set(pkey, now + 60_000);
   actions.delete(key);
 
-  const member = await guild.members.fetch(executorId).catch(() => null);
-  let result = 'تعذر معاقبته (رتبته أعلى من البوت؟)';
   const reason = `Anti-Nuke: ${NUKE_ACTIONS[type].label} ${list.length} مرات خلال ${conf.seconds} ثانية`;
-  try {
-    if (conf.punishment === 'ban') {
-      await guild.members.ban(executorId, { reason });
-      result = 'تم حظره';
-    } else if (member && conf.punishment === 'kick') {
-      await member.kick(reason);
-      result = 'تم طرده';
-    } else if (member) {
-      await member.roles.set(member.roles.cache.filter((r) => r.managed && r.id !== guild.id).map((r) => r.id), reason);
-      result = 'تم سحب جميع رتبه';
-    }
-  } catch {}
+  const { member, result } = await punish(guild, executorId, conf.punishment, reason);
 
   await alert(
     guild,
@@ -175,9 +183,38 @@ async function onAudit(entry, guild) {
   require('./backup').offerRepair(guild, alertId ? guild.channels.cache.get(alertId) : null).catch(() => {});
 }
 
+/** Punishes someone for a protection hit. mode: strip | kick | ban | timeout. */
+async function punish(guild, userId, mode, reason) {
+  const member = await guild.members.fetch(userId).catch(() => null);
+  let result = 'تعذر معاقبته (رتبته أعلى من البوت؟)';
+  try {
+    if (mode === 'ban') {
+      await guild.members.ban(userId, { reason });
+      result = 'تم حظره';
+    } else if (member && mode === 'kick') {
+      await member.kick(reason);
+      result = 'تم طرده';
+    } else if (member && mode === 'timeout') {
+      await member.timeout(24 * 3_600_000, reason);
+      result = 'تم إسكاته 24 ساعة';
+    } else if (member) {
+      await member.roles.set(member.roles.cache.filter((r) => r.managed && r.id !== guild.id).map((r) => r.id), reason);
+      result = 'تم سحب جميع رتبه';
+    }
+  } catch {}
+  return { member, result };
+}
+
+/** Owner, server owner, the bot itself and the whitelist are never treated as attackers. */
+function trusted(guild, userId) {
+  if (!userId) return true;
+  if (userId === guild.client.user.id || userId === guild.ownerId || isOwner(userId)) return true;
+  return config(guild.id).antiNuke.whitelist.includes(userId);
+}
+
 function init(client) {
   client.on(Events.GuildMemberAdd, (m) => onJoin(m).catch((e) => console.error('[anti-raid]', e.message)));
   client.on(Events.GuildAuditLogEntryCreate, (entry, guild) => onAudit(entry, guild).catch((e) => console.error('[anti-nuke]', e.message)));
 }
 
-module.exports = { init, config, NUKE_ACTIONS, DEFAULT };
+module.exports = { init, config, NUKE_ACTIONS, DEFAULT, punish, trusted, alert };

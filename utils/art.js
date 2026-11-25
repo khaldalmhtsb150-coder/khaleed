@@ -34,7 +34,20 @@ function i(key, fallback = '') {
 const bannerPath = (key) => path.join(ART, 'banner', `${key}.jpg`);
 const hasBanner = (key) => fs.existsSync(bannerPath(key));
 /** AttachmentBuilder for a ready banner (or null). Name is stable so embeds can use attachment://. */
-function banner(key) {
+const GAME_ART_KEYS = ['roulette', 'mafia', 'chairs', 'spy', 'xo', 'rps', 'deathbox', 'fasttype', 'flags', 'capitals', 'unscramble', 'math', 'night'];
+/** A premium server's own picture for this key (uploaded /media/... file or https link), or null. */
+function customArt(key, gid) {
+  if (!gid) return null;
+  const ref = require('./store').peek('gameArt', gid)?.[key];
+  if (!ref || !require('./premium').has(gid, 'gameArt')) return null;
+  const file = require('./media').localPath(ref);
+  if (file) return new AttachmentBuilder(file, { name: `${key}${path.extname(file)}` });
+  if (/^https:\/\//.test(ref)) return new AttachmentBuilder(ref, { name: `${key}${(ref.match(/\.(png|jpe?g|gif|webp)(\?|$)/i) || ['.png'])[0].replace('?', '')}` });
+  return null;
+}
+function banner(key, gid = null) {
+  const custom = customArt(key, gid);
+  if (custom) return custom;
   if (!hasBanner(key)) return null;
   return new AttachmentBuilder(bannerPath(key), { name: `${key}.jpg` });
 }
@@ -234,4 +247,4 @@ async function winnerCard({ gameKey, gameTitle, title, winners, reward }) {
   return c.toBuffer('image/png');
 }
 
-module.exports = { VERSION, manifest, iconName, setIcon, icon, i, icons, banner, hasBanner, accent, accentInt, canvas, font, hexA, rr, backdrop, loadAvatar, glyph, fitText, winnerCard, ART };
+module.exports = { GAME_ART_KEYS, customArt, VERSION, manifest, iconName, setIcon, icon, i, icons, banner, hasBanner, accent, accentInt, canvas, font, hexA, rr, backdrop, loadAvatar, glyph, fitText, winnerCard, ART };

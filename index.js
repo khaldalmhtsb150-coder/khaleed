@@ -28,6 +28,7 @@ const client = new Client({
     GatewayIntentBits.GuildModeration,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.AutoModerationExecution,
   ],
   partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.User],
 });
@@ -41,7 +42,7 @@ client.emit = (event, ...args) => {
 
 // ---- load commands & systems ----
 commands.load();
-const systems = ['appEmojis', 'botEvents', 'logs', 'jail', 'tickets', 'giveaways', 'invites', 'vanity', 'wheel', 'protection', 'premiumWatch', 'botProfile', 'levels', 'shop', 'automod', 'roleMenus', 'embeds', 'verify', 'purge', 'kafeel', 'prayer', 'staff', 'wrapped', 'drop', 'adhkar', 'games', 'tempvoice', 'appeals', 'khatma', 'radar', 'backup', 'youtube'].map((n) => require(`./systems/${n}`));
+const systems = ['appEmojis', 'botEvents', 'logs', 'jail', 'tickets', 'giveaways', 'invites', 'vanity', 'wheel', 'protection', 'guard', 'premiumWatch', 'botProfile', 'levels', 'shop', 'automod', 'roleMenus', 'embeds', 'verify', 'purge', 'kafeel', 'prayer', 'staff', 'wrapped', 'drop', 'adhkar', 'games', 'tempvoice', 'appeals', 'khatma', 'radar', 'backup', 'youtube'].map((n) => require(`./systems/${n}`));
 for (const s of systems) if (typeof s.init === 'function') s.init(client);
 
 // component routers (buttons / selects / modals) from systems and command files

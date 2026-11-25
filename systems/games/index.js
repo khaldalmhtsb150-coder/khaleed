@@ -272,7 +272,7 @@ function lobbyView(game, left, { first = false, state = 'open' } = {}) {
     ];
   }
   if (first) {
-    const b = art.banner(t.id);
+    const b = art.banner(t.id, game.guild.id);
     if (b) payload.files = [b];
     else payload.embeds = [embed().setDescription(`## ${t.emoji} ${t.name}\n${t.desc}`)];
   }
@@ -480,7 +480,7 @@ async function runNight(guild, conf, client) {
     await ch.send({
       allowedMentions: { roles: conf.night.roleId ? [conf.night.roleId] : [] },
       content: [conf.night.roleId ? `<@&${conf.night.roleId}>` : null, `**سهرة الألعاب بلشت** ${art.i('party', '🎉')}`, `-# الليلة: ${list.map((g) => TYPES.get(g).name).join('  ←  ')}`].filter(Boolean).join('\n'),
-      files: [art.banner('night')].filter(Boolean),
+      files: [art.banner('night', guild.id)].filter(Boolean),
     });
     for (const id of list) {
       if (byChannel.has(ch.id)) break;

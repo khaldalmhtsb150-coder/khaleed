@@ -12,7 +12,8 @@ async function spin(game, ids, title) {
   const chosen = pick(ids);
   const labels = ids.map((id, i) => `${i + 1}. ${game.name(id)}`);
   const winLabel = labels[ids.indexOf(chosen)];
-  const bg = premium.has(game.guild.id, 'wheelImage') ? require('../../utils/store').peek('wheelConfig', game.guild.id)?.image || '' : '';
+  const st = require('../../utils/store');
+  const bg = (premium.has(game.guild.id, 'gameArt') && st.peek('gameArt', game.guild.id)?.rouletteWheel) || (premium.has(game.guild.id, 'wheelImage') ? st.peek('wheelConfig', game.guild.id)?.image || '' : '');
   const pic = await wheelImage.render(labels, winLabel, { maxSlices: 30, frames: 32, background: bg }).catch(() => null);
   if (pic) {
     const m = await game.send({ content: title, files: [new AttachmentBuilder(pic.gif, { name: 'roulette.gif' })] });

@@ -242,7 +242,7 @@
     const c = S.protection;
     const r = c.antiRaid;
     const n = c.antiNuke;
-    const watchNames = { channelDelete: 'حذف القنوات', channelCreate: 'إنشاء القنوات', roleDelete: 'حذف الرتب', roleCreate: 'إنشاء الرتب', ban: 'الحظر', kick: 'الطرد', webhookCreate: 'إنشاء ويب هوك' };
+    const watchNames = S.nukeActions || { channelDelete: 'حذف القنوات', channelCreate: 'إنشاء القنوات', roleDelete: 'حذف الرتب', roleCreate: 'إنشاء الرتب', ban: 'الحظر', kick: 'الطرد', webhookCreate: 'إنشاء ويب هوك' };
     return card(
       'sec-protection',
       `الحماية`,
@@ -282,8 +282,46 @@
       `, 'Anti-Nuke للبريميوم', 'antiNuke')}
       <div style="height:12px"></div>
       ${premiumBlock(`${toggle('p-imp', S.protection.impersonation?.enabled, 'كشف انتحال الإدارة', 'إذا حدا غيّر اسمه أو صورته لتشبه إداري (حتى مع تغيير حرف أو استبدال o بـ 0)')}
-        ${field('الإجراء', `<select class="select" id="p-imp-action" style="max-width:240px">${[['alert', 'تنبيه بقناة الحماية'], ['timeout', 'إسكات 24 ساعة'], ['kick', 'طرد'], ['ban', 'حظر']].map(([k, t]) => `<option value="${k}" ${S.protection.impersonation?.action === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`)}`, 'كشف انتحال الإدارة للبريميوم', 'impersonation')}`,
+        ${field('الإجراء', `<select class="select" id="p-imp-action" style="max-width:240px">${[['alert', 'تنبيه بقناة الحماية'], ['timeout', 'إسكات 24 ساعة'], ['kick', 'طرد'], ['ban', 'حظر']].map(([k, t]) => `<option value="${k}" ${S.protection.impersonation?.action === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`)}`, 'كشف انتحال الإدارة للبريميوم', 'impersonation')}
+      <div class="logs-or"><span>حماية متقدمة</span></div>
+      ${premiumBlock(`
+        ${toggle('p-bot', c.antiBot?.enabled, 'Anti-Bot', 'أي بوت بيضيفه شخص مش موثوق بينطرد فوراً')}
+        <div class="row">
+          <div>${toggle('p-bot-ver', c.antiBot?.allowVerified, 'اسمح للبوتات الموثقة', 'البوتات اللي عليها علامة ✓ من ديسكورد')}</div>
+          <div>${toggle('p-bot-pun', c.antiBot?.punishAdder !== false, 'عاقب اللي أضافه', 'سحب رتبه')}</div>
+        </div>
+        ${toggle('p-danger', c.dangerousPerms?.enabled, 'الصلاحيات الخطيرة', 'إذا حدا مش موثوق عطى رتبة Administrator أو صلاحيات إدارة، أو عطى رتبة فيها هالصلاحيات لعضو: بترجع فوراً وبينعاقب')}
+        ${toggle('p-lock', c.serverLock?.enabled, 'قفل إعدادات السيرفر', 'تغيير الاسم ومستوى التحقق والرومات الأساسية من شخص مش موثوق بيرجع لحاله')}
+        <div class="help">الموثوقين هم قائمة الاستثناء فوق + مالك السيرفر. لازم تضيف الإداريين اللي بيعدّلوا الرتب والإعدادات.</div>
+      `, 'الحماية المتقدمة للبريميوم', 'antiNuke')}
+      <div style="height:12px"></div>
+      ${toggle('p-scam', c.antiScam?.enabled !== false, 'Anti-Scam', 'روابط النيترو والستيم المزيفة (dlscord، steamcomunity…) بتنحذف فوراً')}
+      ${field('العقوبة', `<select class="select" id="p-scam-action" style="max-width:240px">${[['delete', 'حذف الرسالة بس'], ['timeout', 'حذف + إسكات 24 ساعة'], ['kick', 'حذف + طرد'], ['ban', 'حذف + حظر']].map(([k, t]) => `<option value="${k}" ${(c.antiScam?.action || 'timeout') === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`)}
+      ${toggle('p-hoist', c.dehoist?.enabled, 'Dehoist', 'الأسماء اللي بتبلش برموز (! . 0) عشان تطلع أول القائمة بتنصلح')}
+      <div class="help">أوامر سريعة: <code>/protection</code> <code>/lockdown</code> <code>/panic</code> <code>/backup</code></div>`,
       'protection'
+    );
+  }
+
+  function sWarns() {
+    const W = S.warns || { steps: [], expireDays: 0, dm: true };
+    const row = (st = { count: '', action: 'timeout', minutes: 60 }) => `<div class="inline-form" data-wstep data-row style="margin-bottom:8px">
+        <input class="input ltr" type="number" data-k="count" min="1" max="50" placeholder="العدد" value="${esc(st.count)}" style="max-width:110px">
+        <select class="select" data-k="action" style="max-width:170px">${[['timeout', 'تايم أوت'], ['kick', 'طرد'], ['ban', 'حظر']].map(([k, t]) => `<option value="${k}" ${st.action === k ? 'selected' : ''}>${t}</option>`).join('')}</select>
+        <input class="input ltr" type="number" data-k="minutes" min="1" max="40320" placeholder="دقائق" value="${esc(st.minutes || 60)}" style="max-width:120px">
+        <button type="button" class="btn ghost sm" data-del>${icon('trash')}</button></div>`;
+    return card(
+      'sec-warns',
+      'التحذيرات ⚠️',
+      'كل تحذير بينحسب، ولما العضو يوصل عدد معين البوت بيعاقبه لحاله. الأوامر: /warn و /warnings.',
+      'shield',
+      `<div id="w-steps">${(W.steps.length ? W.steps : [{}]).map(row).join('')}</div>
+      <button type="button" class="btn ghost sm" data-add id="w-add">${icon('plus')} خطوة</button>
+      <div class="row mt">
+        ${field('التحذيرات بتنتهي بعد (أيام)', `<input class="input ltr" type="number" id="w-exp" min="0" max="365" value="${W.expireDays || 0}">`, '0 = ما بتنتهي')}
+        <div>${toggle('w-dm', W.dm !== false, 'ابعت للعضو بالخاص', 'السبب وعدد تحذيراته')}</div>
+      </div>`,
+      'warns'
     );
   }
 
@@ -787,23 +825,31 @@
   }
 
   function sLogs() {
+    const groups = M.logGroups || { all: 'السجلات' };
+    const byGroup = (g) => M.logTypes.filter((t) => (t.group || 'all') === g);
     return card(
       'sec-logs',
       'السجلات',
-      'خلّي البوت ينشئ الرومات بنفسه، أو اختار روم لكل نوع.',
+      'كل إشي بيصير بالسيرفر: مين عمله، على مين، وشو تغيّر بالضبط (قبل ← بعد). خلّي البوت ينشئ الرومات، أو اختار روم لكل نوع.',
       'log',
-      `<div class="logs-auto">
+      `${M.auditLog === false ? `<div class="help" style="color:var(--warn,#f59e0b)">⚠️ البوت ما معه صلاحية <b>View Audit Log</b>، فالسجلات ما رح تعرف مين عمل الإجراء. فعّلها لرتبة البوت.</div>` : ''}
+      <div class="logs-auto">
         <div><b>إنشاء تلقائي</b><small>البوت بينشئ كاتيجوري «📋 سجلات ماركا» فيها الرومات، مخفية عن الأعضاء، وبيربطها لحاله.</small></div>
         <div class="logs-auto-btns">
-          <button type="button" class="btn primary sm" data-logs-auto="separate">${icon('plus')} روم لكل نوع</button>
+          <button type="button" class="btn primary sm" data-logs-auto="separate">${icon('plus')} روم لكل نوع (${M.logTypes.length})</button>
+          <button type="button" class="btn ghost sm" data-logs-auto="grouped">روم لكل قسم (${Object.keys(groups).length})</button>
           <button type="button" class="btn ghost sm" data-logs-auto="single">روم وحدة للكل</button>
         </div>
         <label class="logs-ow"><input type="checkbox" id="logs-ow"> استبدل كمان الرومات المحددة حالياً</label>
       </div>
       <div class="logs-or"><span>أو اختار بنفسك</span></div>
-      <div class="row">${M.logTypes
-        .map((t) => field(esc(t.label), `<select class="select" data-log="${t.key}">${textOpts(S.logs[t.key], 'معطل')}</select>`))
-        .join('')}</div>
+      ${Object.entries(groups)
+        .map(([g, label]) => {
+          const list = byGroup(g);
+          if (!list.length) return '';
+          return `<div class="group-title">${esc(label)}</div><div class="row">${list.map((t) => field(esc(t.label), `<select class="select" data-log="${t.key}">${textOpts(S.logs[t.key], 'معطل')}</select>`)).join('')}</div>`;
+        })
+        .join('')}
       <div class="vars" style="margin-top:12px"><code id="logs-all" style="direction:rtl">تعيين قناة واحدة للجميع</code></div>`,
       'logs'
     );
@@ -1085,6 +1131,8 @@
     appeals: () => [['appeals', { enabled: checked('ap-enabled'), channelId: val('ap-channel'), cooldownDays: val('ap-cool') }]],
     khatma: () => [['khatma', { channelId: val('kh-channel'), roleId: val('kh-role'), maxPerUser: val('kh-max'), holdHours: val('kh-hours') }]],
     backup: () => [['backup', { auto: checked('bk-auto') }]],
+    gameArt: () => (isPrem('gameArt') ? [['gameArt', Object.fromEntries([...document.querySelectorAll('[data-ga-url]')].map((i) => [i.dataset.gaUrl, i.value.trim()]))]] : []),
+    warns: () => [['warns', { expireDays: val('w-exp'), dm: checked('w-dm'), steps: [...document.querySelectorAll('[data-wstep]')].map((r) => Object.fromEntries([...r.querySelectorAll('[data-k]')].map((i) => [i.dataset.k, i.value]))).filter((x) => x.count) }]],
     radar: () => [['radar', { enabled: checked('rd-enabled'), channelId: val('rd-channel'), silentHours: val('rd-hours'), roleId: val('rd-role'), mentionSponsor: checked('rd-sponsor') }]],
     adhkar: () => [['adhkar', { enabled: checked('az-enabled'), channelId: val('az-channel'), interval: val('az-interval'), skipIdle: checked('az-idle'), sabahMasa: checked('az-sm'), friday: checked('az-fri'), roleId: val('az-role') }]],
     prayer: () => [['prayer', { enabled: checked('pr-enabled'), channelId: val('pr-channel'), city: val('pr-city'), roleId: val('pr-role'), prayers: [...document.querySelectorAll('[data-prayer]:checked')].map((c) => c.dataset.prayer), ramadan: checked('pr-ramadan'), suhoorMinutes: val('pr-suhoor') }]],
@@ -1171,6 +1219,11 @@
             antiRaid: { enabled: checked('p-raid'), joins: val('p-raid-joins'), seconds: val('p-raid-sec'), action: val('p-raid-action'), newAccountDays: val('p-raid-age'), lockdown: checked('p-raid-lock') },
             antiNuke: { enabled: checked('p-nuke'), limit: val('p-nuke-limit'), seconds: val('p-nuke-sec'), punishment: val('p-nuke-punish'), whitelist: val('p-nuke-white').split(/[,\s]+/).filter(Boolean), watch },
             impersonation: { enabled: checked('p-imp'), action: val('p-imp-action') || 'alert' },
+            antiBot: { enabled: checked('p-bot'), allowVerified: checked('p-bot-ver'), punishAdder: checked('p-bot-pun') },
+            dangerousPerms: { enabled: checked('p-danger') },
+            serverLock: { enabled: checked('p-lock') },
+            antiScam: { enabled: checked('p-scam'), action: val('p-scam-action') || 'timeout' },
+            dehoist: { enabled: checked('p-hoist') },
           },
         ],
       ];
@@ -1361,6 +1414,24 @@
       if (ba) {
         if (document.querySelectorAll('[data-boost]').length >= 30) return toast('الحد 30', 'error');
         return document.getElementById('lv-boosts').insertAdjacentHTML('beforeend', boostRow(ba.dataset.boostAdd));
+      }
+      const gaPick = e.target.closest('[data-pick-ga]');
+      if (gaPick) return document.querySelector(`[data-ga-file="${gaPick.dataset.pickGa}"]`).click();
+      const gaReset = e.target.closest('[data-ga-reset]');
+      if (gaReset) {
+        const k = gaReset.dataset.gaReset;
+        document.querySelector(`[data-ga-url="${k}"]`).value = '';
+        document.querySelector(`[data-ga="${k}"] .ga-prev`).innerHTML = `<img src="/art/${k === 'rouletteWheel' ? 'roulette' : k}.jpg" alt="" onerror="this.remove()">`;
+        markDirty('gameArt', true);
+        return;
+      }
+      if (e.target.closest('#w-add')) {
+        if (document.querySelectorAll('[data-wstep]').length >= 6) return toast('الحد 6 خطوات', 'error');
+        const t = document.createElement('div');
+        t.innerHTML = sWarns();
+        document.getElementById('w-steps').insertAdjacentElement('beforeend', t.querySelector('[data-wstep]'));
+        document.querySelector('#w-steps [data-wstep]:last-child').querySelectorAll('input').forEach((i) => (i.value = i.dataset.k === 'minutes' ? 60 : ''));
+        return;
       }
       if (e.target.closest('#bk-now')) {
         try {
@@ -1571,6 +1642,7 @@
         autoBtn.innerHTML = '<span class="spinner"></span>';
         try {
           const r = await api(`/api/logs/${id}/auto`, { method: 'POST', body: { mode: autoBtn.dataset.logsAuto, overwrite: document.getElementById('logs-ow').checked } });
+          if (r.warn) toast(r.warn, 'error', 7000);
           if (!r.set) toast('كل الأنواع مربوطة من قبل. علّم «استبدل» إذا بدك رومات جديدة.');
           else {
             toast(`تم: ${r.made} روم جديد، و${r.set} نوع انربط`, 'success');
@@ -1637,6 +1709,22 @@
         }
         return;
       }
+      if (e.target.dataset?.gaFile) {
+        const k = e.target.dataset.gaFile;
+        const file = e.target.files[0];
+        e.target.value = '';
+        try {
+          toast('جاري رفع الصورة...');
+          const data = await readImage(file, { maxW: 1600, maxH: 1000 });
+          const r = await api(`/api/upload/${id}`, { method: 'POST', body: { kind: 'game', key: k, data } });
+          document.querySelector(`[data-ga-url="${k}"]`).value = r.url;
+          document.querySelector(`[data-ga="${k}"] .ga-prev`).innerHTML = `<img src="${esc(r.url)}" alt="">`;
+          toast('انرفعت الصورة', 'success');
+        } catch (err) {
+          toast(err.message, 'error');
+        }
+        return;
+      }
       if (e.target.id === 'i-wheel-file') {
         const file = e.target.files[0];
         e.target.value = '';
@@ -1694,8 +1782,8 @@
   // ---------- groups (one per sidebar item) ----------
   const GROUPS = {
     settings: { sections: ['sec-general'], ar: ['إعدادات السيرفر', 'البادئة ورتبة مدراء البوت.'], en: ['Server settings', 'Prefix and the bot manager role.'] },
-    moderation: { sections: ['sec-mod-note', 'sec-automod', 'sec-verify', 'sec-jail', 'sec-appeals', 'sec-protection', 'sec-backup', 'sec-vanity', 'sec-purge'], ar: ['الإشراف والحماية', 'AutoMod، التحقق، السجن، طلبات فك الحظر، الحماية، النسخ الاحتياطي والمسح التلقائي.'], en: ['Moderation', 'AutoMod, verification, jail, ban appeals, protection, backups and auto purge.'] },
-    community: { sections: ['sec-games', 'sec-tempvoice', 'sec-radar', 'sec-kafeel', 'sec-youtube', 'sec-khatma', 'sec-wrapped', 'sec-prayer', 'sec-adhkar'], ar: ['المجتمع', 'الألعاب، الرومات المؤقتة، رادار الجداد، الكفيل، يوتيوب، الختمة، الملخص، الصلاة والأذكار.'], en: ['Community', 'Games, temp voice, newcomer radar, sponsors, YouTube, khatma, summary, prayer and adhkar.'] },
+    moderation: { sections: ['sec-mod-note', 'sec-automod', 'sec-verify', 'sec-jail', 'sec-warns', 'sec-appeals', 'sec-protection', 'sec-backup', 'sec-vanity', 'sec-purge'], ar: ['الإشراف والحماية', 'AutoMod، التحقق، السجن، طلبات فك الحظر، الحماية، النسخ الاحتياطي والمسح التلقائي.'], en: ['Moderation', 'AutoMod, verification, jail, ban appeals, protection, backups and auto purge.'] },
+    community: { sections: ['sec-games', 'sec-gameart', 'sec-tempvoice', 'sec-radar', 'sec-kafeel', 'sec-youtube', 'sec-khatma', 'sec-wrapped', 'sec-prayer', 'sec-adhkar'], ar: ['المجتمع', 'الألعاب، الرومات المؤقتة، رادار الجداد، الكفيل، يوتيوب، الختمة، الملخص، الصلاة والأذكار.'], en: ['Community', 'Games, temp voice, newcomer radar, sponsors, YouTube, khatma, summary, prayer and adhkar.'] },
     staff: { sections: ['sec-staff'], ar: ['أداء الإدارة', 'تقرير شهري لنشاط كل إداري.'], en: ['Staff report', 'A monthly activity report for every staff member.'] },
     rolemenus: { sections: ['sec-rolemenus'], ar: ['رتب بالأزرار', 'لوحات يختار منها الأعضاء رتبهم.'], en: ['Role menus', 'Panels where members pick their roles.'] },
     embeds: { sections: ['sec-embeds'], ar: ['صانع الإمبد', 'صمم رسائل مرتبة وابعتها أو جدولها.'], en: ['Embed builder', 'Design messages and send or schedule them.'] },
@@ -2319,6 +2407,26 @@
     );
   }
 
+  function sGameArt() {
+    const A = S.gameArt || {};
+    const games = [['roulette', 'روليت (اللوبي)'], ['rouletteWheel', 'روليت (خلفية العجلة)'], ['mafia', 'مافيا'], ['chairs', 'الكراسي'], ['spy', 'برا السالفة'], ['xo', 'بطولة XO'], ['rps', 'حجرة ورقة مقص'], ['deathbox', 'صندوق الموت'], ['fasttype', 'أسرع كاتب'], ['flags', 'أعلام'], ['capitals', 'عواصم'], ['unscramble', 'فكّك الكلمة'], ['math', 'حساب سريع'], ['night', 'سهرة الألعاب']];
+    const line = ([k, n]) => `<div class="ga-row" data-ga="${k}">
+        <div class="ga-prev">${A[k] ? `<img src="${esc(A[k])}" alt="">` : `<img src="/art/${k === 'rouletteWheel' ? 'roulette' : k}.jpg" alt="" onerror="this.remove()">`}</div>
+        <div class="ga-body"><b>${n}</b>
+          <div class="upload-line"><input type="file" data-ga-file="${k}" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+          <button type="button" class="btn ghost sm" data-pick-ga="${k}">${icon('plus')} رفع</button>
+          <input class="input ltr" data-ga-url="${k}" placeholder="أو رابط https://..." value="${esc(A[k] || '')}">
+          <button type="button" class="btn ghost sm" data-ga-reset="${k}" title="رجّع الأصلية">${icon('refresh')}</button></div></div></div>`;
+    return card(
+      'sec-gameart',
+      `صور الألعاب ${crown}`,
+      'حط صورتك الخاصة لكل لعبة بدل تصميم البوت، وخلفية خاصة لعجلة الروليت. الأفضل صورة عرضية 1200×600.',
+      'palette',
+      premiumBlock(`<div class="ga-list">${games.map(line).join('')}</div>`, 'صور الألعاب الخاصة للبريميوم', 'gameArt'),
+      'gameArt'
+    );
+  }
+
   function sTempVoice() {
     const T = S.tempVoice || {};
     const voiceOpts = (sel) => options(M.voice || [], sel, { placeholder: 'اختر روم صوتي', prefix: '🔊 ' });
@@ -2525,7 +2633,7 @@
     if (!P) throw new Error('لوحة التحكم تحدّثت لكن البوت ما زال يعمل بالنسخة القديمة — أعد تشغيل البوت من الاستضافة ثم حدّث الصفحة');
     if (!EMO?.canEdit) EMO = null;
     document.getElementById('cards').innerHTML = [
-      sPremium(), sGeneral(), sBotProfile(), sWelcome(), sTickets(), sGwManage(), sGiveaway(), sModNote(), sAutomod(), sVerify(), sProtection(), sJail(), sVanity(), sBackup(), sPurge(), sRoleMenus(), sEmbeds(), sKafeel(), sWrapped(), sGames(), sTempVoice(), sKhatma(), sRadar(), sYoutube(), sAppeals(), sPrayer(), sAdhkar(), sStaff(), sLogs(), sInvites(), sAutoLine(), sFeedback(), sReplies(), sLevels(), sGuildEmojis(), sEmojis(),
+      sPremium(), sGeneral(), sBotProfile(), sWelcome(), sTickets(), sGwManage(), sGiveaway(), sModNote(), sAutomod(), sVerify(), sProtection(), sJail(), sWarns(), sVanity(), sBackup(), sPurge(), sRoleMenus(), sEmbeds(), sKafeel(), sWrapped(), sGames(), sGameArt(), sTempVoice(), sKhatma(), sRadar(), sYoutube(), sAppeals(), sPrayer(), sAdhkar(), sStaff(), sLogs(), sInvites(), sAutoLine(), sFeedback(), sReplies(), sLevels(), sGuildEmojis(), sEmojis(),
     ].join('');
     arrangeGroups();
     renderChips('autoline');

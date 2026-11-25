@@ -28,6 +28,7 @@ const CATEGORIES = {
   greetings: 'الترحيب',
   channels: 'التحكم بالقنوات',
   moderation: 'الإدارة والسجن',
+  protection: 'الحماية',
   logs: 'السجلات',
   tickets: 'التذاكر',
   config: 'إعدادات السيرفر',
@@ -97,6 +98,9 @@ function buildSlash(cmd) {
         break;
       case 'boolean':
         b.addBooleanOption((o) => base(o));
+        break;
+      case 'attachment':
+        b.addAttachmentOption((o) => base(o));
         break;
       default:
         b.addStringOption((o) => {
@@ -171,6 +175,9 @@ async function run(ctx, { silent = false } = {}) {
   });
   try {
     await ctx.command.run(ctx);
+    try {
+      require('../systems/logs').logCommand(ctx);
+    } catch {}
   } catch (err) {
     console.error(`[command:${ctx.command.name}]`, err);
     await ctx.fail('حدث خطأ غير متوقع أثناء تنفيذ الأمر.').catch(() => {});
