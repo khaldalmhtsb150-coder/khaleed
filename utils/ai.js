@@ -16,7 +16,7 @@ const store = require('./store');
 
 const PROVIDERS = {
   anthropic: { format: 'anthropic', url: 'https://api.anthropic.com/v1/messages', model: 'claude-haiku-5-5', env: 'ANTHROPIC_API_KEY' },
-  gemini: { format: 'openai', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model: 'gemini-flash-latest', env: 'GEMINI_API_KEY' },
+  gemini: { format: 'openai', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model: 'gemini-flash-latest', fallback: ['gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'], env: 'GEMINI_API_KEY' },
   openai: { format: 'openai', url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-5-mini', env: 'OPENAI_API_KEY' },
   groq: { format: 'openai', url: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile', env: 'GROQ_API_KEY' },
   openrouter: { format: 'openai', url: 'https://openrouter.ai/api/v1/chat/completions', model: 'google/gemini-flash-latest', env: 'OPENROUTER_API_KEY' },
@@ -32,7 +32,9 @@ function settings() {
   const p = PROVIDERS[name];
   const key = env.AI_API_KEY || env[p.env];
   if (!key) return null;
-  return { name, ...p, key, model: env.AI_MODEL || p.model, url: env.AI_BASE_URL || p.url };
+  const model = env.AI_MODEL || p.model;
+  const extra = env.AI_FALLBACK_MODELS ? env.AI_FALLBACK_MODELS.split(',').map((m) => m.trim()).filter(Boolean) : p.fallback || [];
+  return { name, ...p, key, model, models: [...new Set([model, ...extra])], url: env.AI_BASE_URL || p.url };
 }
 
 const available = () => Boolean(mock || settings());
@@ -194,8 +196,12 @@ async function chat({ guildId, system, messages, tools = [], maxTokens = 700, te
     }
   }
 
+  // when a model is busy (503/429) or missing (404), move on to the next one in the list
+  const models = s.models || [s.model];
+  let mi = 0;
   let attempt = 0;
   for (;;) {
+    body.model = models[mi];
     try {
       if (s.format === 'anthropic') return fromAnthropic(await post(s.url, { 'x-api-key': s.key, 'anthropic-version': '2023-06-01' }, body));
       return fromOpenAI(await post(s.url, { authorization: `Bearer ${s.key}` }, body));
@@ -212,6 +218,11 @@ async function chat({ guildId, system, messages, tools = [], maxTokens = 700, te
       }
       if (e.name === 'AbortError') e.message = 'AI timeout: ما وصل رد من مزوّد الذكاء الاصطناعي خلال 30 ثانية (يمكن الاستضافة مانعة الاتصال)';
       console.error(`[ai] ${s.name} ${s.model}:`, e.message);
+      if ([404, 429, 500, 503].includes(e.status) && mi + 1 < models.length) {
+        mi++;
+        attempt = 0;
+        continue;
+      }
       const retry = e.status === 429 || (e.status >= 500 && e.status < 600);
       if (!retry || attempt > 1) throw e;
       await new Promise((r) => setTimeout(r, 1500 * attempt));
