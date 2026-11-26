@@ -287,7 +287,7 @@ function writeSettings(guild, module, d) {
           description: str(p.description, 100),
           roles: (Array.isArray(p.roles) ? p.roles : []).map((x) => roleIn(guild, x)).filter(Boolean).slice(0, 5),
           questions: (Array.isArray(p.questions) ? p.questions : String(p.questions || '').split('\n')).map((q) => str(String(q), 200).trim()).filter(Boolean).slice(0, 15),
-          req: { tag: bool(r.tag), link: bool(r.link), linkText: str(r.linkText, 80).trim(), accountDays: int(r.accountDays, 0, 3650, 0), serverDays: int(r.serverDays, 0, 3650, 0), level: int(r.level, 0, 500, 0), noWarns: bool(r.noWarns) },
+          req: { logo: bool(r.logo), logoPatterns: (Array.isArray(r.logoPatterns) ? r.logoPatterns : String(r.logoPatterns || '').split('\n')).map((x) => str(String(x), 40).trim()).filter(Boolean).slice(0, 10), tag: bool(r.tag), link: bool(r.link), linkText: str(r.linkText, 80).trim(), accountDays: int(r.accountDays, 0, 3650, 0), serverDays: int(r.serverDays, 0, 3650, 0), level: int(r.level, 0, 500, 0), noWarns: bool(r.noWarns) },
           mode: oneOf(p.mode, ['manual', 'assist', 'auto'], 'assist'),
           interview: bool(p.interview),
           acceptAt: int(p.acceptAt, 50, 100, 80),

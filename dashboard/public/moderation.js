@@ -1151,7 +1151,7 @@
               description: v('description'),
               roles: chipState[`appos-${b.dataset.pos}`] || [],
               questions: v('questions').split('\n'),
-              req: { tag: c('tag'), link: c('link'), linkText: v('linkText'), accountDays: v('accountDays'), serverDays: v('serverDays'), level: v('level'), noWarns: c('noWarns') },
+              req: { logo: c('logo'), logoPatterns: v('logoPatterns').split('\n'), tag: c('tag'), link: c('link'), linkText: v('linkText'), accountDays: v('accountDays'), serverDays: v('serverDays'), level: v('level'), noWarns: c('noWarns') },
               mode: v('mode'),
               interview: c('interview'),
               acceptAt: v('acceptAt'),
@@ -2630,7 +2630,8 @@
       ${field('الرتب عند القبول', chips(key, p.roles || [], 'roles'))}
       ${field('الأسئلة (سؤال بكل سطر، لحد 15)', `<textarea class="textarea" data-p="questions" rows="5" maxlength="3000">${esc((p.questions || []).join('\n'))}</textarea>`, 'كل 5 أسئلة بصفحة. السؤال الطويل بينكتب كامل داخل الخانة.')}
       <div class="sub-h">الشروط</div>
-      <div class="check-grid">${chk('tag', r.tag, 'شعار السيرفر (التاق) أساسي')}${chk('link', r.link, 'رابط السيرفر بالبايو')}${chk('noWarns', r.noWarns, 'بدون تحذيرات')}</div>
+      <div class="check-grid">${chk('logo', r.logo, 'الشعار بالاسم')}${chk('link', r.link, 'رابط السيرفر بالبايو')}${chk('noWarns', r.noWarns, 'بدون تحذيرات')}${chk('tag', r.tag, 'تاق السيرفر (Server Tag)')}</div>
+      ${field('أشكال الشعار المقبولة (شكل بكل سطر)', `<textarea class="textarea ltr" data-p="logoPatterns" rows="3" maxlength="400" placeholder="Mb - {اسم}\n{اسم} | Mb">${esc((r.logoPatterns || []).join('\n'))}</textarea>`, 'حط {اسم} مكان اسم العضو. مثلاً <b>Mb - {اسم}</b> يعني لازم اسمه يكون "Mb - سامي". والبوت بيعطيه زر يحطله الشعار بكبسة.')}
       <div class="row">
         ${field('الرابط المطلوب بالبايو', `<input class="input ltr" data-p="linkText" maxlength="80" placeholder="${esc(S.apply?.vanity ? `discord.gg/${S.apply.vanity}` : 'discord.gg/xxxx')}" value="${esc(r.linkText || '')}">`, 'البوتات ما بتقدر تقرأ البايو، فبنطلب صورة بروفايل والمساعد بيفحصها')}
         ${field('عمر الحساب (يوم)', num('accountDays', r.accountDays, 0, 3650))}

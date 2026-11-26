@@ -50,7 +50,7 @@ const POSITION = {
   description: '',
   roles: [],
   questions: [],
-  req: { tag: false, link: false, linkText: '', accountDays: 0, serverDays: 0, level: 0, noWarns: false },
+  req: { logo: false, logoPatterns: [], tag: false, link: false, linkText: '', accountDays: 0, serverDays: 0, level: 0, noWarns: false },
   mode: 'assist', // manual | assist | auto
   interview: true,
   acceptAt: 80,
@@ -72,7 +72,7 @@ const TEMPLATE = {
     'عضو بسب عضو ثاني بالشات العام، شو بتعمل؟',
     'شو بتعمل إذا إداري ثاني غلط قدامك؟',
   ],
-  req: { tag: true, link: true, linkText: '', accountDays: 30, serverDays: 7, level: 0, noWarns: true },
+  req: { logo: false, logoPatterns: [], tag: false, link: true, linkText: '', accountDays: 30, serverDays: 7, level: 0, noWarns: true },
   mode: 'assist',
   criteria: 'محترم، هادي، متواجد، بيكتب بوضوح، وما عنده مشاكل مع الأعضاء.',
   duties: '• رد على الأعضاء واستلم التذاكر بأسرع وقت\n• حافظ على الشات نظيف واحترم القوانين قبل الكل\n• أي عقوبة لازم يكون إلها سبب واضح\n• خلافات الإدارة بتنحل بالخاص مش قدام الأعضاء\n• تواجد يومي ولو قليل',
@@ -110,6 +110,37 @@ function linkText(guild, pos) {
   return pos.req.linkText?.trim() || (guild.vanityURLCode ? `discord.gg/${guild.vanityURLCode}` : 'رابط السيرفر');
 }
 
+// ---------- the server logo in the member's name ("Mb - Sami", "Sami | Mb") ----------
+// Patterns come from the dashboard, one per line; {اسم} / {name} marks where the name goes.
+// A pattern without it means "the name starts or ends with this".
+const NAME = /\{(?:اسم|الاسم|name)\}/i;
+const squash = (t) => String(t || '').normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
+function logoPatterns(pos) {
+  return (pos.req.logoPatterns || []).map((x) => String(x).trim()).filter(Boolean).slice(0, 10);
+}
+function hasLogo(name, pos) {
+  const n = squash(name);
+  return logoPatterns(pos).some((pat) => {
+    if (NAME.test(pat)) {
+      const [before, after] = pat.split(NAME).map(squash);
+      return n.length > before.length + after.length && n.startsWith(before) && n.endsWith(after);
+    }
+    const p = squash(pat);
+    return Boolean(p) && (n.startsWith(p) || n.endsWith(p));
+  });
+}
+const showPattern = (pat) => (NAME.test(pat) ? pat.replace(NAME, 'اسمك') : `${pat} اسمك`);
+/** The name with the first pattern applied (≤ 32 chars, Discord's nickname limit). */
+function withLogo(member, pos) {
+  const pat = logoPatterns(pos)[0];
+  if (!pat) return null;
+  const base = String(member.user.globalName || member.user.username || member.displayName).trim();
+  const [before, after] = NAME.test(pat) ? pat.split(NAME) : [`${pat.trim()} `, ''];
+  const room = 32 - before.length - after.length;
+  return room > 1 ? `${before}${base.slice(0, room)}${after}` : null;
+}
+const nameOf = (member) => member.nickname || member.displayName || member.user.globalName || member.user.username;
+
 /** [{ key, ok: true|false|null, label, fix }] — null means "checked later" (screenshot) or "couldn't tell". */
 async function checks(guild, member, pos) {
   const r = pos.req;
@@ -132,9 +163,13 @@ async function checks(guild, member, pos) {
     const n = require('./warns').list(guild.id, member.id).length;
     out.push({ key: 'warns', ok: n === 0, label: 'ما عليك تحذيرات', fix: `عليك ${n} تحذير شغّال` });
   }
+  if (r.logo && logoPatterns(pos).length) {
+    const shapes = logoPatterns(pos).map((x) => `\`${showPattern(x)}\``).join(' أو ');
+    out.push({ key: 'logo', ok: hasLogo(nameOf(member), pos), label: `الشعار باسمك (${shapes})`, fix: `اكبس على اسم السيرفر ← تعديل ملف السيرفر الشخصي ← الكنية، وخلّي اسمك هيك: ${shapes}` });
+  }
   if (r.tag) {
     const ok = await tagState(guild, member.id);
-    out.push({ key: 'tag', ok, label: 'شعار السيرفر (التاق) أساسي عندك', fix: `من إعدادات المستخدم ← الملفات الشخصية ← تاق السيرفر، اختار **${guild.name}** وفعّله` });
+    out.push({ key: 'tag', ok, label: 'تاق السيرفر أساسي عندك', fix: `من إعدادات المستخدم ← الملفات الشخصية ← تاق السيرفر، اختار **${guild.name}** وفعّله` });
   }
   if (r.link) out.push({ key: 'link', ok: null, label: `${linkText(guild, pos)} بالبايو`, fix: 'حطه بخانة "نبذة عني" وبنطلب منك صورة بروفايلك بعد الأسئلة' });
   return out;
@@ -226,6 +261,7 @@ async function checkView(guild, member, pos) {
       ].join('\n')
     );
   const row = new ActionRowBuilder();
+  if (failing.some((c) => c.key === 'logo') && member.manageable && withLogo(member, pos)) row.addComponents(ui.button(`apply:logo:${pos.id}`, 'حطّلي الشعار', { style: ButtonStyle.Primary }));
   if (failing.length) row.addComponents(ui.button(`apply:check:${pos.id}`, 'فحص مرة ثانية', { emoji: 'refresh' }));
   else row.addComponents(ui.button(`apply:start:${pos.id}`, 'ابدأ التقديم', { style: ButtonStyle.Success }));
   return { embeds: [e], components: [row], ephemeral: true };
@@ -315,7 +351,7 @@ const STATUS = {
   rejected: ['❌ مرفوض', 0xed4245],
   ended: ['🚪 انتهت التجربة', 0x80848e],
 };
-const SHORT = { account: 'عمر الحساب', server: 'مدته بالسيرفر', level: 'اللفل', warns: 'بدون تحذيرات', tag: 'التاق', link: 'الرابط بالبايو' };
+const SHORT = { account: 'عمر الحساب', server: 'مدته بالسيرفر', level: 'اللفل', warns: 'بدون تحذيرات', logo: 'الشعار', tag: 'التاق', link: 'الرابط بالبايو' };
 function reviewPayload(guild, app) {
   const [label, color] = STATUS[app.status] || STATUS.pending;
   const p = app.profile || {};
@@ -409,7 +445,7 @@ async function openRoom(guild, app, member) {
 const shots = new Map(); // appId → base64
 /** Requirements that still stop the interview: tag not set, or the bio link not shown/confirmed. */
 function missing(app) {
-  return (app.checks || []).filter((c) => (c.key === 'tag' && c.ok === false) || (c.key === 'link' && c.ok !== true && (c.ok === false || !app.hasShot)));
+  return (app.checks || []).filter((c) => ((c.key === 'tag' || c.key === 'logo') && c.ok === false) || (c.key === 'link' && c.ok !== true && (c.ok === false || !app.hasShot)));
 }
 function roomOpening(guild, app, pos) {
   const miss = missing(app);
@@ -417,7 +453,7 @@ function roomOpening(guild, app, pos) {
   if (miss.length) {
     lines.push('', 'قبل ما نكمّل في كم شغلة ناقصة:');
     for (const c of miss) {
-      if (c.key === 'tag') lines.push(`• ${c.label}\n-# ${c.fix}`);
+      if (c.key === 'tag' || c.key === 'logo') lines.push(`• ${c.label}\n-# ${c.fix}`);
       if (c.key === 'link') lines.push(`• حط **${linkText(guild, pos)}** بخانة "نبذة عني" (About Me) بالبروفايل، وبعدها ابعت هون **صورة لبروفايلك**`);
     }
     lines.push('', 'لما تخلّص احكيلي هون.');
@@ -461,7 +497,7 @@ function roomPrompt(guild, app, pos, conf, stage) {
     '',
     'Your job, in order:',
     miss.length
-      ? `1. Requirements first. Still missing: ${miss.map((c) => (c.key === 'link' ? `"${linkText(guild, pos)}" in their About Me, verified by a profile screenshot they send here` : 'the server tag set as primary')).join(' and ')}. Explain briefly how to fix it and ask them to tell you / send the screenshot. Don't start the questions until it's done.`
+      ? `1. Requirements first. Still missing: ${miss.map((c) => (c.key === 'link' ? `"${linkText(guild, pos)}" in their About Me, verified by a profile screenshot they send here` : c.key === 'logo' ? `the server logo in their server nickname, like ${logoPatterns(pos).map(showPattern).join(' or ')} (Server profile → Nickname)` : 'the server tag set as primary')).join(' and ')}. Explain briefly how to fix it and ask them to tell you / send the screenshot. Don't start the questions until it's done.`
       : '1. Requirements are done.',
     `2. Then ask these follow-up questions ONE at a time, reacting naturally to each answer (you may add one extra question if an answer is vague): ${(app.ai?.followups || []).map((q) => `"${q}"`).join(' / ') || 'ask 2 short questions about how they would handle real situations on this server'}. You've asked ${app.asked || 0} so far.`,
     '3. When you have enough, call finish_interview with an honest score (0-100) and a short Arabic summary for the staff, then tell the applicant their application is with the team now.',
@@ -478,7 +514,7 @@ async function finishInterview(guild, app, pos, { score, summary }) {
   app.stage = 'done';
   app.status = 'pending';
   store.save('applications');
-  const ready = (app.checks || []).every((c) => c.ok === true || (c.ok === null && c.key !== 'link' && c.key !== 'tag'));
+  const ready = (app.checks || []).every((c) => c.ok === true || (c.ok === null && !['link', 'tag', 'logo'].includes(c.key)));
   if (pos.mode === 'auto' && ready && app.ai.score >= (pos.acceptAt || 80)) {
     await accept(guild, app, guild.client.user, { auto: true });
     return 'accepted';
@@ -510,6 +546,15 @@ async function onRoomMessage(message, app) {
     const now = await tagState(guild, app.uid);
     if (now !== tag.ok) {
       tag.ok = now;
+      changed = true;
+    }
+  }
+  const logo = (app.checks || []).find((c) => c.key === 'logo');
+  if (logo && logo.ok !== true) {
+    const m = await guild.members.fetch({ user: app.uid, force: true }).catch(() => message.member);
+    const now = m ? hasLogo(nameOf(m), pos) : logo.ok;
+    if (now !== logo.ok) {
+      logo.ok = now;
       changed = true;
     }
   }
@@ -799,6 +844,18 @@ async function onInteraction(i) {
     return i.editReply(view);
   }
 
+  if (action === 'logo') {
+    const pos = posOf(guild.id, a);
+    const block = gate(guild.id, i.user.id, pos);
+    if (block) return i.reply({ content: `• ${block}`, ephemeral: true });
+    const nick = withLogo(i.member, pos);
+    await i.deferUpdate();
+    const ok = nick && (await i.member.setNickname(nick, 'شعار التقديم').then(() => true).catch(() => false));
+    const { ephemeral, ...view } = await checkView(guild, i.member, pos);
+    if (!ok) view.content = '• ما قدرت أغيّر اسمك (يمكن رتبتك أعلى من البوت) — غيّره إنت من ملف السيرفر.';
+    return i.editReply(view);
+  }
+
   if (action === 'start' || action === 'next') {
     const pos = posOf(guild.id, a);
     const block = gate(guild.id, i.user.id, pos);
@@ -965,5 +1022,7 @@ module.exports = {
   init,
   _onMessage: onMessage,
   _drafts: drafts,
+  _hasLogo: hasLogo,
+  _withLogo: withLogo,
   components: [{ prefix: 'apply:', type: 'any', handle: onInteraction }],
 };
