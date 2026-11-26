@@ -28,31 +28,49 @@ const working = new Map(); // provider → { model, at }: the last model that an
 
 // keys pasted with quotes or spaces around them are a common .env mistake
 const clean = (v) => String(v || '').trim().replace(/^['"]|['"]$/g, '').trim();
-function settings() {
-  const env = process.env;
-  let name = String(env.AI_PROVIDER || '').toLowerCase().trim();
-  if (!PROVIDERS[name]) name = Object.keys(PROVIDERS).find((p) => env[PROVIDERS[p].env]) || (env.AI_API_KEY ? 'gemini' : '');
-  if (!name) return null;
-  const p = PROVIDERS[name];
-  const key = clean(env.AI_API_KEY) || clean(env[p.env]);
-  if (!key) return null;
-  const model = env.AI_MODEL || p.model;
-  const extra = env.AI_FALLBACK_MODELS ? env.AI_FALLBACK_MODELS.split(',').map((m) => m.trim()).filter(Boolean) : p.fallback || [];
-  return { name, ...p, key, model, models: [...new Set([model, ...extra])], url: env.AI_BASE_URL || p.url };
+// Which provider a key belongs to, from its shape — so a key in the "wrong" line still works.
+function keyOwner(key) {
+  if (/^sk-ant-/.test(key)) return 'anthropic';
+  if (/^gsk_/.test(key)) return 'groq';
+  if (/^sk-or-/.test(key)) return 'openrouter';
+  if (/^(AIza|AQ\.)/.test(key)) return 'gemini';
+  if (/^sk-/.test(key)) return 'openai';
+  return null;
 }
-/** The main provider, then any other provider that has its own key in .env (e.g. GROQ_API_KEY) as a backup. */
+function entry(name, key, { primary = false } = {}) {
+  const env = process.env;
+  const p = PROVIDERS[name];
+  const model = (primary && env.AI_MODEL) || p.model;
+  const extra = primary && env.AI_FALLBACK_MODELS ? env.AI_FALLBACK_MODELS.split(',').map((m) => m.trim()).filter(Boolean) : p.fallback || [];
+  return { name, ...p, key, model, models: [...new Set([model, ...extra])], url: (primary && env.AI_BASE_URL) || p.url };
+}
+/** Every provider with a key in .env, the one named in AI_PROVIDER first. */
 function chain() {
-  const main = settings();
-  const out = main ? [main] : [];
-  for (const [name, p] of Object.entries(PROVIDERS)) {
-    if (main?.name === name || !clean(process.env[p.env])) continue;
-    out.push({ name, ...p, key: clean(process.env[p.env]), model: p.model, models: [p.model, ...(p.fallback || [])] });
-  }
-  return out;
+  const env = process.env;
+  const wanted = String(env.AI_PROVIDER || '').toLowerCase().trim();
+  const found = new Map(); // provider → key
+  const add = (key, hint) => {
+    key = clean(key);
+    if (!key) return;
+    const owner = keyOwner(key) || (PROVIDERS[hint] ? hint : null);
+    if (owner && !found.has(owner)) found.set(owner, key);
+  };
+  add(env.AI_API_KEY, wanted || 'gemini');
+  for (const [name, p] of Object.entries(PROVIDERS)) add(env[p.env], name);
+  const names = [...found.keys()].sort((x, y) => (y === wanted) - (x === wanted));
+  return names.map((n, k) => entry(n, found.get(n), { primary: k === 0 && (n === wanted || !wanted) }));
+}
+const settings = () => chain()[0] || null;
+
+/** One safe line for the console: which providers, and the last 4 characters of each key. */
+function describe() {
+  const list = chain();
+  return list.length ? list.map((x) => `${x.name} (…${x.key.slice(-4)})`).join(' + ') : 'none';
 }
 
 const available = () => Boolean(mock || settings());
 const providerName = () => (mock ? 'mock' : chain().map((x) => x.name).join(' + ') || null);
+if (!process.env.AI_QUIET) setImmediate(() => console.log(`[ai] providers: ${describe()}`));
 
 // ---------- daily limits (protects the owner's API bill) ----------
 const today = () => new Date().toISOString().slice(0, 10);
@@ -341,6 +359,8 @@ module.exports = {
   PROVIDERS,
   available,
   providerName,
+  describe,
+  _keyOwner: keyOwner,
   canUse,
   usage,
   limitFor,
