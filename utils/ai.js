@@ -223,7 +223,7 @@ async function chat({ guildId, system, messages, tools = [], maxTokens = 700, te
       lastErr = e;
       // busy, rate-limited, timed out or model gone: let the backup provider answer
       // a wrong key (401/403) on one provider shouldn't silence the bot when another one works
-      const passOn = e.name === 'AbortError' || /timeout/i.test(e.message) || [401, 403, 404, 429, 500, 502, 503, 504].includes(e.status);
+      const passOn = e.name === 'AbortError' || /timeout/i.test(e.message) || [400, 401, 403, 404, 429, 500, 502, 503, 504].includes(e.status);
       if (!passOn) throw e;
       if (list.length > 1) resting.set(s.name, Date.now() + 2 * 60_000);
     }
@@ -270,20 +270,21 @@ async function callProvider(s, { system, messages, tools, maxTokens, temperature
     } catch (e) {
       attempt++;
       // a model that doesn't take one of the optional knobs: drop it and try again
-      if (e.status === 400 && attempt <= 2) {
+      if (e.status === 400 && attempt <= 3) {
         const msg = String(e.message);
-        const knob = ['reasoning_effort', 'temperature'].find((k) => k in body && msg.includes(k));
-        if (knob === 'reasoning_effort' && body.reasoning_effort === 'none') {
+        // models that always think reject "none" (often with a bare "invalid argument"): ask for low instead
+        if (body.reasoning_effort === 'none') {
           body.reasoning_effort = 'low';
           continue;
         }
+        const knob = ['reasoning_effort', 'temperature'].find((k) => k in body && (msg.includes(k) || /invalid argument/i.test(msg)));
         if (knob) {
           delete body[knob];
           continue;
         }
       }
       if (e.name === 'AbortError') e.message = 'AI timeout: ما وصل رد من مزوّد الذكاء الاصطناعي خلال 30 ثانية (يمكن الاستضافة مانعة الاتصال)';
-      console.error(`[ai] ${s.name} ${s.model}:`, e.message);
+      console.error(`[ai] ${s.name} ${body.model}:`, String(e.message).replace(/\s+/g, ' ').slice(0, 160));
       if ([404, 429, 500, 503].includes(e.status) && mi + 1 < models.length) {
         if (working.get(s.name)?.model === body.model) working.delete(s.name);
         mi++;
