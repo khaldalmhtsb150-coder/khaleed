@@ -37,9 +37,9 @@ const FALLBACK = {
   roles: '◇',
   settings: '≡',
   // Giveaway
-  gwHost: '<:emoji_65:1571539092045430816>',
-  gwEnds: '<:emoji_72:1571539597853462638>',
-  gwWinners: '<:emoji_62:1571538811366936606>',
+  gwHost: '<:emoji_2:1575568541086912582>',
+  gwEnds: '<:emoji_3:1575568726647119892>',
+  gwWinners: '<:emoji_5:1575569512072216616>',
 };
 
 const GROUPS = {
