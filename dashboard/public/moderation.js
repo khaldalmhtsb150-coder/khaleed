@@ -1128,6 +1128,44 @@
     wrapped: () => [['wrapped', { enabled: checked('wr-enabled'), channelId: val('wr-channel'), city: val('wr-city'), weekly: checked('wr-weekly'), accent: val('wr-accent') }]],
     games: () => [['games', { enabled: checked('gm-enabled'), channels: chipState.games, starterRoleId: val('gm-starter'), lobbySeconds: val('gm-lobby'), winXp: val('gm-winxp'), playXp: val('gm-playxp'), perks: checked('gm-perks'), championRoleId: val('gm-champ'), night: { enabled: checked('gm-night'), channelId: val('gm-nch'), day: val('gm-nday'), time: val('gm-ntime'), roleId: val('gm-nrole'), games: [...document.querySelectorAll('[data-ngame]:checked')].map((c) => c.dataset.ngame) } }]],
     tempVoice: () => [['tempVoice', { enabled: checked('tv-enabled'), hubId: val('tv-hub'), categoryId: val('tv-cat'), nameTemplate: val('tv-name'), limit: val('tv-limit') }]],
+    ai: () => [['ai', { enabled: checked('ai-enabled'), name: val('ai-name'), dialect: val('ai-dialect'), instructions: val('ai-instr'), tickets: checked('ai-tickets'), mention: checked('ai-mention'), channels: chipState.aich, handoff: checked('ai-handoff'), learn: val('ai-learn'), canRoles: checked('ai-roles'), allowRoles: chipState.airoles, canTimeout: checked('ai-timeout'), maxTimeout: val('ai-maxto'), canCloseTicket: checked('ai-close') }]],
+    apply: () => [
+      [
+        'apply',
+        {
+          enabled: checked('apl-enabled'),
+          reviewChannelId: val('apl-review'),
+          reviewerRoleId: val('apl-role'),
+          title: val('apl-title'),
+          description: val('apl-desc'),
+          bannerUrl: val('apl-banner').trim(),
+          dm: checked('apl-dm'),
+          positions: [...document.querySelectorAll('[data-pos]')].map((b) => {
+            const g = (f) => b.querySelector(`[data-p="${f}"]`);
+            const v = (f) => g(f)?.value ?? '';
+            const c = (f) => Boolean(g(f)?.checked);
+            return {
+              id: b.dataset.pos,
+              name: v('name'),
+              emoji: v('emoji'),
+              description: v('description'),
+              roles: chipState[`appos-${b.dataset.pos}`] || [],
+              questions: v('questions').split('\n'),
+              req: { tag: c('tag'), link: c('link'), linkText: v('linkText'), accountDays: v('accountDays'), serverDays: v('serverDays'), level: v('level'), noWarns: c('noWarns') },
+              mode: v('mode'),
+              interview: c('interview'),
+              acceptAt: v('acceptAt'),
+              criteria: v('criteria'),
+              duties: v('duties'),
+              trialDays: v('trialDays'),
+              seats: v('seats'),
+              open: c('open'),
+              cooldownDays: v('cooldownDays'),
+            };
+          }),
+        },
+      ],
+    ],
     appeals: () => [['appeals', { enabled: checked('ap-enabled'), channelId: val('ap-channel'), cooldownDays: val('ap-cool') }]],
     khatma: () => [['khatma', { channelId: val('kh-channel'), roleId: val('kh-role'), maxPerUser: val('kh-max'), holdHours: val('kh-hours') }]],
     backup: () => [['backup', { auto: checked('bk-auto') }]],
@@ -1475,6 +1513,67 @@
         } catch (err) { toast(err.message, 'error', 5000); }
         return;
       }
+      if (e.target.closest('#ai-test')) {
+        const out = document.getElementById('ai-test-out');
+        const q = val('ai-test-q').trim();
+        if (!q) return toast('اكتب سؤال', 'error');
+        out.innerHTML = '<div class="skeleton" style="height:70px;margin-top:10px"></div>';
+        try {
+          const r = await api(`/api/ai/${id}/test`, { method: 'POST', body: { text: q, draft: { instructions: val('ai-instr'), dialect: val('ai-dialect'), name: val('ai-name') } } });
+          out.innerHTML = `<div class="ai-chat"><div class="ai-q">${esc(q)}</div><div class="ai-a"><b>${esc(val('ai-name') || 'المساعد')}</b>${esc(r.answer || '—').replace(/\n/g, '<br>')}</div></div>`;
+        } catch (err) {
+          out.innerHTML = '';
+          toast(err.message, 'error', 5000);
+        }
+        return;
+      }
+      const aiRefresh = async () => {
+        S.ai = (await api(`/api/settings/${id}`)).ai;
+        document.getElementById('sec-ai-brain').outerHTML = sAiBrain();
+      };
+      if (e.target.closest('#ai-fact-add')) {
+        try {
+          await api(`/api/ai/${id}/fact`, { method: 'POST', body: { text: val('ai-fact') } });
+          toast('حفظها 🧠', 'success');
+          await aiRefresh();
+        } catch (err) { toast(err.message, 'error', 5000); }
+        return;
+      }
+      const fdel = e.target.closest('[data-fact-del]');
+      if (fdel) {
+        try { await api(`/api/ai/${id}/fact/delete`, { method: 'POST', body: { id: fdel.dataset.factDel } }); await aiRefresh(); } catch (err) { toast(err.message, 'error', 5000); }
+        return;
+      }
+      const les = e.target.closest('[data-lesson]');
+      if (les) {
+        try {
+          await api(`/api/ai/${id}/lesson`, { method: 'POST', body: { id: les.dataset.lesson, approve: les.dataset.ok === '1' } });
+          toast(les.dataset.ok === '1' ? 'صار يعرفها' : 'انشالت', 'success');
+          await aiRefresh();
+        } catch (err) { toast(err.message, 'error', 5000); }
+        return;
+      }
+      if (e.target.closest('#apl-add') || e.target.closest('#apl-template')) {
+        const max = S.apply?.posLimit ?? 2;
+        if (document.querySelectorAll('[data-pos]').length >= max) return toast(`وصلت الحد (${max} مناصب) — البريميوم بيزيده 👑`, 'error', 5000);
+        const base = e.target.closest('#apl-template') ? { ...(S.apply?.template || {}), req: { ...(S.apply?.template?.req || {}) } } : { name: '', questions: [], req: {}, mode: 'assist' };
+        const p = { open: true, interview: true, acceptAt: 80, cooldownDays: 7, ...base, id: rid(), roles: [] };
+        document.getElementById('apl-positions').insertAdjacentHTML('beforeend', posBlock(p));
+        renderChips(`appos-${p.id}`);
+        document.querySelector(`[data-pos="${p.id}"] [data-p="name"]`)?.focus();
+        return;
+      }
+      if (e.target.closest('[data-pos-del]')) {
+        e.target.closest('[data-pos]').remove();
+        return;
+      }
+      if (e.target.closest('#apl-publish')) {
+        try {
+          await api(`/api/apply/${id}/publish`, { method: 'POST', body: { channelId: val('apl-panel-ch') } });
+          toast('نزلت لوحة التقديم ✓', 'success');
+        } catch (err) { toast(err.message, 'error', 5000); }
+        return;
+      }
       if (e.target.closest('#kh-start')) {
         try {
           await api(`/api/khatma/${id}/start`, { method: 'POST', body: { dedication: val('kh-ded') } });
@@ -1784,6 +1883,8 @@
     settings: { sections: ['sec-general'], ar: ['إعدادات السيرفر', 'البادئة ورتبة مدراء البوت.'], en: ['Server settings', 'Prefix and the bot manager role.'] },
     moderation: { sections: ['sec-mod-note', 'sec-automod', 'sec-verify', 'sec-jail', 'sec-warns', 'sec-appeals', 'sec-protection', 'sec-backup', 'sec-vanity', 'sec-purge'], ar: ['الإشراف والحماية', 'AutoMod، التحقق، السجن، طلبات فك الحظر، الحماية، النسخ الاحتياطي والمسح التلقائي.'], en: ['Moderation', 'AutoMod, verification, jail, ban appeals, protection, backups and auto purge.'] },
     community: { sections: ['sec-games', 'sec-gameart', 'sec-tempvoice', 'sec-radar', 'sec-kafeel', 'sec-youtube', 'sec-khatma', 'sec-wrapped', 'sec-prayer', 'sec-adhkar'], ar: ['المجتمع', 'الألعاب، الرومات المؤقتة، رادار الجداد، الكفيل، يوتيوب، الختمة، الملخص، الصلاة والأذكار.'], en: ['Community', 'Games, temp voice, newcomer radar, sponsors, YouTube, khatma, summary, prayer and adhkar.'] },
+    ai: { sections: ['sec-ai', 'sec-ai-brain'], ar: ['المساعد الذكي', 'إداري ذكي بيرد بالتذاكر، بيعرف سيرفرك، وبيتعلّم من فريقك.'], en: ['AI assistant', 'An AI staff member that answers tickets, knows your server and learns from your team.'] },
+    apply: { sections: ['sec-apply', 'sec-apply-pos', 'sec-apply-list'], ar: ['تقديم الإدارة', 'لوحة المناصب، الشروط، الأسئلة، المقابلة الذكية والقبول.'], en: ['Staff applications', 'Positions, requirements, questions, AI interviews and acceptance.'] },
     staff: { sections: ['sec-staff'], ar: ['أداء الإدارة', 'تقرير شهري لنشاط كل إداري.'], en: ['Staff report', 'A monthly activity report for every staff member.'] },
     rolemenus: { sections: ['sec-rolemenus'], ar: ['رتب بالأزرار', 'لوحات يختار منها الأعضاء رتبهم.'], en: ['Role menus', 'Panels where members pick their roles.'] },
     embeds: { sections: ['sec-embeds'], ar: ['صانع الإمبد', 'صمم رسائل مرتبة وابعتها أو جدولها.'], en: ['Embed builder', 'Design messages and send or schedule them.'] },
@@ -1798,7 +1899,7 @@
     premium: { sections: ['sec-premium'], ar: ['البريميوم', 'الخطة الحالية والحدود وتفعيل الأكواد.'], en: ['Premium', 'Current plan, limits and code activation.'] },
   };
 
-  const GROUP_ICONS = { settings: 'sliders', moderation: 'shield', community: 'users', staff: 'chart', rolemenus: 'layers', embeds: 'edit', tickets: 'ticket', logs: 'log', giveaways: 'gift', welcome: 'wave', responses: 'chat', levels: 'trophy', invites: 'link', customization: 'palette', premium: 'crown' };
+  const GROUP_ICONS = { ai: 'bot', apply: 'role', settings: 'sliders', moderation: 'shield', community: 'users', staff: 'chart', rolemenus: 'layers', embeds: 'edit', tickets: 'ticket', logs: 'log', giveaways: 'gift', welcome: 'wave', responses: 'chat', levels: 'trophy', invites: 'link', customization: 'palette', premium: 'crown' };
 
   // ---------- quick search (Ctrl+K): jumps to any setting on any page ----------
   const SX = MB.lang === 'en'
@@ -2449,6 +2550,155 @@
       'tempVoice'
     );
   }
+  // ---------- AI assistant ----------
+  function sAi() {
+    const A = S.ai || {};
+    const off = !A.available;
+    const dial = [['auto', 'نفس لهجة العضو'], ['jordanian', 'أردني / شامي'], ['gulf', 'خليجي'], ['egyptian', 'مصري'], ['fusha', 'فصحى بسيطة']];
+    const learn = [['review', 'بيتعلّم وبيستنى موافقتك'], ['auto', 'بيتعلّم لحاله من تصحيحات الإدارة'], ['off', 'ما بيتعلّم']];
+    const opt = (list, cur) => list.map(([v, n]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${n}</option>`).join('');
+    return card(
+      'sec-ai',
+      'المساعد الذكي',
+      'إداري ذكي بيرد على الأعضاء بالتذاكر وبرومات المساعدة، باسم ولهجة إنت بتختارهم. بينفّذ بس الإجراءات اللي بتسمحله فيها، بيحوّل للإدارة لما يلزم، وبيتعلّم من تصحيحاتكم.',
+      'bot',
+      `${off ? `<div class="ai-note warn">${icon('info')}<div><b>المساعد بحاجة لمفتاح ذكاء اصطناعي</b><small>صاحب البوت بيحط <code>AI_API_KEY</code> بملف <code>.env</code> مرة وحدة، وبيشتغل بكل السيرفرات.</small></div></div>` : `<div class="ai-note">${icon('zap')}<div><b>شغّال على ${esc(A.provider)}</b><small>استخدم اليوم ${A.usage} من ${A.limit} رد • رد ${A.stats?.replies || 0} مرة • حوّل للإدارة ${A.stats?.handoffs || 0} مرة</small></div></div>`}
+      ${toggle('ai-enabled', A.enabled, 'تشغيل المساعد', '', off)}
+      <div class="row">
+        ${field('اسمه', `<input class="input" id="ai-name" maxlength="32" value="${esc(A.name || 'المساعد')}">`, 'هيك بيعرّف عن حاله للأعضاء')}
+        ${field('لهجته', `<select class="select" id="ai-dialect">${opt(dial, A.dialect || 'auto')}</select>`)}
+      </div>
+      ${field('اشرحله سيرفرك وشغله', `<textarea class="textarea" id="ai-instr" rows="9" maxlength="6000" placeholder="مثال:\nسيرفرنا مجتمع ألعاب أردني. القوانين بروم #القوانين.\nإذا حدا سأل عن الشراكة: لازم السيرفر فوق 500 عضو، وحوّله للإدارة.\nإذا حدا بده رتبة لاعب، تأكد إنه كتب اسمه باللعبة وعطيه الرتبة.\nما تعطي وعود بالفلوس أو الجوائز.">${esc(A.instructions || '')}</textarea>`, 'اكتبله كأنك بتشرح لإداري جديد: شو السيرفر، القوانين، الأسعار، وين الأشياء، شو مسموحله يعمل، ومتى يحوّل للإدارة.')}
+      <div class="row">
+        <div>${toggle('ai-tickets', A.tickets !== false, 'يرد بالتذاكر', 'أول ما العضو يكتب. وبيوقف لحاله إذا حدا من الإدارة استلم التذكرة أو كتب فيها')}</div>
+        <div>${toggle('ai-mention', A.mention !== false, 'يرد لما حدا يمنشنه', 'بأي روم بالسيرفر')}</div>
+      </div>
+      ${field('رومات المساعدة', chips('aich', A.channels || []), 'بيرد على أسئلة الأعضاء فيها. وإذا حدا من الإدارة حكى، بيسكت 3 دقايق')}
+      <div class="row">
+        <div>${toggle('ai-handoff', A.handoff !== false, 'يحوّل للإدارة', 'إذا ما عرف الجواب أو العضو طلب إداري، بيمنشن رتبة الدعم وبيوقف')}</div>
+        ${field('التعلّم', `<select class="select" id="ai-learn">${opt(learn, A.learn || 'review')}</select>`, 'إداري بيرد على رسالة المساعد بالجواب الصح ← بيتعلّم منه')}
+      </div>
+      <div class="sub-h">شو مسموحله يعمل</div>
+      ${toggle('ai-roles', A.canRoles, 'يعطي ويسحب رتب', 'بس الرتب اللي بتختارها، وبس للعضو اللي بيحكي معه، وحسب تعليماتك')}
+      ${field('الرتب المسموحة', chips('airoles', A.allowRoles || [], 'roles'))}
+      <div class="row">
+        <div>${toggle('ai-timeout', A.canTimeout, 'تايم أوت للمسيء', 'بعد تحذير واحد، وما بيلمس الإدارة')}</div>
+        ${field('أقصى مدة (دقيقة)', `<input class="input ltr" type="number" id="ai-maxto" min="1" max="1440" value="${A.maxTimeout ?? 60}">`)}
+      </div>
+      ${toggle('ai-close', A.canCloseTicket !== false, 'يسكّر التذكرة لما تنحل', 'بعد ما العضو يأكد إن مشكلته انحلت')}
+      <div class="help">ما بيقدر يحظر أو يطرد، ولا يعطي رتبة فيها صلاحيات إدارة. وكل إجراء بيعمله بينسجل بسجل العقوبات.</div>
+      <div class="sub-h">جرّبه قبل ما تشغّله</div>
+      <div class="inline-form"><input class="input" id="ai-test-q" maxlength="300" placeholder="اكتب سؤال كأنك عضو…"><button type="button" class="btn" id="ai-test" ${off ? 'disabled' : ''}>${icon('send')} جرّب</button></div>
+      <div id="ai-test-out"></div>`,
+      'ai'
+    );
+  }
+  function sAiBrain() {
+    const A = S.ai || {};
+    const facts = A.facts || [];
+    const pending = A.pending || [];
+    const FROM = { staff: 'من تصحيح إداري', ticket: 'من تذكرة مسكّرة', conversation: 'من محادثة' };
+    return card(
+      'sec-ai-brain',
+      'اللي بيعرفه المساعد',
+      'معلومات قصيرة عن سيرفرك بيرجعلها وهو بيرد. والدروس اللي تعلّمها من الإدارة بتستنى موافقتك هون قبل ما يعتمد عليها.',
+      'list',
+      `${pending.length ? `<div class="sub-h">دروس جديدة (${pending.length})</div><div class="ai-facts">${pending.map((p) => `<div class="ai-fact new"><span>${esc(p.text)}<small>${FROM[p.from] || ''}</small></span><button type="button" class="btn sm primary" data-lesson="${p.id}" data-ok="1">${icon('check')} احفظها</button><button type="button" class="icon-btn" data-lesson="${p.id}" data-ok="0" aria-label="شيلها">${icon('trash')}</button></div>`).join('')}</div>` : ''}
+      <div class="inline-form"><input class="input" id="ai-fact" maxlength="500" placeholder="مثال: سعر البريميوم 5 دولار بالشهر، والدفع من التذكرة بقسم المتجر"><button type="button" class="btn primary" id="ai-fact-add">${icon('plus')} أضف</button></div>
+      <div class="help">${facts.length}/${A.factLimit ?? '∞'} معلومة. كل معلومة جملة وحدة واضحة أحسن من فقرة طويلة.</div>
+      <div class="ai-facts">${facts.map((f) => `<div class="ai-fact"><span>${esc(f.text)}${f.source !== 'admin' ? '<small>🧠 تعلّمها</small>' : ''}</span><button type="button" class="icon-btn" data-fact-del="${f.id}" aria-label="حذف">${icon('trash')}</button></div>`).join('') || '<div class="empty">لسا ما علّمته إشي.</div>'}</div>`,
+      null
+    );
+  }
+
+  // ---------- staff applications ----------
+  const rid = () => Math.random().toString(36).slice(2, 8);
+  function posBlock(p) {
+    const r = p.req || {};
+    const key = `appos-${p.id}`;
+    const modes = [['manual', 'يدوي — الإدارة بتقرر'], ['assist', 'المساعد بيقيّم ويقابل، والإدارة بتقرر'], ['auto', 'المساعد بيقابل وبيقبل لحاله إذا عدّى الشروط']];
+    const num = (f, v, min, max) => `<input class="input ltr" type="number" data-p="${f}" min="${min}" max="${max}" value="${v ?? 0}">`;
+    const chk = (f, on, label) => `<label class="check"><input type="checkbox" data-p="${f}" ${on ? 'checked' : ''}> ${label}</label>`;
+    return `<div class="pos-block" data-pos="${esc(p.id)}">
+      <div class="pos-head">
+        <input class="input" data-p="name" maxlength="60" placeholder="اسم المنصب" value="${esc(p.name || '')}">
+        <input class="input" data-p="emoji" maxlength="40" placeholder="إيموجي" value="${esc(p.emoji || '')}">
+        ${chk('open', p.open !== false, 'مفتوح')}
+        <button type="button" class="icon-btn" data-pos-del aria-label="حذف المنصب">${icon('trash')}</button>
+      </div>
+      <input class="input mt" data-p="description" maxlength="100" placeholder="وصف قصير بيبين باللوحة" value="${esc(p.description || '')}">
+      ${field('الرتب عند القبول', chips(key, p.roles || [], 'roles'))}
+      ${field('الأسئلة (سؤال بكل سطر، لحد 15)', `<textarea class="textarea" data-p="questions" rows="5" maxlength="3000">${esc((p.questions || []).join('\n'))}</textarea>`, 'كل 5 أسئلة بصفحة. السؤال الطويل بينكتب كامل داخل الخانة.')}
+      <div class="sub-h">الشروط</div>
+      <div class="check-grid">${chk('tag', r.tag, 'شعار السيرفر (التاق) أساسي')}${chk('link', r.link, 'رابط السيرفر بالبايو')}${chk('noWarns', r.noWarns, 'بدون تحذيرات')}</div>
+      <div class="row">
+        ${field('الرابط المطلوب بالبايو', `<input class="input ltr" data-p="linkText" maxlength="80" placeholder="${esc(S.apply?.vanity ? `discord.gg/${S.apply.vanity}` : 'discord.gg/xxxx')}" value="${esc(r.linkText || '')}">`, 'البوتات ما بتقدر تقرأ البايو، فبنطلب صورة بروفايل والمساعد بيفحصها')}
+        ${field('عمر الحساب (يوم)', num('accountDays', r.accountDays, 0, 3650))}
+      </div>
+      <div class="row">${field('أيام بالسيرفر', num('serverDays', r.serverDays, 0, 3650))}${field('أقل لفل', num('level', r.level, 0, 500))}</div>
+      <div class="sub-h">طريقة القرار</div>
+      ${field('مين بيقرر', `<select class="select" data-p="mode">${modes.map(([v, n]) => `<option value="${v}" ${p.mode === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`)}
+      <div class="row">${field('علامة القبول التلقائي', num('acceptAt', p.acceptAt ?? 80, 50, 100), 'من 100')}<div>${chk('interview', p.interview !== false, 'مقابلة مع المساعد بثريد خاص')}</div></div>
+      ${field('شو بتدور عليه بالإداري', `<textarea class="textarea" data-p="criteria" rows="2" maxlength="1000" placeholder="محترم، متواجد، بيكتب بوضوح…">${esc(p.criteria || '')}</textarea>`, 'المساعد بيقيّم الإجابات على أساسها')}
+      ${field('مهام المنصب (بتوصله لما ينقبل)', `<textarea class="textarea" data-p="duties" rows="4" maxlength="2000">${esc(p.duties || '')}</textarea>`, 'وبعد القبول المساعد بيجاوبه على أي سؤال عنها')}
+      <div class="row">${field('فترة تجربة (يوم، 0 = بدون)', num('trialDays', p.trialDays, 0, 90))}${field('عدد المقاعد (0 = مفتوح)', num('seats', p.seats, 0, 100))}${field('بعد الرفض بيستنى (يوم)', num('cooldownDays', p.cooldownDays ?? 7, 0, 90))}</div>
+    </div>`;
+  }
+  function sApply() {
+    const A = S.apply || {};
+    const st = A.stats || {};
+    return card(
+      'sec-apply',
+      'تقديم الإدارة',
+      'لوحة فيها المناصب. البوت بيفحص الشروط لحاله (التاق، عمر الحساب، اللفل، التحذيرات)، بيسأل الأسئلة، والمساعد بيقابل المتقدّم بثريد خاص ويقيّمه. القبول بيعطي الرتب والمهام فوراً.',
+      'role',
+      `<div class="rd-grid">
+        <div class="rd-stat"><b>${st.total || 0}</b><span>كل التقديمات</span></div>
+        <div class="rd-stat"><b>${st.open || 0}</b><span>مفتوحة</span></div>
+        <div class="rd-stat"><b>${st.accepted || 0}</b><span>مقبول</span>${st.auto ? `<small>${st.auto} تلقائي</small>` : ''}</div>
+        <div class="rd-stat"><b>${st.avgHours || 0}</b><span>ساعة متوسط الرد</span></div>
+      </div>
+      ${A.aiReady ? '' : `<div class="help">${icon('info')} بدون مفتاح ذكاء اصطناعي، التقييم والمقابلة بيوقفوا، والتقديم بيشتغل يدوي.</div>`}
+      ${toggle('apl-enabled', A.enabled, 'تشغيل التقديم')}
+      <div class="row">
+        ${field('روم الإدارة (بتوصله التقديمات)', `<select class="select" id="apl-review">${textOpts(A.reviewChannelId, 'اختر روم')}</select>`)}
+        ${field('مين بيراجع', `<select class="select" id="apl-role">${roleOpts(A.reviewerRoleId, 'اللي معهم إدارة السيرفر')}</select>`)}
+      </div>
+      ${field('عنوان اللوحة', `<input class="input" id="apl-title" maxlength="100" value="${esc(A.title || 'تقديم الإدارة')}">`)}
+      ${field('وصف اللوحة', `<textarea class="textarea" id="apl-desc" rows="3" maxlength="1500">${esc(A.description || '')}</textarea>`)}
+      ${field('صورة اللوحة (رابط، اختياري)', `<input class="input ltr" id="apl-banner" maxlength="500" placeholder="https://…" value="${esc(A.bannerUrl || '')}">`, 'فاضي = صورة ماركا الجاهزة')}
+      ${toggle('apl-dm', A.dm !== false, 'رسالة خاص بالنتيجة', 'قبول أو رفض، مع السبب')}
+      <div class="inline-form mt"><select class="select" id="apl-panel-ch">${textOpts(A.panelChannelId, 'روم اللوحة')}</select><button type="button" class="btn primary" id="apl-publish">${icon('send')} ${A.panelMessageId ? 'حدّث اللوحة' : 'انشر اللوحة'}</button></div>
+      <div class="help">احفظ أول، وبعدين انشر. البوت بده صلاحية إنشاء ثريدات خاصة بروم اللوحة عشان المقابلات.</div>`,
+      'apply'
+    );
+  }
+  function sApplyPos() {
+    const A = S.apply || {};
+    const list = A.positions || [];
+    return card(
+      'sec-apply-pos',
+      'المناصب',
+      `كل منصب إله أسئلته وشروطه ورتبه ومهامه. ${A.posLimit ? `لحد ${A.posLimit >= 1e9 ? '∞' : A.posLimit} مناصب.` : ''}`,
+      'layers',
+      `<div id="apl-positions">${list.map(posBlock).join('')}</div>
+      <div class="inline-form"><button type="button" class="btn" id="apl-add">${icon('plus')} منصب فاضي</button><button type="button" class="btn" id="apl-template">${icon('zap')} منصب إداري جاهز</button></div>`,
+      'apply'
+    );
+  }
+  function sApplyList() {
+    const A = S.apply || {};
+    const ST = { interview: '🗣️ بالمقابلة', pending: '📬 بانتظار الإدارة', accepted: '✅ مقبول', trial: '⏳ تجربة', rejected: '❌ مرفوض', ended: '🚪 انتهت التجربة' };
+    const rows = (A.recent || []).map((a) => `<tr><td>${esc(a.name)}</td><td>${esc(a.posName)}</td><td>${ST[a.status] || a.status}${a.auto ? ' <span class="pill">تلقائي</span>' : ''}</td><td>${a.score ?? '—'}</td><td>${new Date(a.at).toLocaleDateString('ar')}</td></tr>`);
+    return card(
+      'sec-apply-list',
+      'آخر التقديمات',
+      'القرار بيصير من كرت التقديم بروم الإدارة: قبول، رفض، دخول المقابلة، أو تصويت.',
+      'list',
+      rows.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>العضو</th><th>المنصب</th><th>الحالة</th><th>التقييم</th><th>التاريخ</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>` : '<div class="empty">لسا ما في تقديمات.</div>',
+      null
+    );
+  }
   function sAppeals() {
     const A = S.appeals || {};
     return card(
@@ -2632,7 +2882,7 @@
     if (!P) throw new Error('لوحة التحكم تحدّثت لكن البوت ما زال يعمل بالنسخة القديمة — أعد تشغيل البوت من الاستضافة ثم حدّث الصفحة');
     if (!EMO?.canEdit) EMO = null;
     document.getElementById('cards').innerHTML = [
-      sPremium(), sGeneral(), sBotProfile(), sWelcome(), sTickets(), sGwManage(), sGiveaway(), sModNote(), sAutomod(), sVerify(), sProtection(), sJail(), sWarns(), sVanity(), sBackup(), sPurge(), sRoleMenus(), sEmbeds(), sKafeel(), sWrapped(), sGames(), sGameArt(), sTempVoice(), sKhatma(), sRadar(), sYoutube(), sAppeals(), sPrayer(), sAdhkar(), sStaff(), sLogs(), sInvites(), sAutoLine(), sFeedback(), sReplies(), sLevels(), sGuildEmojis(), sEmojis(),
+      sPremium(), sGeneral(), sBotProfile(), sWelcome(), sTickets(), sGwManage(), sGiveaway(), sModNote(), sAutomod(), sVerify(), sProtection(), sJail(), sWarns(), sVanity(), sBackup(), sPurge(), sRoleMenus(), sEmbeds(), sKafeel(), sWrapped(), sGames(), sGameArt(), sTempVoice(), sKhatma(), sRadar(), sYoutube(), sAppeals(), sPrayer(), sAdhkar(), sAi(), sAiBrain(), sApply(), sApplyPos(), sApplyList(), sStaff(), sLogs(), sInvites(), sAutoLine(), sFeedback(), sReplies(), sLevels(), sGuildEmojis(), sEmojis(),
     ].join('');
     arrangeGroups();
     renderChips('autoline');
@@ -2642,6 +2892,9 @@
     renderChips('amch');
     renderChips('amroles');
     renderChips('grch');
+    renderChips('aich');
+    renderChips('airoles');
+    for (const p of S.apply?.positions || []) renderChips(`appos-${p.id}`);
     drawEmbed();
     bind();
     bindGiveaways();

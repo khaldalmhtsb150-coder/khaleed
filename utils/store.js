@@ -87,6 +87,12 @@ const DEFAULTS = {
   staffReportLast: {},
   wrappedConfig: {},
   wrappedStats: {},
+  aiConfig: {},
+  aiBrain: {},
+  aiUsage: {},
+  applyConfig: {},
+  applications: {},
+  applyUsers: {},
 };
 
 const cache = {};

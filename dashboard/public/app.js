@@ -70,13 +70,13 @@ const AVA_FB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://ww
       home: 'الرئيسية', servers: 'السيرفرات', invite: 'إضافة البوت', login: 'تسجيل الدخول', logout: 'تسجيل الخروج', myServers: 'سيرفراتي', ownerPanel: 'لوحة المالك',
       allServers: 'كل السيرفرات', general: 'عام', management: 'الإدارة', engagement: 'التفاعل', bot: 'البوت',
       overview: 'نظرة عامة', settings: 'إعدادات السيرفر', moderation: 'الإشراف والحماية', giveaways: 'القيفاواي', tickets: 'التذاكر', welcome: 'الترحيب',
-      responses: 'الردود التلقائية', invites: 'الدعوات والعجلة', levels: 'المستويات', rolemenus: 'رتب بالأزرار', embeds: 'صانع الإمبد', community: 'المجتمع', staff: 'أداء الإدارة', logs: 'السجلات', customization: 'التخصيص', commands: 'الأوامر', premium: 'البريميوم', more: 'المزيد', members: 'عضو',
+      responses: 'الردود التلقائية', invites: 'الدعوات والعجلة', levels: 'المستويات', rolemenus: 'رتب بالأزرار', embeds: 'صانع الإمبد', community: 'المجتمع', ai: 'المساعد الذكي', apply: 'تقديم الإدارة', staff: 'أداء الإدارة', logs: 'السجلات', customization: 'التخصيص', commands: 'الأوامر', premium: 'البريميوم', more: 'المزيد', members: 'عضو',
     },
     en: {
       home: 'Home', servers: 'Servers', invite: 'Invite bot', login: 'Log in', logout: 'Log out', myServers: 'My servers', ownerPanel: 'Owner panel',
       allServers: 'All servers', general: 'General', management: 'Management', engagement: 'Engagement', bot: 'Bot',
       overview: 'Overview', settings: 'Server settings', moderation: 'Moderation', giveaways: 'Giveaways', tickets: 'Tickets', welcome: 'Welcome',
-      responses: 'Auto responses', invites: 'Invites & wheel', levels: 'Levels', rolemenus: 'Role menus', embeds: 'Embed builder', community: 'Community', staff: 'Staff report', logs: 'Logs', customization: 'Customization', commands: 'Commands', premium: 'Premium', more: 'More', members: 'members',
+      responses: 'Auto responses', invites: 'Invites & wheel', levels: 'Levels', rolemenus: 'Role menus', embeds: 'Embed builder', community: 'Community', ai: 'AI assistant', apply: 'Staff applications', staff: 'Staff report', logs: 'Logs', customization: 'Customization', commands: 'Commands', premium: 'Premium', more: 'More', members: 'members',
     },
   };
   let lang = 'ar';
@@ -252,6 +252,8 @@ const AVA_FB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://ww
     ['levels', 'trophy', (id) => `/dashboard/${id}#levels`, 'engagement'],
     ['rolemenus', 'layers', (id) => `/dashboard/${id}#rolemenus`, 'engagement'],
     ['embeds', 'edit', (id) => `/dashboard/${id}#embeds`, 'management'],
+    ['ai', 'bot', (id) => `/dashboard/${id}#ai`, 'management'],
+    ['apply', 'role', (id) => `/dashboard/${id}#apply`, 'management'],
     ['staff', 'chart', (id) => `/dashboard/${id}#staff`, 'management'],
     ['community', 'users', (id) => `/dashboard/${id}#community`, 'engagement'],
     ['invites', 'link', (id) => `/dashboard/${id}#invites`, 'engagement'],

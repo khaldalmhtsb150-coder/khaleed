@@ -34,10 +34,13 @@ const khatmaSys = require('../systems/khatma');
 const radarSys = require('../systems/radar');
 const backupSys = require('../systems/backup');
 const ytSys = require('../systems/youtube');
+const aiStaff = require('../systems/aiStaff');
+const applySys = require('../systems/apply');
+const aiCore = require('../utils/ai');
 const staffSys = require('../systems/staff');
 const wrapped = require('../systems/wrapped');
 const who = (req) => ({ id: req.session.user.id, name: req.session.user.globalName || req.session.user.username });
-const MODULE_NAMES = { giveaway: 'القيفاواي', protection: 'الحماية', prefix: 'البادئة', general: 'الإعدادات العامة', greetings: 'الترحيب النصي', welcome: 'الترحيب المتقدم', autoLine: 'الخط التلقائي', feedback: 'الآراء', jail: 'السجن', tickets: 'التذاكر', vanity: 'حماية الرابط', logs: 'السجلات', invites: 'الدعوات', replies: 'الردود التلقائية', levels: 'المستويات', automod: 'AutoMod', verify: 'التحقق', purge: 'المسح التلقائي', kafeel: 'الكفيل', prayer: 'أوقات الصلاة', adhkar: 'الأذكار', games: 'الألعاب', wrapped: 'ملخص السيرفر', tempVoice: 'الرومات المؤقتة', appeals: 'طلبات فك الحظر', khatma: 'الختمة الجماعية', radar: 'رادار الأعضاء الجداد', backup: 'النسخ الاحتياطي', warns: 'التحذيرات', gameArt: 'صور الألعاب' };
+const MODULE_NAMES = { giveaway: 'القيفاواي', protection: 'الحماية', prefix: 'البادئة', general: 'الإعدادات العامة', greetings: 'الترحيب النصي', welcome: 'الترحيب المتقدم', autoLine: 'الخط التلقائي', feedback: 'الآراء', jail: 'السجن', tickets: 'التذاكر', vanity: 'حماية الرابط', logs: 'السجلات', invites: 'الدعوات', replies: 'الردود التلقائية', levels: 'المستويات', automod: 'AutoMod', verify: 'التحقق', purge: 'المسح التلقائي', kafeel: 'الكفيل', prayer: 'أوقات الصلاة', adhkar: 'الأذكار', games: 'الألعاب', wrapped: 'ملخص السيرفر', tempVoice: 'الرومات المؤقتة', appeals: 'طلبات فك الحظر', khatma: 'الختمة الجماعية', radar: 'رادار الأعضاء الجداد', backup: 'النسخ الاحتياطي', warns: 'التحذيرات', gameArt: 'صور الألعاب', ai: 'المساعد الذكي', apply: 'تقديم الإدارة' };
 
 const VIEWS = path.join(__dirname, 'views');
 const API = 'https://discord.com/api/v10';
@@ -217,12 +220,100 @@ function readSettings(guild) {
     scheduled: embeds.listOf(id).map(({ id: sid, channelId, at, repeatHours, embed }) => ({ id: sid, channelId, at, repeatHours, title: embed.title || embed.content?.slice(0, 60) || '—' })),
     botProfile: botProfile.get(id),
     premium: premium.status(id),
+    ai: (() => {
+      const b = store.peek('aiBrain', id) || {};
+      return {
+        ...aiStaff.config(id),
+        available: aiCore.available(),
+        provider: aiCore.providerName(),
+        usage: aiCore.usage(id).n,
+        limit: aiCore.limitFor(id),
+        factLimit: premium.limit(id, 'aiFacts'),
+        facts: (b.facts || []).map(({ id: fid, text, source, at }) => ({ id: fid, text, source, at })),
+        pending: (b.pending || []).map(({ id: pid, text, from, at }) => ({ id: pid, text, from, at })),
+        stats: b.stats || {},
+      };
+    })(),
+    apply: {
+      ...applySys.config(id),
+      stats: applySys.stats(id),
+      posLimit: premium.limit(id, 'applyPositions'),
+      vanity: guild.vanityURLCode || null,
+      aiReady: aiCore.available(),
+      template: applySys.TEMPLATE,
+      recent: Object.values(store.peek('applications', id) || {})
+        .sort((a, b) => b.at - a.at)
+        .slice(0, 20)
+        .map((a) => ({ id: a.id, uid: a.uid, name: a.name, posName: a.posName, status: a.status, at: a.at, score: a.ai?.score ?? null, auto: Boolean(a.auto) })),
+    },
   };
 }
 
 function writeSettings(guild, module, d) {
   const id = guild.id;
   switch (module) {
+    case 'ai': {
+      const conf = store.guild('aiConfig', id, { ...aiStaff.DEFAULT });
+      Object.assign(conf, {
+        enabled: bool(d.enabled),
+        name: str(d.name, 32).trim() || 'المساعد',
+        instructions: str(d.instructions, 6000),
+        dialect: oneOf(d.dialect, ['auto', 'jordanian', 'gulf', 'egyptian', 'fusha'], 'auto'),
+        tickets: bool(d.tickets),
+        mention: bool(d.mention),
+        channels: channelsIn(guild, d.channels).slice(0, 10),
+        canRoles: bool(d.canRoles),
+        allowRoles: (Array.isArray(d.allowRoles) ? d.allowRoles : []).map((r) => roleIn(guild, r)).filter(Boolean).slice(0, 25),
+        canTimeout: bool(d.canTimeout),
+        maxTimeout: int(d.maxTimeout, 1, 1440, 60),
+        canCloseTicket: bool(d.canCloseTicket),
+        handoff: bool(d.handoff),
+        learn: oneOf(d.learn, ['review', 'auto', 'off'], 'review'),
+      });
+      if (conf.enabled && !aiCore.available()) throw new Error('مفتاح الذكاء الاصطناعي مش مضاف بالبوت لسا (AI_API_KEY بملف .env)');
+      return store.save('aiConfig');
+    }
+    case 'apply': {
+      const conf = store.guild('applyConfig', id, { ...applySys.DEFAULT });
+      const max = premium.limit(id, 'applyPositions') ?? 2;
+      const given = Array.isArray(d.positions) ? d.positions : [];
+      if (given.length > max) throw new Error(premium.limitText('applyPositions', max));
+      const positions = given.map((p) => {
+        const r = p.req || {};
+        return {
+          id: /^[a-z0-9]{4,10}$/.test(String(p.id || '')) ? String(p.id) : Math.random().toString(36).slice(2, 8),
+          name: str(p.name, 60).trim() || 'منصب',
+          emoji: str(p.emoji, 40).trim(),
+          description: str(p.description, 100),
+          roles: (Array.isArray(p.roles) ? p.roles : []).map((x) => roleIn(guild, x)).filter(Boolean).slice(0, 5),
+          questions: (Array.isArray(p.questions) ? p.questions : String(p.questions || '').split('\n')).map((q) => str(String(q), 200).trim()).filter(Boolean).slice(0, 15),
+          req: { tag: bool(r.tag), link: bool(r.link), linkText: str(r.linkText, 80).trim(), accountDays: int(r.accountDays, 0, 3650, 0), serverDays: int(r.serverDays, 0, 3650, 0), level: int(r.level, 0, 500, 0), noWarns: bool(r.noWarns) },
+          mode: oneOf(p.mode, ['manual', 'assist', 'auto'], 'assist'),
+          interview: bool(p.interview),
+          acceptAt: int(p.acceptAt, 50, 100, 80),
+          criteria: str(p.criteria, 1000),
+          duties: str(p.duties, 2000),
+          trialDays: int(p.trialDays, 0, 90, 0),
+          seats: int(p.seats, 0, 100, 0),
+          open: bool(p.open),
+          cooldownDays: int(p.cooldownDays, 0, 90, 7),
+        };
+      });
+      Object.assign(conf, {
+        enabled: bool(d.enabled),
+        reviewChannelId: channelIn(guild, d.reviewChannelId) || '',
+        reviewerRoleId: roleIn(guild, d.reviewerRoleId) || '',
+        title: str(d.title, 100).trim() || 'تقديم الإدارة',
+        description: str(d.description, 1500),
+        bannerUrl: /^https?:\/\//.test(String(d.bannerUrl || '')) ? str(d.bannerUrl, 500) : '',
+        dm: bool(d.dm),
+        positions,
+      });
+      if (conf.enabled && !conf.reviewChannelId) throw new Error('اختار روم الإدارة اللي بتوصله التقديمات');
+      if (conf.enabled && !positions.length) throw new Error('ضيف منصب واحد على الأقل');
+      store.save('applyConfig');
+      return applySys.refreshPanel(guild).catch(() => {});
+    }
     case 'prefix': {
       const v = str(d.prefix, 5).trim();
       const all = store.get('prefixes');
@@ -1201,6 +1292,56 @@ function start(client) {
   });
 
   // khatma: start a new one from the dashboard
+  // ---------- AI assistant ----------
+  app.post('/api/ai/:id/fact', needGuild, csrf, (req, res) => {
+    try {
+      const f = aiStaff.addFact(req.guild.id, str(req.body?.text, 500), { source: 'admin', by: who(req).id });
+      res.json({ ok: true, fact: f });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+  app.post('/api/ai/:id/fact/delete', needGuild, csrf, (req, res) => {
+    aiStaff.removeFact(req.guild.id, String(req.body?.id || ''));
+    res.json({ ok: true });
+  });
+  app.post('/api/ai/:id/lesson', needGuild, csrf, (req, res) => {
+    try {
+      aiStaff.decidePending(req.guild.id, String(req.body?.id || ''), bool(req.body?.approve), who(req).id);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+  app.post('/api/ai/:id/test', needGuild, csrf, async (req, res) => {
+    const q = str(req.body?.text, 500).trim();
+    if (!q) return res.status(400).json({ error: 'اكتب سؤال' });
+    if (!aiCore.canUse(req.guild.id)) return res.status(400).json({ error: aiCore.available() ? 'وصل المساعد حده اليومي' : 'مفتاح الذكاء الاصطناعي مش مضاف بالبوت لسا' });
+    try {
+      const conf = { ...aiStaff.config(req.guild.id), ...(req.body?.draft ? { instructions: str(req.body.draft.instructions, 6000), dialect: oneOf(req.body.draft.dialect, ['auto', 'jordanian', 'gulf', 'egyptian', 'fusha'], 'auto'), name: str(req.body.draft.name, 32) || 'المساعد' } : {}) };
+      const system = aiStaff.systemPrompt(req.guild, conf, { about: q });
+      const r = await aiCore.chat({ guildId: req.guild.id, system, messages: [{ role: 'user', content: `عضو: ${q}` }], maxTokens: 500 });
+      res.json({ ok: true, answer: r.text || '' });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // ---------- staff applications ----------
+  app.post('/api/apply/:id/publish', needGuild, csrf, async (req, res) => {
+    const chId = channelIn(req.guild, req.body?.channelId);
+    if (!chId) return res.status(400).json({ error: 'اختار روم اللوحة' });
+    const conf = applySys.config(req.guild.id);
+    if (!conf.reviewChannelId) return res.status(400).json({ error: 'حدد روم المراجعة واحفظ أول' });
+    if (!conf.positions.length) return res.status(400).json({ error: 'ضيف منصب واحد على الأقل واحفظ' });
+    try {
+      await applySys.publish(req.guild, req.guild.channels.cache.get(chId));
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
   app.post('/api/khatma/:id/start', needGuild, csrf, async (req, res) => {
     const conf = khatmaSys.config(req.guild.id);
     const ch = req.guild.channels.cache.get(conf.channelId);

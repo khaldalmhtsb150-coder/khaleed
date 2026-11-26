@@ -13,6 +13,9 @@ const PLANS = {
     wheelRewards: 15,
     roleMenus: 3,
     purgeChannels: 1,
+    aiDaily: 60,
+    aiFacts: 80,
+    applyPositions: 2,
   },
   premium: {
     ticketDepartments: 25,
@@ -20,6 +23,9 @@ const PLANS = {
     wheelRewards: Infinity,
     roleMenus: 50,
     purgeChannels: 10,
+    aiDaily: 800,
+    aiFacts: 600,
+    applyPositions: 15,
   },
 };
 
@@ -57,6 +63,9 @@ const LIMIT_LABELS = {
   wheelRewards: 'جوائز العجلة',
   roleMenus: 'لوحات الرتب',
   purgeChannels: 'قنوات المسح التلقائي',
+  aiDaily: 'ردود المساعد الذكي باليوم',
+  aiFacts: 'معلومات المساعد الذكي',
+  applyPositions: 'مناصب تقديم الإدارة',
 };
 
 function get(guildId) {

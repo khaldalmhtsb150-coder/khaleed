@@ -478,6 +478,7 @@ const BANNERS = {
   tickets: { accent: '#9a7bff', kicker: 'SUPPORT', title: 'مركز الدعم', line: 'افتح تذكرة والفريق بيرد عليك', chips: [], main: 'ticket', sats: [['message-circle', 'blurple'], ['check', 'green'], ['users', 'slate']] },
   verify: { accent: '#2fd27a', kicker: 'VERIFICATION', title: 'التحقق', line: 'خطوة وحدة وبتفتحلك كل الرومات', chips: [], main: 'badge-check', sats: [['shield', 'blue'], ['lock-open', 'green']] },
   help: { accent: '#8e9bff', kicker: 'COMMANDS', title: 'ماركا بوت', line: 'كل أوامر البوت مرتبة بأقسام', chips: [], main: 'list', sats: [['shield', 'blue'], ['dices', 'violet'], ['ticket', 'violet'], ['gift', 'pink']] },
+  apply: { accent: '#f5b942', kicker: 'STAFF APPLICATIONS', title: 'تقديم الإدارة', line: 'قدّم، وخلّينا نتعرّف عليك', chips: [], main: 'user-check', sats: [['clipboard-list', 'blue'], ['shield', 'blue'], ['star', 'amber']] },
   appeal: { accent: '#5fb0ff', kicker: 'BAN APPEAL', title: 'طلب فك الحظر', line: 'احكي قصتك، والإدارة بتقرر', chips: [], main: 'scale', sats: [['mail', 'blue'], ['check', 'green'], ['x', 'red']] },
   backup: { accent: '#ffb02e', kicker: 'SERVER REPAIR', title: 'إصلاح السيرفر', line: 'المحذوف بيرجع زي ما كان', chips: [], main: 'archive', sats: [['wrench', 'amber'], ['rotate-ccw', 'blue'], ['shield', 'blue']] },
   radar: { accent: '#3fd9e8', kicker: 'NEWCOMER RADAR', title: 'عضو جديد ساكت', line: 'رحّبوا فيه قبل ما يطلع', chips: [], main: 'radar', sats: [['user-plus', 'green'], ['hand', 'amber'], ['bell', 'amber']] },

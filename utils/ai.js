@@ -1,0 +1,294 @@
+// One small client for the language model behind the AI assistant and the staff applications.
+// Works with Anthropic directly, or with any OpenAI-style endpoint (Gemini, OpenAI, Groq, OpenRouter).
+//
+// .env
+//   AI_PROVIDER = gemini | anthropic | openai | groq | openrouter   (optional if one of the keys below is set)
+//   AI_API_KEY  = the key for that provider   (or GEMINI_API_KEY / ANTHROPIC_API_KEY / OPENAI_API_KEY / GROQ_API_KEY)
+//   AI_MODEL    = optional, overrides the default model
+//   AI_BASE_URL = optional, a custom OpenAI-style endpoint (…/chat/completions)
+//   AI_DAILY_FREE / AI_DAILY_PREMIUM / AI_DAILY_GLOBAL = optional daily call limits
+//
+// Messages use one neutral shape everywhere in the bot:
+//   { role: 'user' | 'assistant', content: string | [{ type: 'text', text } | { type: 'image', data, mediaType }] }
+//   { role: 'assistant', content, toolCalls: [{ id, name, input }] }
+//   { role: 'tool', results: [{ id, name, content }] }
+const store = require('./store');
+
+const PROVIDERS = {
+  anthropic: { format: 'anthropic', url: 'https://api.anthropic.com/v1/messages', model: 'claude-haiku-5-5', env: 'ANTHROPIC_API_KEY' },
+  gemini: { format: 'openai', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model: 'gemini-flash-latest', env: 'GEMINI_API_KEY' },
+  openai: { format: 'openai', url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-5-mini', env: 'OPENAI_API_KEY' },
+  groq: { format: 'openai', url: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile', env: 'GROQ_API_KEY' },
+  openrouter: { format: 'openai', url: 'https://openrouter.ai/api/v1/chat/completions', model: 'google/gemini-flash-latest', env: 'OPENROUTER_API_KEY' },
+};
+
+let mock = null; // tests: (request) => response in the neutral shape
+
+function settings() {
+  const env = process.env;
+  let name = String(env.AI_PROVIDER || '').toLowerCase().trim();
+  if (!PROVIDERS[name]) name = Object.keys(PROVIDERS).find((p) => env[PROVIDERS[p].env]) || (env.AI_API_KEY ? 'gemini' : '');
+  if (!name) return null;
+  const p = PROVIDERS[name];
+  const key = env.AI_API_KEY || env[p.env];
+  if (!key) return null;
+  return { name, ...p, key, model: env.AI_MODEL || p.model, url: env.AI_BASE_URL || p.url };
+}
+
+const available = () => Boolean(mock || settings());
+const providerName = () => (mock ? 'mock' : settings()?.name || null);
+
+// ---------- daily limits (protects the owner's API bill) ----------
+const today = () => new Date().toISOString().slice(0, 10);
+function limitFor(guildId) {
+  const premium = require('./premium');
+  const lim = premium.limit(guildId, 'aiDaily') ?? 60;
+  const env = Number(process.env[lim === premium.PLANS.premium.aiDaily ? 'AI_DAILY_PREMIUM' : 'AI_DAILY_FREE']);
+  return env > 0 ? env : lim;
+}
+function usage(guildId) {
+  const all = store.get('aiUsage');
+  const u = all[guildId];
+  if (!u || u.day !== today()) return { day: today(), n: 0 };
+  return u;
+}
+function globalUsage() {
+  const g = store.get('aiUsage').__all;
+  return g && g.day === today() ? g.n : 0;
+}
+function canUse(guildId) {
+  if (!available()) return false;
+  if (globalUsage() >= (Number(process.env.AI_DAILY_GLOBAL) || 3000)) return false;
+  return usage(guildId).n < limitFor(guildId);
+}
+function count(guildId) {
+  const all = store.get('aiUsage');
+  const u = usage(guildId);
+  u.n++;
+  all[guildId] = u;
+  const g = all.__all && all.__all.day === today() ? all.__all : { day: today(), n: 0 };
+  g.n++;
+  all.__all = g;
+  store.save('aiUsage');
+}
+
+// ---------- format converters ----------
+function toAnthropic({ system, messages, tools }) {
+  const out = [];
+  for (const m of messages) {
+    if (m.role === 'tool') {
+      out.push({ role: 'user', content: m.results.map((r) => ({ type: 'tool_result', tool_use_id: r.id, content: String(r.content) })) });
+      continue;
+    }
+    const parts = [];
+    const content = typeof m.content === 'string' ? (m.content ? [{ type: 'text', text: m.content }] : []) : m.content || [];
+    for (const c of content) {
+      if (c.type === 'text' && c.text) parts.push({ type: 'text', text: c.text });
+      else if (c.type === 'image') parts.push({ type: 'image', source: { type: 'base64', media_type: c.mediaType, data: c.data } });
+    }
+    for (const t of m.toolCalls || []) parts.push({ type: 'tool_use', id: t.id, name: t.name, input: t.input || {} });
+    if (!parts.length) parts.push({ type: 'text', text: '…' });
+    // Anthropic wants alternating roles: merge neighbours with the same role
+    const last = out[out.length - 1];
+    if (last && last.role === m.role && Array.isArray(last.content)) last.content.push(...parts);
+    else out.push({ role: m.role, content: parts });
+  }
+  if (out[0]?.role !== 'user') out.unshift({ role: 'user', content: [{ type: 'text', text: '…' }] });
+  const body = { system, messages: out };
+  if (tools?.length) body.tools = tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }));
+  return body;
+}
+
+function toOpenAI({ system, messages, tools }) {
+  const out = [{ role: 'system', content: system }];
+  for (const m of messages) {
+    if (m.role === 'tool') {
+      for (const r of m.results) out.push({ role: 'tool', tool_call_id: r.id, content: String(r.content) });
+      continue;
+    }
+    let content;
+    if (typeof m.content === 'string') content = m.content;
+    else {
+      content = (m.content || []).map((c) => (c.type === 'image' ? { type: 'image_url', image_url: { url: `data:${c.mediaType};base64,${c.data}` } } : { type: 'text', text: c.text || '' }));
+      if (m.role === 'assistant') content = content.filter((c) => c.type === 'text').map((c) => c.text).join('\n');
+    }
+    const msg = { role: m.role, content: content || (m.toolCalls?.length ? null : '…') };
+    if (m.toolCalls?.length) msg.tool_calls = m.toolCalls.map((t) => ({ id: t.id, type: 'function', function: { name: t.name, arguments: JSON.stringify(t.input || {}) } }));
+    out.push(msg);
+  }
+  const body = { messages: out };
+  if (tools?.length) body.tools = tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } }));
+  return body;
+}
+
+function fromAnthropic(j) {
+  const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n').trim();
+  const toolCalls = (j.content || []).filter((c) => c.type === 'tool_use').map((c) => ({ id: c.id, name: c.name, input: c.input || {} }));
+  return { text, toolCalls };
+}
+function fromOpenAI(j) {
+  const m = j.choices?.[0]?.message || {};
+  let text = typeof m.content === 'string' ? m.content : Array.isArray(m.content) ? m.content.map((c) => c.text || '').join('') : '';
+  const toolCalls = (m.tool_calls || []).map((t, k) => {
+    let input = {};
+    try {
+      input = JSON.parse(t.function?.arguments || '{}');
+    } catch {}
+    return { id: t.id || `call_${k}`, name: t.function?.name, input };
+  });
+  return { text: String(text || '').trim(), toolCalls };
+}
+
+async function post(url, headers, body, ms = 45_000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body), signal: ctrl.signal });
+    const raw = await res.text();
+    let json = null;
+    try {
+      json = JSON.parse(raw);
+    } catch {}
+    if (!res.ok) {
+      const err = new Error(`AI ${res.status}: ${(json?.error?.message || raw).slice(0, 200)}`);
+      err.status = res.status;
+      throw err;
+    }
+    return json;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * One model call. Returns { text, toolCalls }.
+ * opts: { guildId, system, messages, tools, maxTokens, temperature, json }
+ */
+async function chat({ guildId, system, messages, tools = [], maxTokens = 700, temperature = 0.6 }) {
+  if (guildId && !canUse(guildId)) {
+    const e = new Error('AI limit');
+    e.code = 'LIMIT';
+    throw e;
+  }
+  if (guildId) count(guildId);
+  if (mock) return mock({ system, messages, tools });
+  const s = settings();
+  if (!s) throw Object.assign(new Error('AI not configured'), { code: 'OFF' });
+
+  let body;
+  if (s.format === 'anthropic') body = { model: s.model, max_tokens: maxTokens, temperature, ...toAnthropic({ system, messages, tools }) };
+  else {
+    body = { model: s.model, ...toOpenAI({ system, messages, tools }) };
+    const effort = process.env.AI_REASONING || 'low';
+    if (s.name === 'openai') {
+      // reasoning models: their thinking counts against the budget, and they only take the default temperature
+      body.max_completion_tokens = Math.max(maxTokens * 4, 2000);
+      body.reasoning_effort = effort;
+    } else if (s.name === 'gemini') {
+      body.max_tokens = Math.max(maxTokens * 4, 2048);
+      body.reasoning_effort = effort;
+      body.temperature = temperature;
+    } else {
+      body.max_tokens = maxTokens;
+      body.temperature = temperature;
+    }
+  }
+
+  let attempt = 0;
+  for (;;) {
+    try {
+      if (s.format === 'anthropic') return fromAnthropic(await post(s.url, { 'x-api-key': s.key, 'anthropic-version': '2023-06-01' }, body));
+      return fromOpenAI(await post(s.url, { authorization: `Bearer ${s.key}` }, body));
+    } catch (e) {
+      attempt++;
+      // a model that doesn't take one of the optional knobs: drop it and try again
+      if (e.status === 400 && attempt <= 2) {
+        const msg = String(e.message);
+        const knob = ['reasoning_effort', 'temperature'].find((k) => k in body && msg.includes(k));
+        if (knob) {
+          delete body[knob];
+          continue;
+        }
+      }
+      const retry = e.name === 'AbortError' || e.status === 429 || (e.status >= 500 && e.status < 600);
+      if (!retry || attempt > 2) throw e;
+      await new Promise((r) => setTimeout(r, 1500 * attempt));
+    }
+  }
+}
+
+/**
+ * Model + tools loop: calls the model, runs the tools it asks for, feeds the results back, repeats.
+ * handlers: { toolName: async (input) => string }
+ * Returns { text, actions: [{ name, input, result }] }
+ */
+async function run({ guildId, system, messages, tools = [], handlers = {}, maxSteps = 4, maxTokens, temperature }) {
+  const convo = [...messages];
+  const actions = [];
+  let text = '';
+  for (let step = 0; step < maxSteps; step++) {
+    const r = await chat({ guildId, system, messages: convo, tools, maxTokens, temperature });
+    text = r.text || text;
+    if (!r.toolCalls?.length) return { text: r.text, actions };
+    convo.push({ role: 'assistant', content: r.text || '', toolCalls: r.toolCalls });
+    const results = [];
+    for (const call of r.toolCalls) {
+      let result;
+      try {
+        result = handlers[call.name] ? await handlers[call.name](call.input || {}) : 'unknown tool';
+      } catch (e) {
+        result = `error: ${e.message}`;
+      }
+      actions.push({ name: call.name, input: call.input, result });
+      results.push({ id: call.id, name: call.name, content: typeof result === 'string' ? result : JSON.stringify(result) });
+    }
+    convo.push({ role: 'tool', results });
+  }
+  return { text, actions };
+}
+
+/** Asks for a JSON object and parses it (tolerates code fences and chatter around it). */
+async function json({ guildId, system, prompt, images = [], maxTokens = 700 }) {
+  const content = [{ type: 'text', text: prompt }, ...images];
+  const r = await chat({ guildId, system: `${system}\n\nReply with one JSON object only. No code fences, no text around it.`, messages: [{ role: 'user', content }], maxTokens, temperature: 0.2 });
+  const m = String(r.text || '').match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('AI returned no JSON');
+  return JSON.parse(m[0]);
+}
+
+/** Downloads an image attachment for vision (≤ 4 MB, png/jpg/webp/gif). */
+async function image(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20_000);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) return null;
+    const type = (res.headers.get('content-type') || '').split(';')[0];
+    if (!/^image\/(png|jpe?g|webp|gif)$/.test(type)) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > 4 * 1024 * 1024) return null;
+    return { type: 'image', mediaType: type === 'image/jpg' ? 'image/jpeg' : type, data: buf.toString('base64') };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+module.exports = {
+  PROVIDERS,
+  available,
+  providerName,
+  canUse,
+  usage,
+  limitFor,
+  chat,
+  run,
+  json,
+  image,
+  _toAnthropic: toAnthropic,
+  _toOpenAI: toOpenAI,
+  _fromAnthropic: fromAnthropic,
+  _fromOpenAI: fromOpenAI,
+  _setMock: (fn) => (mock = fn),
+};

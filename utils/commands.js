@@ -31,6 +31,7 @@ const CATEGORIES = {
   protection: 'الحماية',
   logs: 'السجلات',
   tickets: 'التذاكر',
+  staff: 'المساعد الذكي والتقديم',
   config: 'إعدادات السيرفر',
   owner: 'المالك',
 };

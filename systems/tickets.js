@@ -263,6 +263,7 @@ async function openTicket(interaction, dept, answers) {
     lastMessageAt: Date.now(),
     status: 'open',
   };
+  if (answers?.length) record.answers = answers.map(({ q, a }) => ({ q: String(q).slice(0, 100), a: String(a || '').slice(0, 300) }));
   all[channel.id] = record;
   store.save('tickets');
   bumpStats(guild.id, (st) => {
@@ -282,8 +283,9 @@ async function openTicket(interaction, dept, answers) {
         `${E.dot} القسم: **${dept.label}**`,
         `${E.dot} فُتحت: ${ts(record.openedAt)}`,
         '',
+        require('./aiStaff').ticketLine(guild.id),
         ui.hint('لإغلاق التذكرة استخدم الزر بالأسفل.'),
-      ].join('\n')
+      ].filter((x) => x !== null).join('\n')
     );
 
   const embeds = [embed];
@@ -376,6 +378,8 @@ async function closeTicket(channel, record, closer) {
   });
 
   await channel.send({ content: `${E.lock} سيتم إغلاق التذكرة خلال 5 ثوانٍ...`, allowedMentions: { parse: [] } }).catch(() => {});
+  // let the AI assistant read what the team taught here before the channel goes away
+  await require('./aiStaff').learnFromTicket(channel, record).catch(() => {});
 
   const opener = await guild.client.users.fetch(record.ownerId).catch(() => null);
   let transcript = null;
