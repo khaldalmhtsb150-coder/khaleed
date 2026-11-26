@@ -8,7 +8,7 @@ const premium = require('../utils/premium');
 const gctx = require('../utils/guildContext');
 
 // إيموجي المشاركة — ضع إيموجي مخصص بصيغة '<:name:id>' أو اترك 🎉
-const REACTION = '<:emoji_71:1571539538747203706>';
+const REACTION = '<:emoji_1:1575568479048831056>';
 
 // Premium per-server settings (dashboard → القيفاواي)
 const DEFAULT_CONFIG = {
