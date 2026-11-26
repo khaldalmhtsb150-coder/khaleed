@@ -196,8 +196,10 @@ async function chat({ guildId, system, messages, tools = [], maxTokens = 700, te
   const order = [...list.filter((x) => !(resting.get(x.name) > now)), ...list.filter((x) => resting.get(x.name) > now)];
   for (const s of order) {
     try {
+      const t0 = Date.now();
       const out = await callProvider(s, { system, messages, tools, maxTokens, temperature });
       resting.delete(s.name);
+      if (process.env.AI_LOG !== '0') console.log(`[ai] ✓ ${s.name}/${working.get(s.name)?.model || s.model} ${((Date.now() - t0) / 1000).toFixed(1)}s${out.toolCalls?.length ? ` tools: ${out.toolCalls.map((c) => c.name).join(',')}` : ''}`);
       return out;
     } catch (e) {
       lastErr = e;
