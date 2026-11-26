@@ -8,7 +8,7 @@ module.exports = {
   aliases: ['تقديم', 'التقديم'],
   description: 'تقديم الإدارة: نشر اللوحة، منصب جاهز، فتح وإغلاق، والإحصائيات',
   perms: ['ManageGuild'],
-  botPerms: ['ManageRoles', 'CreatePrivateThreads'],
+  botPerms: ['ManageRoles', 'ManageChannels'],
   cooldown: 5,
   options: [
     {

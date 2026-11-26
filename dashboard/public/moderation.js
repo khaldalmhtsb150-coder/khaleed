@@ -1136,6 +1136,7 @@
           enabled: checked('apl-enabled'),
           reviewChannelId: val('apl-review'),
           reviewerRoleId: val('apl-role'),
+          categoryId: val('apl-cat'),
           title: val('apl-title'),
           description: val('apl-desc'),
           bannerUrl: val('apl-banner').trim(),
@@ -2639,7 +2640,7 @@
       <div class="row">${field('أيام بالسيرفر', num('serverDays', r.serverDays, 0, 3650))}${field('أقل لفل', num('level', r.level, 0, 500))}</div>
       <div class="sub-h">طريقة القرار</div>
       ${field('مين بيقرر', `<select class="select" data-p="mode">${modes.map(([v, n]) => `<option value="${v}" ${p.mode === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`)}
-      <div class="row">${field('علامة القبول التلقائي', num('acceptAt', p.acceptAt ?? 80, 50, 100), 'من 100')}<div>${chk('interview', p.interview !== false, 'مقابلة مع المساعد بثريد خاص')}</div></div>
+      <div class="row">${field('علامة القبول التلقائي', num('acceptAt', p.acceptAt ?? 80, 50, 100), 'من 100')}<div>${chk('interview', p.interview !== false, 'مقابلة مع المساعد بالتذكرة')}</div></div>
       ${field('شو بتدور عليه بالإداري', `<textarea class="textarea" data-p="criteria" rows="2" maxlength="1000" placeholder="محترم، متواجد، بيكتب بوضوح…">${esc(p.criteria || '')}</textarea>`, 'المساعد بيقيّم الإجابات على أساسها')}
       ${field('مهام المنصب (بتوصله لما ينقبل)', `<textarea class="textarea" data-p="duties" rows="4" maxlength="2000">${esc(p.duties || '')}</textarea>`, 'وبعد القبول المساعد بيجاوبه على أي سؤال عنها')}
       <div class="row">${field('فترة تجربة (يوم، 0 = بدون)', num('trialDays', p.trialDays, 0, 90))}${field('عدد المقاعد (0 = مفتوح)', num('seats', p.seats, 0, 100))}${field('بعد الرفض بيستنى (يوم)', num('cooldownDays', p.cooldownDays ?? 7, 0, 90))}</div>
@@ -2651,7 +2652,7 @@
     return card(
       'sec-apply',
       'تقديم الإدارة',
-      'لوحة فيها المناصب. البوت بيفحص الشروط لحاله (التاق، عمر الحساب، اللفل، التحذيرات)، بيسأل الأسئلة، والمساعد بيقابل المتقدّم بثريد خاص ويقيّمه. القبول بيعطي الرتب والمهام فوراً.',
+      'لوحة فيها المناصب. البوت بيفحص الشروط لحاله (الشعار، عمر الحساب، اللفل، التحذيرات)، بيسأل الأسئلة، وبيفتح لكل متقدّم تذكرة خاصة فيها المقابلة مع المساعد وأزرار القبول والرفض. القبول بيعطي الرتب والمهام فوراً.',
       'role',
       `<div class="rd-grid">
         <div class="rd-stat"><b>${st.total || 0}</b><span>كل التقديمات</span></div>
@@ -2665,12 +2666,13 @@
         ${field('روم الإدارة (بتوصله التقديمات)', `<select class="select" id="apl-review">${textOpts(A.reviewChannelId, 'اختر روم')}</select>`)}
         ${field('مين بيراجع', `<select class="select" id="apl-role">${roleOpts(A.reviewerRoleId, 'اللي معهم إدارة السيرفر')}</select>`)}
       </div>
+      ${field('كاتيقوري تذاكر التقديم', `<select class="select" id="apl-cat">${catOpts(A.categoryId)}</select>`, 'كل تقديم بيفتح تذكرة خاصة فيها المقابلة والمتطلبات. فاضي = البوت بيعمل كاتيقوري "التقديمات" لحاله')}
       ${field('عنوان اللوحة', `<input class="input" id="apl-title" maxlength="100" value="${esc(A.title || 'تقديم الإدارة')}">`)}
       ${field('وصف اللوحة', `<textarea class="textarea" id="apl-desc" rows="3" maxlength="1500">${esc(A.description || '')}</textarea>`)}
       ${field('صورة اللوحة (رابط، اختياري)', `<input class="input ltr" id="apl-banner" maxlength="500" placeholder="https://…" value="${esc(A.bannerUrl || '')}">`, 'فاضي = صورة ماركا الجاهزة')}
       ${toggle('apl-dm', A.dm !== false, 'رسالة خاص بالنتيجة', 'قبول أو رفض، مع السبب')}
       <div class="inline-form mt"><select class="select" id="apl-panel-ch">${textOpts(A.panelChannelId, 'روم اللوحة')}</select><button type="button" class="btn primary" id="apl-publish">${icon('send')} ${A.panelMessageId ? 'حدّث اللوحة' : 'انشر اللوحة'}</button></div>
-      <div class="help">احفظ أول، وبعدين انشر. البوت بده صلاحية إنشاء ثريدات خاصة بروم اللوحة عشان المقابلات.</div>`,
+      <div class="help">احفظ أول، وبعدين انشر. البوت بده صلاحية إدارة القنوات عشان يفتح تذاكر التقديم.</div>`,
       'apply'
     );
   }

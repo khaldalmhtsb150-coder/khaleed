@@ -304,6 +304,7 @@ function writeSettings(guild, module, d) {
         enabled: bool(d.enabled),
         reviewChannelId: channelIn(guild, d.reviewChannelId) || '',
         reviewerRoleId: roleIn(guild, d.reviewerRoleId) || '',
+        categoryId: channelIn(guild, d.categoryId, [ChannelType.GuildCategory]) || '',
         title: str(d.title, 100).trim() || 'تقديم الإدارة',
         description: str(d.description, 1500),
         bannerUrl: /^https?:\/\//.test(String(d.bannerUrl || '')) ? str(d.bannerUrl, 500) : '',
