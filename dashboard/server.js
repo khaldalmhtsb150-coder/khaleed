@@ -1,5 +1,6 @@
 // MarkaBot dashboard — Express, runs inside the bot process (one port, shared memory, no DB).
 const path = require('path');
+const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
 const { ChannelType, PermissionFlagsBits } = require('discord.js');
@@ -805,7 +806,18 @@ function start(client) {
   app.use('/fonts', express.static(path.join(__dirname, '..', 'assets', 'fonts'), { maxAge: '30d' }));
   app.use('/art', express.static(path.join(__dirname, '..', 'assets', 'art', 'banner'), { maxAge: '7d', index: false }));
 
-  const view = (name) => (req, res) => res.sendFile(path.join(VIEWS, `${name}.html`));
+  // Every restart gets a new version stamp on /static links, so browsers never keep an old moderation.js / theme.css
+  const BUILD = Date.now().toString(36);
+  const pages = new Map();
+  const sendView = (res, name, status = 200) => {
+    let html = pages.get(name);
+    if (!html) {
+      html = fs.readFileSync(path.join(VIEWS, `${name}.html`), 'utf8').replace(/(["'])\/static\/([\w./-]+\.(?:js|css))\1/g, `$1/static/$2?v=${BUILD}$1`);
+      pages.set(name, html);
+    }
+    res.status(status).set('Cache-Control', 'no-cache').type('html').send(html);
+  };
+  const view = (name) => (req, res) => sendView(res, name);
   const needLogin = (req, res, next) => {
     req.session = getSession(req);
     if (!req.session) {
@@ -830,7 +842,7 @@ function start(client) {
   const ownerOnly = (req, res, next) => (isOwner(req.session.user.id) ? next() : res.status(403).json({ error: 'لمالك البوت فقط' }));
 
   // pages
-  app.get('/', (req, res) => (getSession(req) ? res.redirect('/home') : res.sendFile(path.join(VIEWS, 'login.html'))));
+  app.get('/', (req, res) => (getSession(req) ? res.redirect('/home') : sendView(res, 'login')));
   app.get('/home', needLogin, view('home'));
   app.get('/servers', needLogin, view('servers'));
   app.get('/dashboard/:id', needLogin, needGuild, view('moderation'));
@@ -1627,7 +1639,7 @@ function start(client) {
     res.json({ ok: true });
   });
 
-  app.use((req, res) => res.status(404).sendFile(path.join(VIEWS, 'unauthorized.html')));
+  app.use((req, res) => sendView(res, 'unauthorized', 404));
 
   app.listen(cfg.port, '0.0.0.0', () => {
     console.log(`[dashboard] listening on :${cfg.port} — ${cfg.base}`);
