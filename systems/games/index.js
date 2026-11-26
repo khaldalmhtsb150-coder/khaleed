@@ -347,7 +347,8 @@ async function runLobby(game) {
 async function announce(game, result) {
   const winners = result.winners || [];
   const conf = config(game.guild.id);
-  const reward = `+${POINTS.win} نقاط • +${conf.winXp} XP للفائز • +${POINTS.play} للمشاركة`;
+  const cupPts = require('../growth').cupPoint(game.guild.id, game.players?.size || winners.length);
+  const reward = `+${POINTS.win} نقاط • +${conf.winXp} XP للفائز • +${POINTS.play} للمشاركة${cupPts ? ` • +${cupPts} لسيرفركم بكأس ماركا 🏆` : ''}`;
   const head = winners.length ? `${art.i('trophy', '🏆')} **${result.title || 'انتهت اللعبة'}** — مبروك ${winners.map((id) => `<@${id}>`).join(' ')}` : `${art.i('cancel', '✕')} **${result.title || 'انتهت اللعبة'}** — ما في فائز هالمرة`;
   const content = [head, result.text ? result.text : null, `-# ${reward}`].filter(Boolean).join('\n');
   let card = null;
@@ -360,7 +361,8 @@ async function announce(game, result) {
     card = await art.winnerCard({ gameKey: game.type.id, gameTitle: game.type.name, title: result.title || 'الفائز', winners: list, reward: '' }).catch(() => null);
   }
   const { AttachmentBuilder } = require('discord.js');
-  await game.send({ content: ui.trim(content, 1900), files: card ? [new AttachmentBuilder(card, { name: 'winner.png' })] : [], allowedMentions: { users: winners } });
+  const brand = require('../growth').brandRow(game.guild.id);
+  await game.send({ content: ui.trim(content, 1900), files: card ? [new AttachmentBuilder(card, { name: 'winner.png' })] : [], components: brand ? [brand] : [], allowedMentions: { users: winners } });
 }
 
 /** Starts a game in a channel; resolves when it ends. */

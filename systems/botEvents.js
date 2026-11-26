@@ -21,7 +21,7 @@ function init(client) {
 
   client.on(Events.GuildDelete, (guild) => {
     if (!guild.available) return; // Discord outage, not a real removal
-    botlog.log('guild_leave', `خرج البوت من سيرفر **${guild.name || guild.id}** (${guild.memberCount || 0} عضو). تم طرده أو أُخرج من لوحة المالك.`, {
+    botlog.log('guild_leave', `خرج البوت من سيرفر **${guild.name || guild.id}** (${guild.memberCount || 0} عضو) — ${require('./growth').leaveText(guild)}`, {
       guild,
     });
   });

@@ -17,6 +17,7 @@ module.exports = {
       choices: [
         { name: 'الترتيب', value: 'top' },
         { name: 'ترتيب الشهر', value: 'month' },
+        { name: 'كأس ماركا (بطولة السيرفرات)', value: 'cup' },
         { name: 'إحصائياتي', value: 'me' },
         { name: 'متجر الميزات', value: 'shop' },
         { name: 'إيقاف اللعبة بهالروم', value: 'stop' },
@@ -26,6 +27,7 @@ module.exports = {
   async run(ctx) {
     const action = ctx.get('action') || 'me';
     const gid = ctx.guild.id;
+    if (action === 'cup') return ctx.reply(require('../../systems/growth').cupPayload(gid));
     if (action === 'stop') {
       if (!canManageGuild(ctx.member)) return ctx.fail('بس الإدارة بتقدر توقف اللعبة.');
       return games.stopIn(ctx.channel.id) ? ctx.reply('⛔ وقفت اللعبة بهالروم.') : ctx.fail('ما في لعبة شغالة بهالروم.');

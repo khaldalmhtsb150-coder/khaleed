@@ -93,6 +93,9 @@ const DEFAULTS = {
   applyConfig: {},
   applications: {},
   applyUsers: {},
+  growthJoins: {},
+  referrals: {},
+  tourney: {},
 };
 
 const cache = {};

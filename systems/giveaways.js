@@ -270,7 +270,7 @@ async function endInner(client, g, { reroll = false } = {}) {
       ? `${reroll ? 'إعادة سحب — ' : ''}${fillTemplate(g.style?.winMessage || DEFAULT_WIN, g)}`
       : `• انتهى القيفاواي على **${g.prize}** بدون ${g.req && g.entrants.length ? 'مشاركين مستوفين للشروط' : 'مشاركين'}.`;
     await channel
-      .send({ content: text, reply: msg ? { messageReference: msg.id, failIfNotExists: false } : undefined, allowedMentions: { users: g.winners } })
+      .send({ content: text, components: [require('./growth').brandRow(channel.guild.id)].filter(Boolean), reply: msg ? { messageReference: msg.id, failIfNotExists: false } : undefined, allowedMentions: { users: g.winners } })
       .catch(() => {});
     return g;
   } finally {
