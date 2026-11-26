@@ -18,12 +18,13 @@ const PROVIDERS = {
   anthropic: { format: 'anthropic', url: 'https://api.anthropic.com/v1/messages', model: 'claude-haiku-5-5', env: 'ANTHROPIC_API_KEY' },
   gemini: { format: 'openai', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model: 'gemini-flash-latest', fallback: ['gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'], env: 'GEMINI_API_KEY' },
   openai: { format: 'openai', url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-5-mini', env: 'OPENAI_API_KEY' },
-  groq: { format: 'openai', url: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile', env: 'GROQ_API_KEY' },
+  groq: { format: 'openai', url: 'https://api.groq.com/openai/v1/chat/completions', model: 'openai/gpt-oss-120b', fallback: ['llama-3.3-70b-versatile', 'qwen/qwen3-32b', 'meta-llama/llama-4-scout-17b-16e-instruct'], env: 'GROQ_API_KEY' },
   openrouter: { format: 'openai', url: 'https://openrouter.ai/api/v1/chat/completions', model: 'google/gemini-flash-latest', env: 'OPENROUTER_API_KEY' },
 };
 
 let mock = null;
-const working = new Map(); // provider → { model, at }: the last model that answered // tests: (request) => response in the neutral shape
+const resting = new Map(); // provider → time it may lead again
+const working = new Map(); // provider → { model, at }: the last model that answered
 
 function settings() {
   const env = process.env;
@@ -37,9 +38,19 @@ function settings() {
   const extra = env.AI_FALLBACK_MODELS ? env.AI_FALLBACK_MODELS.split(',').map((m) => m.trim()).filter(Boolean) : p.fallback || [];
   return { name, ...p, key, model, models: [...new Set([model, ...extra])], url: env.AI_BASE_URL || p.url };
 }
+/** The main provider, then any other provider that has its own key in .env (e.g. GROQ_API_KEY) as a backup. */
+function chain() {
+  const main = settings();
+  const out = main ? [main] : [];
+  for (const [name, p] of Object.entries(PROVIDERS)) {
+    if (main?.name === name || !process.env[p.env]) continue;
+    out.push({ name, ...p, key: process.env[p.env], model: p.model, models: [p.model, ...(p.fallback || [])] });
+  }
+  return out;
+}
 
 const available = () => Boolean(mock || settings());
-const providerName = () => (mock ? 'mock' : settings()?.name || null);
+const providerName = () => (mock ? 'mock' : chain().map((x) => x.name).join(' + ') || null);
 
 // ---------- daily limits (protects the owner's API bill) ----------
 const today = () => new Date().toISOString().slice(0, 10);
@@ -175,8 +186,29 @@ async function chat({ guildId, system, messages, tools = [], maxTokens = 700, te
   }
   if (guildId) count(guildId);
   if (mock) return mock({ system, messages, tools });
-  const s = settings();
-  if (!s) throw Object.assign(new Error('AI not configured'), { code: 'OFF' });
+  const list = chain();
+  if (!list.length) throw Object.assign(new Error('AI not configured'), { code: 'OFF' });
+  let lastErr;
+  // a provider that was all busy a moment ago goes to the back of the line for 2 minutes
+  const now = Date.now();
+  const order = [...list.filter((x) => !(resting.get(x.name) > now)), ...list.filter((x) => resting.get(x.name) > now)];
+  for (const s of order) {
+    try {
+      const out = await callProvider(s, { system, messages, tools, maxTokens, temperature });
+      resting.delete(s.name);
+      return out;
+    } catch (e) {
+      lastErr = e;
+      // busy, rate-limited, timed out or model gone: let the backup provider answer
+      const passOn = e.name === 'AbortError' || /timeout/i.test(e.message) || [404, 429, 500, 502, 503, 504].includes(e.status);
+      if (!passOn) throw e;
+      if (list.length > 1) resting.set(s.name, Date.now() + 2 * 60_000);
+    }
+  }
+  throw lastErr;
+}
+
+async function callProvider(s, { system, messages, tools, maxTokens, temperature }) {
 
   let body;
   if (s.format === 'anthropic') body = { model: s.model, max_tokens: maxTokens, temperature, ...toAnthropic({ system, messages, tools }) };
@@ -193,8 +225,9 @@ async function chat({ guildId, system, messages, tools = [], maxTokens = 700, te
       body.reasoning_effort = process.env.AI_REASONING || 'none';
       body.temperature = temperature;
     } else {
-      body.max_tokens = maxTokens;
+      body.max_tokens = /gpt-oss|qwen3/.test(s.model) ? Math.max(maxTokens * 4, 2048) : maxTokens;
       body.temperature = temperature;
+      if (/gpt-oss/.test(s.model)) body.reasoning_effort = 'low';
     }
   }
 

@@ -26,6 +26,7 @@
 | `AI_API_KEY` | مفتاح الذكاء الاصطناعي للمساعد الذكي وتقديم الإدارة (اختياري). مفتاح Gemini مجاني من Google AI Studio |
 | `AI_PROVIDER` | `gemini` (الافتراضي) أو `anthropic` أو `openai` أو `groq` أو `openrouter` |
 | `AI_MODEL` | اختياري، لتغيير الموديل الافتراضي |
+| `GROQ_API_KEY` | اختياري: مزوّد احتياطي مجاني، بيرد لما المزوّد الأساسي يكون مضغوط |
 | `AI_DAILY_FREE` / `AI_DAILY_PREMIUM` / `AI_DAILY_GLOBAL` | اختياري: حد الردود باليوم لكل سيرفر مجاني / بريميوم / لكل البوت (60 / 800 / 3000) |
 
 ## 3) الرفع على bot-hosting.net (أو أي لوحة Pterodactyl)
