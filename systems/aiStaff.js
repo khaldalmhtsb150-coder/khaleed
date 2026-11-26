@@ -457,7 +457,7 @@ function schedule(message, { late = false } = {}) {
             if (r && !r.text && !r.actions.length) throw new Error('empty reply');
             break;
           } catch (e) {
-            if (e.code === 'LIMIT' || e.code === 'OFF' || k >= 2) throw e;
+            if (e.code === 'LIMIT' || e.code === 'OFF' || [401, 403].includes(e.status) || k >= 2) throw e;
             console.error('[ai] reply, trying again:', e.message);
             await sleep(k ? 8000 : 3000);
           }

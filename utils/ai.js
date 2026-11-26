@@ -26,13 +26,15 @@ let mock = null;
 const resting = new Map(); // provider → time it may lead again
 const working = new Map(); // provider → { model, at }: the last model that answered
 
+// keys pasted with quotes or spaces around them are a common .env mistake
+const clean = (v) => String(v || '').trim().replace(/^['"]|['"]$/g, '').trim();
 function settings() {
   const env = process.env;
   let name = String(env.AI_PROVIDER || '').toLowerCase().trim();
   if (!PROVIDERS[name]) name = Object.keys(PROVIDERS).find((p) => env[PROVIDERS[p].env]) || (env.AI_API_KEY ? 'gemini' : '');
   if (!name) return null;
   const p = PROVIDERS[name];
-  const key = env.AI_API_KEY || env[p.env];
+  const key = clean(env.AI_API_KEY) || clean(env[p.env]);
   if (!key) return null;
   const model = env.AI_MODEL || p.model;
   const extra = env.AI_FALLBACK_MODELS ? env.AI_FALLBACK_MODELS.split(',').map((m) => m.trim()).filter(Boolean) : p.fallback || [];
@@ -43,8 +45,8 @@ function chain() {
   const main = settings();
   const out = main ? [main] : [];
   for (const [name, p] of Object.entries(PROVIDERS)) {
-    if (main?.name === name || !process.env[p.env]) continue;
-    out.push({ name, ...p, key: process.env[p.env], model: p.model, models: [p.model, ...(p.fallback || [])] });
+    if (main?.name === name || !clean(process.env[p.env])) continue;
+    out.push({ name, ...p, key: clean(process.env[p.env]), model: p.model, models: [p.model, ...(p.fallback || [])] });
   }
   return out;
 }
@@ -200,7 +202,8 @@ async function chat({ guildId, system, messages, tools = [], maxTokens = 700, te
     } catch (e) {
       lastErr = e;
       // busy, rate-limited, timed out or model gone: let the backup provider answer
-      const passOn = e.name === 'AbortError' || /timeout/i.test(e.message) || [404, 429, 500, 502, 503, 504].includes(e.status);
+      // a wrong key (401/403) on one provider shouldn't silence the bot when another one works
+      const passOn = e.name === 'AbortError' || /timeout/i.test(e.message) || [401, 403, 404, 429, 500, 502, 503, 504].includes(e.status);
       if (!passOn) throw e;
       if (list.length > 1) resting.set(s.name, Date.now() + 2 * 60_000);
     }

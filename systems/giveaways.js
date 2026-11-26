@@ -219,11 +219,28 @@ async function endInner(client, g, { reroll = false } = {}) {
   if (ending.has(g.messageId)) return g;
   ending.add(g.messageId);
   try {
-    const channel = await client.channels.fetch(g.channelId).catch(() => null);
+    let gone = false;
+    const channel = await client.channels.fetch(g.channelId).catch((e) => {
+      // Unknown Channel / Missing Access / Unknown Guild: it isn't coming back
+      if ([10003, 50001, 10004].includes(e.code)) gone = true;
+      return null;
+    });
     if (!channel) {
-      console.error(`[giveaway] channel ${g.channelId} not reachable, will retry`);
+      g.fails = (g.fails || 0) + 1;
+      if (gone || !client.guilds.cache.has(g.guildId) || g.fails >= 30) {
+        // drop it instead of retrying forever
+        const all = list();
+        const k = all.indexOf(g);
+        if (k !== -1) all.splice(k, 1);
+        store.save('giveaways');
+        console.warn(`[giveaway] ${g.prize} dropped: channel ${g.channelId} is gone`);
+        return g;
+      }
+      store.save('giveaways');
+      if (g.fails === 1) console.error(`[giveaway] channel ${g.channelId} not reachable, will retry`);
       return g;
     }
+    g.fails = 0;
     const msg = await channel.messages.fetch(g.messageId).catch(() => null);
     if (!msg) console.error(`[giveaway] message ${g.messageId} not found (deleted?)`);
 

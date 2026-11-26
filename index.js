@@ -33,6 +33,9 @@ const client = new Client({
   partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.User],
 });
 
+// many systems listen to the same events (ready, messageCreate…): that's by design, not a leak
+client.setMaxListeners(50);
+
 // Every event runs "inside" its server, so per-server settings (premium emojis…) apply automatically.
 const rawEmit = client.emit.bind(client);
 client.emit = (event, ...args) => {
