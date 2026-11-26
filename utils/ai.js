@@ -22,7 +22,8 @@ const PROVIDERS = {
   openrouter: { format: 'openai', url: 'https://openrouter.ai/api/v1/chat/completions', model: 'google/gemini-flash-latest', env: 'OPENROUTER_API_KEY' },
 };
 
-let mock = null; // tests: (request) => response in the neutral shape
+let mock = null;
+const working = new Map(); // provider → { model, at }: the last model that answered // tests: (request) => response in the neutral shape
 
 function settings() {
   const env = process.env;
@@ -187,8 +188,9 @@ async function chat({ guildId, system, messages, tools = [], maxTokens = 700, te
       body.max_completion_tokens = Math.max(maxTokens * 4, 2000);
       body.reasoning_effort = effort;
     } else if (s.name === 'gemini') {
+      // chat replies don't need long thinking: ask for none (falls back to low on models that always think)
       body.max_tokens = Math.max(maxTokens * 4, 2048);
-      body.reasoning_effort = effort;
+      body.reasoning_effort = process.env.AI_REASONING || 'none';
       body.temperature = temperature;
     } else {
       body.max_tokens = maxTokens;
@@ -197,20 +199,28 @@ async function chat({ guildId, system, messages, tools = [], maxTokens = 700, te
   }
 
   // when a model is busy (503/429) or missing (404), move on to the next one in the list
-  const models = s.models || [s.model];
+  // start from the model that answered last time, so a busy one doesn't slow every reply
+  const all = s.models || [s.model];
+  const pref = working.get(s.name);
+  const models = pref && Date.now() - pref.at < 15 * 60_000 && all.includes(pref.model) ? [pref.model, ...all.filter((m) => m !== pref.model)] : all;
   let mi = 0;
   let attempt = 0;
   for (;;) {
     body.model = models[mi];
     try {
-      if (s.format === 'anthropic') return fromAnthropic(await post(s.url, { 'x-api-key': s.key, 'anthropic-version': '2023-06-01' }, body));
-      return fromOpenAI(await post(s.url, { authorization: `Bearer ${s.key}` }, body));
+      const out = s.format === 'anthropic' ? fromAnthropic(await post(s.url, { 'x-api-key': s.key, 'anthropic-version': '2023-06-01' }, body)) : fromOpenAI(await post(s.url, { authorization: `Bearer ${s.key}` }, body));
+      working.set(s.name, { model: body.model, at: Date.now() });
+      return out;
     } catch (e) {
       attempt++;
       // a model that doesn't take one of the optional knobs: drop it and try again
       if (e.status === 400 && attempt <= 2) {
         const msg = String(e.message);
         const knob = ['reasoning_effort', 'temperature'].find((k) => k in body && msg.includes(k));
+        if (knob === 'reasoning_effort' && body.reasoning_effort === 'none') {
+          body.reasoning_effort = 'low';
+          continue;
+        }
         if (knob) {
           delete body[knob];
           continue;
@@ -219,6 +229,7 @@ async function chat({ guildId, system, messages, tools = [], maxTokens = 700, te
       if (e.name === 'AbortError') e.message = 'AI timeout: ما وصل رد من مزوّد الذكاء الاصطناعي خلال 30 ثانية (يمكن الاستضافة مانعة الاتصال)';
       console.error(`[ai] ${s.name} ${s.model}:`, e.message);
       if ([404, 429, 500, 503].includes(e.status) && mi + 1 < models.length) {
+        if (working.get(s.name)?.model === body.model) working.delete(s.name);
         mi++;
         attempt = 0;
         continue;

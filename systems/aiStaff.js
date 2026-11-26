@@ -329,6 +329,8 @@ async function respond(channel, trigger) {
   const about = typeof lastUser.msg.content === 'string' ? lastUser.msg.content : lastUser.msg.content[0].text;
   const done = {};
   const system = systemPrompt(guild, conf, { member, ticket, channel, about });
+  // keep "typing…" on screen for the whole time the model is thinking
+  const typing = setInterval(() => channel.sendTyping().catch(() => {}), 8000);
   const result = await ai.run({
     guildId: guild.id,
     system,
@@ -337,8 +339,10 @@ async function respond(channel, trigger) {
     handlers: handlersFor(guild, conf, { member, channel, ticket, done }),
     maxSteps: 4,
     maxTokens: 600,
-  });
-  const text = (result.text || '').trim();
+  }).finally(() => clearInterval(typing));
+  let text = (result.text || '').trim();
+  // the model did something but said nothing: never leave the member hanging
+  if (!text && result.actions.length && !done.handoff) text = 'تمام ✓';
   const b = brain(guild.id);
   b.stats.replies++;
   b.stats.actions += result.actions.filter((a) => !['suggest_note', 'call_staff'].includes(a.name)).length;
@@ -349,7 +353,7 @@ async function respond(channel, trigger) {
   }
 
   // feel like a person typing: the reply never lands instantly
-  const want = Math.min(6000, 900 + text.length * 22);
+  const want = Math.min(2500, 400 + text.length * 8);
   const left = want - (Date.now() - started);
   if (left > 0) {
     await channel.sendTyping().catch(() => {});
@@ -407,6 +411,26 @@ function wants(message, conf) {
   return Boolean(mentioned && !staff) || Boolean(mentioned && staff && !message.reference);
 }
 
+/** When the model can't answer, a person-like line instead of silence (and in tickets, the team gets pinged). */
+const fellBack = new Map(); // channelId → time
+async function fallback(message, err) {
+  const ch = message.channel;
+  if (Date.now() - (fellBack.get(ch.id) || 0) < 10 * 60_000) return;
+  fellBack.set(ch.id, Date.now());
+  const guild = message.guild;
+  const ticket = store.peek('tickets', guild.id)?.[ch.id];
+  if (ticket) {
+    ticket.aiOff = true;
+    store.save('tickets');
+    const role = supportRole(guild);
+    await ch.send({ content: 'ثواني بس 🙏 حدا من الفريق رح يكمّل معك هون.', allowedMentions: { parse: [] } });
+    if (role) await ch.send({ content: `<@&${role}> -# المساعد ما قدر يرد (${err.code === 'LIMIT' ? 'خلص حده اليومي' : 'ضغط عند مزوّد الذكاء الاصطناعي'})`, allowedMentions: { roles: [role] } });
+    return;
+  }
+  if (err.code === 'LIMIT') return;
+  await message.reply({ content: 'معلش، في ضغط عندي هسا 🙏 جرّب كمان شوي.', allowedMentions: { repliedUser: false } });
+}
+
 function schedule(message) {
   const id = message.channelId;
   clearTimeout(timers.get(id));
@@ -417,15 +441,25 @@ function schedule(message) {
       if (busy.has(id)) return busy.set(id, true);
       busy.set(id, false);
       try {
-        await respond(message.channel, message);
+        let r;
+        try {
+          r = await respond(message.channel, message);
+        } catch (e) {
+          if (e.code === 'LIMIT' || e.code === 'OFF') throw e;
+          console.error('[ai] reply, trying again:', e.message);
+          await sleep(1500);
+          r = await respond(message.channel, message);
+        }
+        if (r && !r.text && !r.actions.length) throw new Error('empty reply');
       } catch (e) {
-        if (e.code !== 'LIMIT') console.error('[ai] reply', e.message);
+        console.error('[ai] reply failed:', e.message);
+        await fallback(message, e).catch(() => {});
       } finally {
         const again = busy.get(id);
         busy.delete(id);
         if (again) schedule(message);
       }
-    }, Number(process.env.AI_DEBOUNCE_MS ?? 2500))
+    }, Number(process.env.AI_DEBOUNCE_MS ?? 1200))
   );
 }
 
