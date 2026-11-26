@@ -411,27 +411,35 @@ function wants(message, conf) {
   return Boolean(mentioned && !staff) || Boolean(mentioned && staff && !message.reference);
 }
 
-/** When the model can't answer, a person-like line instead of silence (and in tickets, the team gets pinged). */
+/** When the model can't answer: one calm line, no pings, and another try a bit later. */
 const fellBack = new Map(); // channelId → time
 async function fallback(message, err) {
   const ch = message.channel;
-  if (Date.now() - (fellBack.get(ch.id) || 0) < 10 * 60_000) return;
-  fellBack.set(ch.id, Date.now());
   const guild = message.guild;
   const ticket = store.peek('tickets', guild.id)?.[ch.id];
-  if (ticket) {
-    ticket.aiOff = true;
-    store.save('tickets');
-    const role = supportRole(guild);
-    await ch.send({ content: 'ثواني بس 🙏 حدا من الفريق رح يكمّل معك هون.', allowedMentions: { parse: [] } });
-    if (role) await ch.send({ content: `<@&${role}> -# المساعد ما قدر يرد (${err.code === 'LIMIT' ? 'خلص حده اليومي' : 'ضغط عند مزوّد الذكاء الاصطناعي'})`, allowedMentions: { roles: [role] } });
+  if (err.code === 'LIMIT') {
+    // out of replies for today: say it quietly once, the team sees the ticket as usual
+    if (ticket && !ticket.aiLimitNoted) {
+      ticket.aiLimitNoted = true;
+      store.save('tickets');
+      await ch.send({ content: 'حدا من الفريق رح يرد عليك هون قريباً 🙏', allowedMentions: { parse: [] } });
+    }
     return;
   }
-  if (err.code === 'LIMIT') return;
-  await message.reply({ content: 'معلش، في ضغط عندي هسا 🙏 جرّب كمان شوي.', allowedMentions: { repliedUser: false } });
+  if (Date.now() - (fellBack.get(ch.id) || 0) > 10 * 60_000) {
+    fellBack.set(ch.id, Date.now());
+    if (ticket) await ch.send({ content: 'ثواني بس وبرجعلك 🙏', allowedMentions: { parse: [] } });
+    else await message.reply({ content: 'ثواني بس وبرجعلك 🙏', allowedMentions: { repliedUser: false } });
+  }
+  // try again in a minute, unless the member wrote again (that schedules its own reply) or someone answered
+  setTimeout(() => {
+    const last = ch.lastMessageId;
+    if (last && last !== message.id && ch.messages?.cache?.get(last)?.author?.id !== message.author.id) return;
+    if (!timers.has(ch.id) && !busy.has(ch.id)) schedule(message, { late: true });
+  }, Number(process.env.AI_LATER_MS ?? 60_000)).unref?.();
 }
 
-function schedule(message) {
+function schedule(message, { late = false } = {}) {
   const id = message.channelId;
   clearTimeout(timers.get(id));
   timers.set(
@@ -441,19 +449,22 @@ function schedule(message) {
       if (busy.has(id)) return busy.set(id, true);
       busy.set(id, false);
       try {
+        // busy provider: a few quiet retries before saying anything
         let r;
-        try {
-          r = await respond(message.channel, message);
-        } catch (e) {
-          if (e.code === 'LIMIT' || e.code === 'OFF') throw e;
-          console.error('[ai] reply, trying again:', e.message);
-          await sleep(1500);
-          r = await respond(message.channel, message);
+        for (let k = 0; ; k++) {
+          try {
+            r = await respond(message.channel, message);
+            if (r && !r.text && !r.actions.length) throw new Error('empty reply');
+            break;
+          } catch (e) {
+            if (e.code === 'LIMIT' || e.code === 'OFF' || k >= 2) throw e;
+            console.error('[ai] reply, trying again:', e.message);
+            await sleep(k ? 8000 : 3000);
+          }
         }
-        if (r && !r.text && !r.actions.length) throw new Error('empty reply');
       } catch (e) {
         console.error('[ai] reply failed:', e.message);
-        await fallback(message, e).catch(() => {});
+        if (!late) await fallback(message, e).catch(() => {});
       } finally {
         const again = busy.get(id);
         busy.delete(id);
