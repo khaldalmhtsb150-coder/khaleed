@@ -139,7 +139,7 @@ function fromOpenAI(j) {
   return { text: String(text || '').trim(), toolCalls };
 }
 
-async function post(url, headers, body, ms = 45_000) {
+async function post(url, headers, body, ms = Number(process.env.AI_TIMEOUT_MS) || 30_000) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
   try {
@@ -210,8 +210,10 @@ async function chat({ guildId, system, messages, tools = [], maxTokens = 700, te
           continue;
         }
       }
-      const retry = e.name === 'AbortError' || e.status === 429 || (e.status >= 500 && e.status < 600);
-      if (!retry || attempt > 2) throw e;
+      if (e.name === 'AbortError') e.message = 'AI timeout: ما وصل رد من مزوّد الذكاء الاصطناعي خلال 30 ثانية (يمكن الاستضافة مانعة الاتصال)';
+      console.error(`[ai] ${s.name} ${s.model}:`, e.message);
+      const retry = e.status === 429 || (e.status >= 500 && e.status < 600);
+      if (!retry || attempt > 1) throw e;
       await new Promise((r) => setTimeout(r, 1500 * attempt));
     }
   }
