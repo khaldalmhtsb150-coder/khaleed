@@ -47,8 +47,10 @@ function onboardPayload(guild) {
         '**3. جرّب اللي بيحبه أعضاءك**',
         '-# `/play` للألعاب • `/azkar-setup` للأذكار • `/ai` للمساعد الذكي • `/apply-setup` لتقديم الإدارة',
         '',
-        '🎁 عندك سيرفر ثاني أو صاحبك عنده سيرفر؟ `/refer` بيعطيكم الاثنين أسبوع بريميوم.',
-      ].join('\n')
+        refOn() ? '🎁 عندك سيرفر ثاني أو صاحبك عنده سيرفر؟ `/refer` بيعطيكم الاثنين أسبوع بريميوم.' : null,
+      ]
+        .filter((x) => x !== null)
+        .join('\n')
     );
   const row = new ActionRowBuilder().addComponents(ui.button(`grow:setup:${guild.id}`, 'تركيب سريع', { style: ButtonStyle.Success }));
   const dash = dashboardUrl(guild.id);
@@ -138,7 +140,9 @@ const REF_DAYS = () => Number(process.env.REF_DAYS) || 7;
 const REF_MIN = () => Number(process.env.REF_MIN_MEMBERS) || 50;
 
 /** Uses a referral code for `guild`. Returns { ok, text }. */
+const refOn = () => process.env.REFERRALS === '1';
 async function redeemRef(guild, user, rawCode) {
+  if (!refOn()) return { ok: false, text: 'برنامج الإحالة موقّف حالياً.' };
   const r = refData();
   const code = String(rawCode || '').trim().toUpperCase();
   const from = r.codes[code];
@@ -300,6 +304,7 @@ module.exports = {
   codeOf,
   redeemRef,
   refStats,
+  refOn,
   cupPoint,
   cupBoard,
   cupRoll,

@@ -20,6 +20,7 @@ module.exports = {
     { name: 'code', type: 'string', description: 'كود الإحالة (للاستخدام)' },
   ],
   async run(ctx) {
+    if (!growth.refOn()) return ctx.fail('برنامج الإحالة موقّف حالياً.');
     const action = ctx.get('action') || (ctx.get('code') ? 'use' : 'code');
     if (action === 'use') {
       const code = ctx.get('code');
