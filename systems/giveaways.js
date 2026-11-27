@@ -24,7 +24,7 @@ const DEFAULT_CONFIG = {
   bonusRoles: [], // [{ roleId, entries }]
 };
 // the win line's emoji (the server's own): a plain message, not an embed
-const WIN_EMOJI = '<:gw_win:1575784763979997355>';
+const WIN_EMOJI = '<:emoji_1:1575568479048831056>';
 const DEFAULT_WIN = `${WIN_EMOJI} مبروك {winnerList}! فزتم بـ **{prize}**`;
 
 const list = () => store.get('giveaways');
