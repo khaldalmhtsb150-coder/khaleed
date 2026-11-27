@@ -9,7 +9,7 @@ module.exports = {
   options: [{ name: 'message_id', type: 'string', description: 'آيدي رسالة القيفاواي', label: 'آيدي الرسالة', required: true }],
   async run(ctx) {
     const g = gw.find(ctx.get('message_id'));
-    if (!g || g.guildId !== ctx.guild.id) return ctx.fail('لم يتم العثور على القيفاواي.');
+    if (!g || g.guildId !== ctx.guild.id) return ctx.fail('ما لقيت القيفاواي.');
     if (!g.ended) return ctx.fail('القيفاواي ما زال جارياً.');
     await gw.end(ctx.client, g, { reroll: true });
     return ctx.reply({ content: `${E.success} تمت إعادة السحب.` }, { ephemeral: true });

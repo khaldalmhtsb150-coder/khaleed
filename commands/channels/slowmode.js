@@ -15,7 +15,7 @@ module.exports = {
     const ch = ctx.get('channel') || ctx.channel;
     const raw = String(ctx.get('time')).trim();
     const ms = raw === '0' || raw === 'off' ? 0 : parseDuration(raw) ?? (/^\d+$/.test(raw) ? Number(raw) * 1000 : null);
-    if (ms === null || ms > 6 * 3_600_000) return ctx.fail('مدة غير صالحة (أقصى شي 6 ساعات).');
+    if (ms === null || ms > 6 * 3_600_000) return ctx.fail('المدة مش زابطة (أقصى شي 6 ساعات).');
     await ch.setRateLimitPerUser(Math.round(ms / 1000), `${ctx.user.tag}: سلومود`);
     return ctx.reply(ms ? `${E.timer} السلومود بـ ${ch} صار **${formatDuration(ms)}**` : `${E.success} شلت السلومود من ${ch}`);
   },

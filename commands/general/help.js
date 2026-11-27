@@ -77,7 +77,7 @@ module.exports = {
       prefix: 'help_menu_',
       handle: async (interaction) => {
         const owner = interaction.customId.slice('help_menu_'.length);
-        if (owner !== interaction.user.id) return interaction.reply({ content: '• استخدم أمر المساعدة الخاص بك.', ephemeral: true });
+        if (owner !== interaction.user.id) return interaction.reply({ content: '• هالقائمة لإلك بس، اطلب /help لحالك.', ephemeral: true });
         const cat = interaction.values[0];
         return interaction.update({ embeds: [categoryEmbed(cat, interaction.guild)], components: [menu(owner, cat)], attachments: [] });
       },

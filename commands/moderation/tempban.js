@@ -18,7 +18,7 @@ module.exports = {
   async run(ctx) {
     const user = ctx.get('user');
     const ms = parseDuration(ctx.get('duration'));
-    if (!ms || ms > 365 * 86_400_000) return ctx.fail('مدة غير صالحة (مثل 1h أو 3d، أقصى شي سنة).');
+    if (!ms || ms > 365 * 86_400_000) return ctx.fail('المدة مش زابطة (مثل 1h أو 3d، أقصى شي سنة).');
     const member = await ctx.guild.members.fetch(user.id).catch(() => null);
     const blocked = hierarchy(ctx, member, 'حظر');
     if (blocked) return ctx.fail(blocked);

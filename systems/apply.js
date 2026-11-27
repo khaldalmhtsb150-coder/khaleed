@@ -95,6 +95,11 @@ function userRec(gid, uid) {
   return all[uid];
 }
 const posOf = (gid, id) => config(gid).positions.find((p) => p.id === id) || null;
+/** "صفحة وحدة" / "صفحتين" / "3 صفحات" — Arabic counting instead of "1 صفحة". */
+function count(n, one, two, many) {
+  return n === 1 ? one : n === 2 ? two : `${n} ${many}`;
+}
+const days = (n) => count(n, 'يوم واحد', 'يومين', n >= 3 && n <= 10 ? 'أيام' : 'يوم');
 const ageDays = (t) => Math.max(0, Math.floor((Date.now() - t) / DAY));
 const isReviewer = (member, conf) => canManageGuild(member) || Boolean(conf.reviewerRoleId && member?.roles?.cache?.has(conf.reviewerRoleId));
 const aiOn = (gid, pos) => pos.mode !== 'manual' && ai.available() && ai.canUse(gid);
@@ -174,7 +179,7 @@ async function checks(guild, member, pos) {
     const ok = await tagState(guild, member.id);
     out.push({ key: 'tag', ok, label: 'تاق السيرفر أساسي عندك', fix: `من إعدادات المستخدم ← الملفات الشخصية ← تاق السيرفر، اختار **${guild.name}** وفعّله` });
   }
-  if (r.link) out.push({ key: 'link', ok: null, label: `${linkText(guild, pos)} بالبايو`, fix: 'حطه بخانة "نبذة عني" وبنطلب منك صورة بروفايلك بعد الأسئلة' });
+  if (r.link) out.push({ key: 'link', ok: null, label: 'رابط السيرفر بالبايو', fix: `حطه بخانة «نبذة عني» بالزبط هيك، وبعد الأسئلة بنطلب صورة بروفايلك:\n\`${linkText(guild, pos)}\`` });
   return out;
 }
 const mark = (ok) => (ok === true ? '✅' : ok === false ? '❌' : '🕓');
@@ -244,7 +249,7 @@ function gate(gid, uid, pos) {
   const open = Object.values(apps(gid)).find((a) => a.uid === uid && ['interview', 'pending'].includes(a.status));
   if (open) return `عندك تقديم لسا ما خلص${open.roomId ? `: <#${open.roomId}>` : '، استنى رد الإدارة.'}`;
   const rej = u.rejected[pos.id];
-  if (rej && Date.now() - rej < (pos.cooldownDays || 0) * DAY) return `انرفض تقديمك قبل. بتقدر تقدّم من جديد <t:${Math.ceil((rej + pos.cooldownDays * DAY) / 1000)}:R>.`;
+  if (rej && Date.now() - rej < (pos.cooldownDays || 0) * DAY) return `انرفض تقديمك على هالمنصب قبل فترة. بتقدر تقدّم من جديد بعد ${days(Math.ceil((rej + pos.cooldownDays * DAY - Date.now()) / DAY))}.`;
   return null;
 }
 
@@ -255,12 +260,16 @@ async function checkView(guild, member, pos) {
   const e = ui
     .embed()
     .setColor(failing.length ? 0xed4245 : art.accentInt('apply'))
-    .setTitle(`التقديم على ${pos.name}`)
+    .setTitle(`${pos.emoji ? `${pos.emoji} ` : ''}التقديم على ${pos.name}`)
+    .setThumbnail(guild.iconURL?.() || null)
     .setDescription(
       [
-        list.length ? list.map((c) => `${mark(c.ok)} ${c.label}${c.ok === false || c.ok === null ? `\n-# ${c.fix}` : ''}`).join('\n') : 'ما في شروط على هالمنصب.',
+        '**الشروط**',
+        list.length ? list.map((c) => `${mark(c.ok)} ${c.label}${c.ok === false || c.ok === null ? `\n-# ${c.fix.replace(/\n/g, '\n-# ')}` : ''}`).join('\n') : 'ما في شروط على هالمنصب.',
         '',
-        failing.length ? 'زبّط اللي ناقص واضغط **فحص مرة ثانية**.' : `كل شي تمام 👌 الأسئلة **${pos.questions.length}**${pos.questions.length > PAGE ? ` على ${Math.ceil(pos.questions.length / PAGE)} صفحات` : ''}، خذ وقتك فيها.`,
+        failing.length
+          ? 'زبّط اللي ناقص واكبس **فحص مرة ثانية** 👇'
+          : `كل شي تمام 👌 عندك **${count(questionsOf(pos).length, 'سؤال واحد', 'سؤالين', 'أسئلة')}**${questionsOf(pos).length > PAGE ? ` على ${count(Math.ceil(questionsOf(pos).length / PAGE), 'صفحة', 'صفحتين', 'صفحات')}` : ''}. جاوب بصراحة وبتفصيل، لأنه الإجابات القصيرة بتنزّل تقييمك.`,
       ].join('\n')
     );
   const row = new ActionRowBuilder();
@@ -334,15 +343,55 @@ async function evaluate(guild, member, pos, app) {
   };
 }
 
+// Links are compared in code, character by character, after the model has only transcribed what it sees —
+// a link with a missing digit must fail, and models are bad at noticing that themselves.
+function normLink(t) {
+  return String(t || '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .replace(/^(discordapp\.com|discord\.com)\/invite\//, 'discord.gg/')
+    .replace(/[)\].,،!?؟>]+$/, '')
+    .replace(/\/+$/, '');
+}
+const isLink = (t) => /^(https?:\/\/)?(www\.)?(discord\.gg|discord(app)?\.com\/invite)\/\S+/i.test(String(t || '').trim());
+
 async function checkScreenshot(guild, member, pos, img) {
+  const want = linkText(guild, pos);
   const r = await ai.json({
     guildId: guild.id,
-    system: 'You check screenshots of Discord user profiles.',
-    prompt: `Is this a screenshot of a Discord profile, and does its "About Me" / bio section contain this text or link: "${linkText(guild, pos)}"? The applicant's username is "${member.user.username}" and display name "${member.displayName}". Return {"is_profile": true|false, "found": true|false, "same_person": true|false|null, "note": "one short sentence in Arabic"}.`,
+    system: 'You transcribe screenshots of Discord user profiles exactly. You never correct, complete or guess characters.',
+    prompt: [
+      'Is this a screenshot of a Discord user profile?',
+      'Copy the "About Me" / bio text exactly as written, and list every link in it exactly, character by character.',
+      'A link that wraps onto the next line is still one link: join the pieces with no space. Do not fix or complete anything.',
+      `The applicant's username is "${member.user.username}" and display name "${member.displayName}".`,
+      'Return {"is_profile": true|false, "bio": "…", "links": ["…"], "name_seen": "the display name or username shown", "same_person": true|false|null}.',
+    ].join('\n'),
     images: [img],
-    maxTokens: 300,
+    maxTokens: 500,
   });
-  return { found: Boolean(r.is_profile && r.found), samePerson: r.same_person, note: String(r.note || '').slice(0, 200) };
+  const links = (Array.isArray(r.links) ? r.links : []).map(String);
+  if (!r.is_profile) return { found: false, samePerson: r.same_person, note: 'الصورة مش لبروفايل ديسكورد', seen: null };
+  if (isLink(want)) {
+    const need = normLink(want);
+    const flat = normLink(String(r.bio || '').replace(/\s+/g, ''));
+    // the bio text may hold the link inside a sentence: it must end right after it (no extra characters)
+    const at = flat.indexOf(need);
+    const inBio = at !== -1 && !/[a-z0-9_-]/i.test(flat[at + need.length] || '');
+    const exact = links.some((l) => normLink(l) === need) || inBio;
+    const close = links.map(normLink).find((l) => l.startsWith('discord.gg/')) || null;
+    return {
+      found: exact,
+      samePerson: r.same_person,
+      seen: close,
+      note: exact ? 'الرابط موجود بالبايو ومطابق' : close ? `الرابط اللي بالبايو مش مطابق: \`${close}\`` : 'ما في رابط السيرفر بالبايو',
+    };
+  }
+  // no exact link configured (e.g. "رابط السيرفر"): any discord.gg link counts, and the staff see which
+  const any = links.map(normLink).find((l) => l.startsWith('discord.gg/')) || null;
+  return { found: Boolean(any), samePerson: r.same_person, seen: any, note: any ? `في رابط بالبايو: \`${any}\`` : 'ما في رابط سيرفر بالبايو' };
 }
 
 // ---------- review card ----------
@@ -559,7 +608,7 @@ function roomOpening(guild, app, pos) {
     lines.push('', 'قبل ما نكمّل في كم شغلة ناقصة:');
     for (const c of miss) {
       if (c.key === 'tag' || c.key === 'logo') lines.push(`• ${c.label}\n-# ${c.fix}`);
-      if (c.key === 'link') lines.push(`• حط **${linkText(guild, pos)}** بخانة "نبذة عني" (About Me) بالبروفايل، وبعدها ابعت هون **صورة لبروفايلك**`);
+      if (c.key === 'link') lines.push(`• حط رابط السيرفر بخانة «نبذة عني» (About Me) بالبروفايل بالزبط هيك:\n\`\`\`\n${linkText(guild, pos)}\n\`\`\`وبعدها ابعت هون **صورة لبروفايلك** 📸`);
     }
     lines.push('', 'لما تخلّص احكيلي هون.');
   } else if (app.ai?.followups?.length) {
@@ -676,6 +725,15 @@ async function onRoomMessage(message, app) {
         if (r) {
           link.ok = r.found ? true : false;
           app.shotNote = `${r.found ? '✅' : '❌'} ${r.note}${r.samePerson === false ? '\n⚠️ يمكن البروفايل مش إله' : ''}`;
+          if (!r.found) {
+            // say it plainly, with the exact link, before anything else
+            await message.channel
+              .send({ content: [`❌ ${r.note}`, 'لازم يكون بالنبذة بالزبط هيك:', `\`\`\`\n${linkText(guild, pos)}\n\`\`\``, 'زبّطه وابعت صورة جديدة للبروفايل.'].join('\n'), allowedMentions: { parse: [] } })
+              .catch(() => {});
+            store.save('applications');
+            updateCard(guild, app).catch(() => {});
+            return;
+          }
         } else app.shotNote = '🕓 الصورة وصلت، راجعوها بعينكم';
       } else app.shotNote = '🕓 الصورة وصلت، راجعوها بعينكم';
       changed = true;
@@ -791,12 +849,19 @@ async function giveRoles(guild, member, pos) {
   return ok;
 }
 
-async function dm(guild, userId, text) {
+async function dm(guild, userId, text, card = null) {
   if (!config(guild.id).dm) return;
   const u = await guild.client.users.fetch(userId).catch(() => null);
   if (!u) return;
   const e = ui.embed().setAuthor({ name: guild.name, iconURL: guild.iconURL?.() || undefined }).setDescription(text);
-  await u.send({ embeds: [e] }).catch(() => {});
+  if (card) e.setImage('attachment://result.png');
+  await u.send({ embeds: [e], files: card ? [new AttachmentBuilder(card, { name: 'result.png' })] : [] }).catch(() => {});
+}
+async function resultImage(guild, app, ok) {
+  const user = await guild.client.users.fetch(app.uid).catch(() => null);
+  return require('../utils/cards')
+    .resultCard({ ok, title: ok ? 'مبروك، انقبلت!' : 'شكراً إنك قدّمت', position: app.posName, server: guild.name, name: app.name, avatar: user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || app.avatar })
+    .catch(() => null);
 }
 
 async function accept(guild, app, by, { auto = false } = {}) {
@@ -825,11 +890,13 @@ async function accept(guild, app, by, { auto = false } = {}) {
     .setTitle(`أهلاً فيك بالفريق 🎉`)
     .setDescription([`مبروك <@${app.uid}>، انقبلت **${pos.name}**${roles.length ? ` وأخذت ${roles.map((r) => `<@&${r}>`).join(' ')}` : ''}.`, pos.trialDays > 0 ? `-# أول ${pos.trialDays} يوم فترة تجربة، وبعدها الإدارة بتثبّتك.` : null, '', '**مهامك:**', duties].filter((x) => x !== null).join('\n').slice(0, 4000));
   const room = app.roomId ? guild.channels.cache.get(app.roomId) || (await guild.channels.fetch(app.roomId).catch(() => null)) : null;
+  const card = await resultImage(guild, app, true);
+  if (card) welcome.setImage('attachment://result.png');
   if (room) {
-    await room.send({ content: `<@${app.uid}>`, embeds: [welcome], allowedMentions: { users: [app.uid] } }).catch(() => {});
+    await room.send({ content: `<@${app.uid}>`, embeds: [welcome], files: card ? [new AttachmentBuilder(card, { name: 'result.png' })] : [], allowedMentions: { users: [app.uid] } }).catch(() => {});
     await room.send({ content: aiOn(guild.id, pos) ? 'إذا عندك أي سؤال عن المهام أو الشغل، اسألني هون 👇' : 'إذا عندك أي سؤال، اسأل الإدارة هون 👇', allowedMentions: { parse: [] } }).catch(() => {});
   }
-  await dm(guild, app.uid, `🎉 انقبل تقديمك على **${pos.name}** بـ **${guild.name}**${room ? `\nتفاصيل مهامك هون: <#${room.id}>` : `\n\n**مهامك:**\n${duties}`}`);
+  await dm(guild, app.uid, `🎉 انقبل تقديمك على **${pos.name}** بـ **${guild.name}**${room ? `\nتفاصيل مهامك هون: <#${room.id}>` : `\n\n**مهامك:**\n${duties}`}`, card);
   await updateCard(guild, app);
   require('./logs').modAction(guild, { title: auto ? 'قبول تقديم إدارة (تلقائي)' : 'قبول تقديم إدارة', target: app.uid, by: by.id, reason: pos.name, color: 0x23a55a });
   refreshPanel(guild).catch(() => {});
@@ -847,12 +914,12 @@ async function reject(guild, app, by, reason = '') {
   store.save('applyUsers');
   const room = app.roomId ? guild.channels.cache.get(app.roomId) : null;
   if (room) {
-    await room.send({ content: `شكراً إنك قدّمت <@${app.uid}> 🤍 المرة هاي ما زبطت${app.reason ? `\n-# ${app.reason}` : ''}${pos?.cooldownDays ? `\nبتقدر تقدّم من جديد بعد ${pos.cooldownDays} يوم.` : ''}`, allowedMentions: { users: [app.uid] } }).catch(() => {});
+    await room.send({ content: `شكراً إنك قدّمت <@${app.uid}> 🤍 المرة هاي ما زبطت${app.reason ? `\n-# ${app.reason}` : ''}${pos?.cooldownDays ? `\nبتقدر تقدّم من جديد بعد ${days(pos.cooldownDays)}.` : ''}\n-# التذكرة بتنسكّر بعد 10 دقايق.`, allowedMentions: { users: [app.uid] } }).catch(() => {});
     if (isThreadRoom(room)) await room.setLocked?.(true).catch(() => {});
     else await room.permissionOverwrites?.edit(app.uid, { SendMessages: false }).catch(() => {});
     app.closeAt = Date.now() + 10 * 60_000; // gone in 10 minutes
   }
-  await dm(guild, app.uid, `شكراً إنك قدّمت على **${app.posName}** بـ **${guild.name}** 🤍\nالمرة هاي ما زبطت.${app.reason ? `\n-# السبب: ${app.reason}` : ''}`);
+  await dm(guild, app.uid, `شكراً إنك قدّمت على **${app.posName}** بـ **${guild.name}** 🤍\nالمرة هاي ما زبطت${pos?.cooldownDays ? `، وبتقدر تقدّم من جديد بعد ${days(pos.cooldownDays)}` : ''}.${app.reason ? `\n-# السبب: ${app.reason}` : ''}`, await resultImage(guild, app, false));
   await updateCard(guild, app);
   require('./logs').modAction(guild, { title: 'رفض تقديم إدارة', target: app.uid, by: by.id, reason: app.reason || app.posName, color: 0xed4245 });
 }
@@ -982,7 +1049,7 @@ async function onInteraction(i) {
     drafts.set(key, d);
     const pages = Math.ceil(qs.length / PAGE);
     if (page + 1 < pages) {
-      return i.reply({ content: `تمام ✓ باقي ${pages - page - 1} ${pages - page - 1 === 1 ? 'صفحة' : 'صفحات'}.`, components: [new ActionRowBuilder().addComponents(ui.button(`apply:next:${pos.id}:${page + 1}`, `كمّل (${page + 2}/${pages})`, { style: ButtonStyle.Primary }))], ephemeral: true });
+      return i.reply({ content: `تمام ✓ ${page + 1 === pages - 1 ? 'باقي صفحة أخيرة' : `باقي ${count(pages - page - 1, 'صفحة وحدة', 'صفحتين', 'صفحات')}`}، كمّل 👇`, components: [new ActionRowBuilder().addComponents(ui.button(`apply:next:${pos.id}:${page + 1}`, `كمّل (${page + 2}/${pages})`, { style: ButtonStyle.Primary }))], ephemeral: true });
     }
     drafts.delete(key);
     const block = gate(guild.id, i.user.id, pos);
@@ -1139,6 +1206,8 @@ module.exports = {
   _onMessage: onMessage,
   _drafts: drafts,
   _hasLogo: hasLogo,
+  _normLink: normLink,
+  _checkScreenshot: checkScreenshot,
   closeRoom,
   roomHeader,
   _withLogo: withLogo,

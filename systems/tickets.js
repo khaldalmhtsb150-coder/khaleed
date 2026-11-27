@@ -41,10 +41,10 @@ const DEFAULT_CONFIG = {
 };
 
 const DEFAULT_RULES = [
-  'افتح التذكرة لسبب واضح وحقيقي فقط.',
-  'اشرح طلبك كاملاً في أول رسالة لتسريع الرد.',
-  'لا تقم بمنشن فريق الدعم، سيتم الرد حسب الأولوية.',
-  'التذاكر المتروكة بدون رد يتم إغلاقها تلقائياً من الإدارة.',
+  'افتح تذكرة لسبب واضح وحقيقي.',
+  'اشرح طلبك كامل بأول رسالة، هيك الرد بيكون أسرع.',
+  'لا تمنشن فريق الدعم، بنرد حسب الدور.',
+  'التذكرة اللي بتنترك بدون رد بتنسكّر لحالها.',
 ];
 
 const config = (guildId) => store.guild('ticketConfig', guildId, DEFAULT_CONFIG);
@@ -99,9 +99,9 @@ function buildPanel(guild) {
     .setDescription(
       [
         `### ${E.ticket} ${conf.panelTitle || 'مركز الدعم'}`,
-        'اختر القسم المناسب من القائمة بالأسفل لفتح تذكرة خاصة مع فريق الدعم.',
+        'اختار القسم من القائمة تحت، وبتنفتحلك تذكرة خاصة مع فريق الدعم.',
         '',
-        '**قوانين التذاكر**',
+        '**قبل ما تفتح**',
         rules,
       ].join('\n')
     );
@@ -136,6 +136,31 @@ function parseEmoji(value) {
   return m ? { id: m[3], name: m[2], animated: m[1] === 'a' } : undefined;
 }
 
+/** The first message of a ticket. Rebuilt on claim so the status line stays true. */
+function openEmbed(guild, record) {
+  const ai = require('./aiStaff').ticketLine(guild.id);
+  const status = record.claimedBy ? `${E.crown} مع <@${record.claimedBy}>` : `${E.timer} بانتظار الفريق`;
+  return ui
+    .embed()
+    .setAuthor({ name: guild.name, iconURL: guild.iconURL() || undefined })
+    .setTitle(`${E.ticket} تذكرة #${String(record.number).padStart(4, '0')}`)
+    .setDescription(
+      [
+        `أهلاً <@${record.ownerId}> 👋`,
+        'اكتب طلبك بالتفصيل، ولو عندك صور أو روابط ابعتها هون. حدا من الفريق رح يرد عليك بأقرب وقت.',
+        ai ? `\n${ai}` : null,
+      ]
+        .filter((x) => x !== null)
+        .join('\n')
+    )
+    .addFields(
+      { name: 'القسم', value: record.department || '—', inline: true },
+      { name: 'فُتحت', value: ts(record.openedAt), inline: true },
+      { name: 'الحالة', value: status, inline: true }
+    )
+    .setFooter({ text: 'لإغلاق التذكرة استخدم الزر تحت' });
+}
+
 function controlRow(record) {
   return new ActionRowBuilder().addComponents(
     ui.button('ticket_claim', record.claimedName ? `مستلمة: ${record.claimedName}`.slice(0, 80) : 'استلام التذكرة', {
@@ -164,10 +189,10 @@ async function onOpenSelect(interaction) {
 
   if (dept && questions.length) {
     const category = conf.categoryId ? guild.channels.cache.get(conf.categoryId) : null;
-    if (!category) return interaction.reply({ content: '• نظام التذاكر غير مُعد بعد، تواصل مع الإدارة.', ephemeral: true });
+    if (!category) return interaction.reply({ content: '• نظام التذاكر لسا مش مركّب، احكي مع الإدارة.', ephemeral: true });
     const open = openTicketsOf(guild, user.id);
     if (open.length >= Math.min(conf.maxOpen || 1, premium.limit(guild.id, 'ticketMaxOpen')))
-      return interaction.reply({ content: `• لديك تذكرة مفتوحة بالفعل: <#${open[0].channelId}>`, ephemeral: true });
+      return interaction.reply({ content: `• عندك تذكرة مفتوحة: <#${open[0].channelId}>`, ephemeral: true });
 
     const modalForm = new ModalBuilder().setCustomId(`ticket_form_${dept.id}`.slice(0, 100)).setTitle(dept.label.slice(0, 45));
     questions.slice(0, 5).forEach((q, i) =>
@@ -211,12 +236,12 @@ async function openTicket(interaction, dept, answers) {
 
   const conf = config(guild.id);
   const category = conf.categoryId ? guild.channels.cache.get(conf.categoryId) : null;
-  if (!category) return interaction.editReply('• نظام التذاكر غير مُعد بعد، تواصل مع الإدارة.');
+  if (!category) return interaction.editReply('• نظام التذاكر لسا مش مركّب، احكي مع الإدارة.');
 
   const all = ticketsOf(guild.id);
   const open = openTicketsOf(guild, user.id);
   if (open.length >= Math.min(conf.maxOpen || 1, premium.limit(guild.id, 'ticketMaxOpen'))) {
-    return interaction.editReply(`• لديك تذكرة مفتوحة بالفعل: <#${open[0].channelId}>`);
+    return interaction.editReply(`• عندك تذكرة مفتوحة: <#${open[0].channelId}>`);
   }
 
   conf.counter = (conf.counter || 0) + 1;
@@ -249,7 +274,7 @@ async function openTicket(interaction, dept, answers) {
     });
   } catch (err) {
     console.error('[tickets] create', err.message);
-    return interaction.editReply('• تعذر إنشاء التذكرة، تأكد من صلاحية إدارة القنوات للبوت.');
+    return interaction.editReply('• ما قدرت أفتح التذكرة، تأكد إنه البوت معه صلاحية إدارة القنوات.');
   }
 
   const record = {
@@ -271,22 +296,7 @@ async function openTicket(interaction, dept, answers) {
     st.byDept[dept.label] = (st.byDept[dept.label] || 0) + 1;
   });
 
-  const embed = ui
-    .embed()
-    .setAuthor({ name: guild.name, iconURL: guild.iconURL() || undefined })
-    .setDescription(
-      [
-        `### ${E.ticket} تذكرة #${String(number).padStart(4, '0')}`,
-        `أهلاً ${user}، شكراً لتواصلك معنا.`,
-        'اكتب طلبك بالتفصيل وسيتم الرد عليك من فريق الدعم في أقرب وقت.',
-        '',
-        `${E.dot} القسم: **${dept.label}**`,
-        `${E.dot} فُتحت: ${ts(record.openedAt)}`,
-        '',
-        require('./aiStaff').ticketLine(guild.id),
-        ui.hint('لإغلاق التذكرة استخدم الزر بالأسفل.'),
-      ].filter((x) => x !== null).join('\n')
-    );
+  const embed = openEmbed(guild, record);
 
   const embeds = [embed];
   if (answers?.length) {
@@ -312,13 +322,13 @@ async function openTicket(interaction, dept, answers) {
     })
     .catch(() => {});
 
-  return interaction.editReply(`${E.success} تم فتح تذكرتك: ${channel}`);
+  return interaction.editReply(`${E.success} انفتحت تذكرتك: ${channel}`);
 }
 
 // ---------- Claim ----------
 async function claim(interaction, record, conf) {
-  if (!isStaff(interaction.member, conf)) return interaction.reply({ content: '• استلام التذاكر لفريق الدعم فقط.', ephemeral: true });
-  if (record.claimedBy) return interaction.reply({ content: `• التذكرة مستلمة بالفعل من <@${record.claimedBy}>.`, ephemeral: true });
+  if (!isStaff(interaction.member, conf)) return interaction.reply({ content: '• استلام التذاكر لفريق الدعم بس.', ephemeral: true });
+  if (record.claimedBy) return interaction.reply({ content: `• هالتذكرة مستلمها <@${record.claimedBy}>.`, ephemeral: true, allowedMentions: { parse: [] } });
 
   record.claimedBy = interaction.user.id;
   record.claimedName = interaction.member.displayName;
@@ -337,8 +347,9 @@ async function claim(interaction, record, conf) {
     .edit(interaction.user.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true, EmbedLinks: true })
     .catch(() => {});
 
-  await interaction.update({ components: [controlRow(record)] });
-  await ch.send({ content: `${E.crown} تم استلام التذكرة بواسطة ${interaction.user}، سيتابع معك من الآن.`, allowedMentions: { parse: [] } });
+  const first = interaction.message?.embeds?.length ? [openEmbed(interaction.guild, record), ...interaction.message.embeds.slice(1)] : undefined;
+  await interaction.update({ components: [controlRow(record)], ...(first ? { embeds: first } : {}) });
+  await ch.send({ content: `${E.crown} معك ${interaction.user} من فريق الدعم 👋 كيف بقدر أساعدك؟`, allowedMentions: { parse: [] } });
 
   logChannel(interaction.guild, conf)
     ?.send({
@@ -351,12 +362,12 @@ async function claim(interaction, record, conf) {
 // ---------- Close ----------
 async function askClose(interaction, record, conf) {
   if (interaction.user.id !== record.ownerId && !isStaff(interaction.member, conf))
-    return interaction.reply({ content: '• لا تملك صلاحية إغلاق هذه التذكرة.', ephemeral: true });
+    return interaction.reply({ content: '• ما بتقدر تسكّر هالتذكرة.', ephemeral: true });
   const row = new ActionRowBuilder().addComponents(
-    ui.button('ticket_close_confirm', 'تأكيد الإغلاق', { emoji: 'lock', style: ButtonStyle.Danger }),
-    ui.button('ticket_close_cancel', 'إلغاء')
+    ui.button('ticket_close_confirm', 'أيوا سكّرها', { emoji: 'lock', style: ButtonStyle.Danger }),
+    ui.button('ticket_close_cancel', 'لا، خليها')
   );
-  return interaction.reply({ content: '• هل أنت متأكد من إغلاق التذكرة؟\n-# سيتم حفظ نسخة كاملة من المحادثة.', components: [row], ephemeral: true });
+  return interaction.reply({ content: '• أكيد بدك تسكّر التذكرة؟\n-# بنحفظ نسخة كاملة من المحادثة.', components: [row], ephemeral: true });
 }
 
 async function closeTicket(channel, record, closer) {
@@ -377,7 +388,7 @@ async function closeTicket(channel, record, closer) {
     if (closer.id === guild.client.user.id) st.autoClosed++;
   });
 
-  await channel.send({ content: `${E.lock} سيتم إغلاق التذكرة خلال 5 ثوانٍ...`, allowedMentions: { parse: [] } }).catch(() => {});
+  await channel.send({ content: `${E.lock} التذكرة رح تتسكّر خلال 5 ثواني… شكراً إنك تواصلت معنا 🤍`, allowedMentions: { parse: [] } }).catch(() => {});
   // let the AI assistant read what the team taught here before the channel goes away
   await require('./aiStaff').learnFromTicket(channel, record).catch(() => {});
 
@@ -410,12 +421,24 @@ async function closeTicket(channel, record, closer) {
     .setTimestamp();
   if (transcript) summary.addFields({ name: 'الرسائل', value: `${transcript.count}`, inline: true });
 
+  const card = await require('../utils/cards')
+    .ticketCard({
+      number: record.number,
+      department: record.department,
+      owner: opener?.globalName || opener?.username || '—',
+      claimer: record.claimedName || null,
+      minutes: Math.max(1, Math.round((record.closedAt - record.openedAt) / 60000)),
+      messages: transcript?.count,
+    })
+    .catch(() => null);
+  const cardFile = () => (card ? [new AttachmentBuilder(card, { name: 'ticket.png' })] : []);
+  if (card) summary.setImage('attachment://ticket.png');
   const log = logChannel(guild, conf);
   if (log) {
     await log
       .send({
         embeds: [summary],
-        files: transcript ? [new AttachmentBuilder(transcript.buffer, { name: fileName })] : [],
+        files: [...cardFile(), ...(transcript ? [new AttachmentBuilder(transcript.buffer, { name: fileName })] : [])],
         allowedMentions: { parse: [] },
       })
       .catch((e) => console.error('[tickets] log', e.message));
@@ -433,13 +456,11 @@ async function closeTicket(channel, record, closer) {
       .setAuthor({ name: guild.name, iconURL: guild.iconURL() || undefined })
       .setDescription(
         [
-          `**${E.ticket} تم إغلاق تذكرتك #${String(record.number).padStart(4, '0')}**`,
-          `${E.dot} القسم: ${record.department}`,
-          `${E.dot} المدة: ${duration}`,
-          served ? `${E.dot} تمت خدمتك بواسطة: <@${served}>` : null,
+          `**تذكرتك #${String(record.number).padStart(4, '0')} انسكّرت**`,
+          served ? `ساعدك <@${served}> بقسم **${record.department}** خلال ${duration}.` : `القسم: **${record.department}** • المدة: ${duration}`,
           '',
-          served ? 'كيف تقيّم الخدمة التي حصلت عليها؟' : null,
-          ui.hint('نسخة المحادثة مرفقة بهذه الرسالة.'),
+          served ? 'كيف كانت الخدمة؟ قيّمها بكبسة 👇' : null,
+          ui.hint('نسخة المحادثة مرفقة مع الرسالة.'),
         ]
           .filter((l) => l !== null)
           .join('\n')
@@ -448,15 +469,16 @@ async function closeTicket(channel, record, closer) {
     if (served) {
       const row = new ActionRowBuilder();
       for (let n = 1; n <= 5; n++) {
-        row.addComponents(ui.button(`ticket_rate_${guild.id}_${channel.id}_${n}`, `${n} ${'★'.repeat(n)}`.trim(), { emoji: undefined }));
+        row.addComponents(ui.button(`ticket_rate_${guild.id}_${channel.id}_${n}`, '⭐'.repeat(n), { emoji: undefined, style: n >= 4 ? ButtonStyle.Success : ButtonStyle.Secondary }));
       }
       components.push(row);
     }
+    if (card) dm.setImage('attachment://ticket.png');
     await opener
       .send({
         embeds: [dm],
         components,
-        files: transcript ? [new AttachmentBuilder(transcript.buffer, { name: fileName })] : [],
+        files: [...cardFile(), ...(transcript ? [new AttachmentBuilder(transcript.buffer, { name: fileName })] : [])],
       })
       .catch(() => {
         // DMs closed: tell the staff in the log channel instead of failing silently
@@ -506,7 +528,7 @@ function modal(id, title, label, placeholder) {
 }
 
 async function onManageSelect(interaction, record, conf) {
-  if (!isStaff(interaction.member, conf)) return interaction.reply({ content: '• هذه القائمة لفريق الدعم فقط.', ephemeral: true });
+  if (!isStaff(interaction.member, conf)) return interaction.reply({ content: '• هالقائمة لفريق الدعم بس.', ephemeral: true });
   const choice = interaction.values[0];
   if (choice === 'add') return interaction.showModal(modal('ticket_modal_add', 'إضافة عضو', 'آيدي العضو أو منشن', '123456789012345678'));
   if (choice === 'remove') return interaction.showModal(modal('ticket_modal_remove', 'إزالة عضو', 'آيدي العضو أو منشن', '123456789012345678'));
@@ -515,57 +537,57 @@ async function onManageSelect(interaction, record, conf) {
   if (choice === 'alert') {
     const cd = (conf.alertCooldown || 600) * 1000;
     if (record.lastAlert && Date.now() - record.lastAlert < cd) {
-      return interaction.update({ content: `• تم إرسال تنبيه مؤخراً، يمكنك الإرسال مجدداً ${ts(record.lastAlert + cd)}.`, components: [] });
+      return interaction.update({ content: `• بعتنا تنبيه قبل شوي، بتقدر تبعت كمان واحد ${ts(record.lastAlert + cd)}.`, components: [] });
     }
     const user = await interaction.client.users.fetch(record.ownerId).catch(() => null);
     const embed = ui
       .embed()
       .setAuthor({ name: interaction.guild.name, iconURL: interaction.guild.iconURL() || undefined })
       .setDescription(
-        `**${E.announce} لديك تذكرة بانتظار ردك**\nقام ${interaction.user} من فريق الدعم باستدعائك إلى تذكرتك ${interaction.channel}.\n${ui.hint('اضغط على الزر للانتقال مباشرة.')}`
+        `**${E.announce} تذكرتك بتستنى ردك**\n${interaction.user} من فريق الدعم بيستناك بـ ${interaction.channel}.\n${ui.hint('اكبس الزر وبتروح عليها مباشرة.')}`
       );
     const sent = await user
       ?.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(ui.linkButton(interaction.channel.url, 'الانتقال للتذكرة'))] })
       .catch(() => null);
-    if (!sent) return interaction.update({ content: '• تعذر إرسال رسالة خاصة للعضو، الخاص مغلق.', components: [] });
+    if (!sent) return interaction.update({ content: '• ما قدرت أبعتله، الخاص عنده مسكّر.', components: [] });
     record.lastAlert = Date.now();
     store.save('tickets');
-    await interaction.channel.send({ content: `${E.announce} تم استدعاء <@${record.ownerId}> في الخاص.`, allowedMentions: { parse: [] } });
-    return interaction.update({ content: `${E.success} تم إرسال التنبيه.`, components: [] });
+    await interaction.channel.send({ content: `${E.announce} بعتنا تنبيه لـ <@${record.ownerId}> بالخاص.`, allowedMentions: { parse: [] } });
+    return interaction.update({ content: `${E.success} انبعت التنبيه.`, components: [] });
   }
 }
 
 async function onModal(interaction, record, conf) {
-  if (!isStaff(interaction.member, conf)) return interaction.reply({ content: '• لا تملك الصلاحيات الكافية.', ephemeral: true });
+  if (!isStaff(interaction.member, conf)) return interaction.reply({ content: '• هاي لفريق الدعم بس.', ephemeral: true });
   const value = interaction.fields.getTextInputValue('value').trim();
   const ch = interaction.channel;
   const kind = interaction.customId.replace('ticket_modal_', '');
 
   if (kind === 'rename') {
     const name = value.toLowerCase().replace(/\s+/g, '-').replace(/[^\p{L}\p{N}-]/gu, '').slice(0, 90);
-    if (!name) return interaction.reply({ content: '• اسم غير صالح.', ephemeral: true });
+    if (!name) return interaction.reply({ content: '• الاسم مش زابط.', ephemeral: true });
     await interaction.deferReply({ ephemeral: true });
     const ok = await Promise.race([
       ch.setName(name).then(() => true).catch(() => false),
       new Promise((r) => setTimeout(() => r('slow'), 4000)),
     ]);
-    if (ok === 'slow') return interaction.editReply('• سيتم تطبيق الاسم خلال دقائق بسبب حدود ديسكورد على تغيير الأسماء.');
-    if (!ok) return interaction.editReply('• تعذر تغيير الاسم.');
-    await ch.send({ content: `${E.edit} تم تغيير اسم التذكرة إلى \`${name}\` بواسطة ${interaction.user}.`, allowedMentions: { parse: [] } });
+    if (ok === 'slow') return interaction.editReply('• الاسم رح يتغير خلال دقايق، لأنه ديسكورد بيحدد كم مرة بتقدر تغيّر الأسماء.');
+    if (!ok) return interaction.editReply('• ما قدرت أغيّر الاسم.');
+    await ch.send({ content: `${E.edit} ${interaction.user} غيّر اسم التذكرة لـ \`${name}\`.`, allowedMentions: { parse: [] } });
     return interaction.editReply(`${E.success} تم.`);
   }
 
   const id = (value.match(/\d{17,21}/) || [])[0];
   const member = id && (await interaction.guild.members.fetch(id).catch(() => null));
-  if (!member) return interaction.reply({ content: '• لم يتم العثور على العضو.', ephemeral: true });
+  if (!member) return interaction.reply({ content: '• ما لقيت العضو.', ephemeral: true });
 
   if (kind === 'add') {
     await ch.permissionOverwrites.edit(member.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true });
-    await interaction.reply({ content: `${E.success} تمت إضافة ${member} إلى التذكرة.`, allowedMentions: { users: [member.id] } });
+    await interaction.reply({ content: `${E.success} انضاف ${member} للتذكرة.`, allowedMentions: { users: [member.id] } });
   } else if (kind === 'remove') {
-    if (member.id === record.ownerId) return interaction.reply({ content: '• لا يمكن إزالة صاحب التذكرة.', ephemeral: true });
+    if (member.id === record.ownerId) return interaction.reply({ content: '• ما بتقدر تشيل صاحب التذكرة.', ephemeral: true });
     await ch.permissionOverwrites.delete(member.id).catch(() => {});
-    await interaction.reply({ content: `${E.error} تمت إزالة ${member} من التذكرة.`, allowedMentions: { parse: [] } });
+    await interaction.reply({ content: `${E.error} انشال ${member} من التذكرة.`, allowedMentions: { parse: [] } });
   }
 }
 
@@ -583,7 +605,7 @@ async function onRate(interaction) {
 
   const servedBy = record?.servedBy || record?.claimedBy;
   if (!record || record.rated || !servedBy) {
-    return interaction.update({ components: disabledRows, content: record?.rated ? '• تم تقييم هذه التذكرة مسبقاً.' : '• هذه التذكرة لم تعد متاحة للتقييم.' });
+    return interaction.update({ components: disabledRows, content: record?.rated ? '• قيّمت هالتذكرة من قبل، شكراً 🤍' : '• هالتذكرة ما عاد فيك تقيّمها.' });
   }
   record.rated = stars;
   store.save('tickets');
@@ -593,7 +615,7 @@ async function onRate(interaction) {
   store.save('staffRatings');
 
   await interaction.update({
-    content: `${E.heart} شكراً لتقييمك: ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`,
+    content: `${E.heart} شكراً على تقييمك ${'⭐'.repeat(stars)}`,
     components: disabledRows,
   });
 
@@ -682,12 +704,12 @@ async function autoCloseTick(client) {
           store.save('tickets');
           await channel
             .send({
-              content: `<@${record.ownerId}> ${E.warning} لا يوجد نشاط في التذكرة منذ فترة — سيتم إغلاقها تلقائياً ${ts(record.autoWarnedAt + WARN_BEFORE)} إذا لم يتم الرد.`,
+              content: `<@${record.ownerId}> ${E.warning} التذكرة صارلها فترة بدون رد — رح تتسكّر لحالها ${ts(record.autoWarnedAt + WARN_BEFORE)} إذا ما في رد.`,
               allowedMentions: { users: [record.ownerId] },
             })
             .catch(() => {});
         } else if (record.autoWarnedAt && Date.now() - record.autoWarnedAt >= WARN_BEFORE) {
-          await channel.send({ content: `${E.lock} تم إغلاق التذكرة تلقائياً لعدم وجود نشاط.` }).catch(() => {});
+          await channel.send({ content: `${E.lock} انسكّرت التذكرة لحالها لأنه ما في رد.` }).catch(() => {});
           await closeTicket(channel, record, client.user).catch((e) => console.error('[tickets] auto-close', e.message));
         }
       }
@@ -712,7 +734,7 @@ async function route(interaction) {
 
   const conf = config(interaction.guild.id);
   const record = ticketsOf(interaction.guild.id)[interaction.channelId];
-  if (!record || record.status !== 'open') return interaction.reply({ content: '• هذه القناة ليست تذكرة مفتوحة.', ephemeral: true });
+  if (!record || record.status !== 'open') return interaction.reply({ content: '• هالروم مش تذكرة مفتوحة.', ephemeral: true });
 
   switch (id) {
     case 'ticket_claim':
@@ -720,13 +742,13 @@ async function route(interaction) {
     case 'ticket_close':
       return askClose(interaction, record, conf);
     case 'ticket_close_cancel':
-      return interaction.update({ content: '• تم إلغاء الإغلاق.', components: [] });
+      return interaction.update({ content: '• تمام، التذكرة لسا مفتوحة.', components: [] });
     case 'ticket_close_confirm':
-      await interaction.update({ content: `${E.lock} جاري الإغلاق...`, components: [] });
+      await interaction.update({ content: `${E.lock} عم تتسكّر…`, components: [] });
       return closeTicket(interaction.channel, record, interaction.user);
     case 'ticket_manage':
-      if (!isStaff(interaction.member, conf)) return interaction.reply({ content: '• إدارة التذكرة لفريق الدعم فقط.', ephemeral: true });
-      return interaction.reply({ content: `${E.settings} اختر الإجراء المطلوب:`, components: [manageMenu()], ephemeral: true });
+      if (!isStaff(interaction.member, conf)) return interaction.reply({ content: '• إدارة التذكرة لفريق الدعم بس.', ephemeral: true });
+      return interaction.reply({ content: `${E.settings} شو بدك تعمل؟`, components: [manageMenu()], ephemeral: true });
     case 'ticket_manage_select':
       return onManageSelect(interaction, record, conf);
     default:

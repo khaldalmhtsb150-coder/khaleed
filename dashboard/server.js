@@ -270,6 +270,7 @@ function writeSettings(guild, module, d) {
         canCloseTicket: bool(d.canCloseTicket),
         handoff: bool(d.handoff),
         learn: oneOf(d.learn, ['review', 'auto', 'off'], 'review'),
+        knowsBot: bool(d.knowsBot),
       });
       if (conf.enabled && !aiCore.available()) throw new Error('مفتاح الذكاء الاصطناعي مش مضاف بالبوت لسا (AI_API_KEY بملف .env)');
       return store.save('aiConfig');

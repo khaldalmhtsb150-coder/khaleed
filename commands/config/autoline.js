@@ -15,7 +15,7 @@ module.exports = {
     const ch = ctx.get('channel');
     const url = ctx.get('image');
     if (url) {
-      if (!/^https?:\/\/\S+$/i.test(url)) return ctx.fail('رابط غير صالح.');
+      if (!/^https?:\/\/\S+$/i.test(url)) return ctx.fail('الرابط مش زابط.');
       conf.imageUrl = url;
     }
     const i = conf.channels.indexOf(ch.id);
@@ -23,7 +23,7 @@ module.exports = {
     else if (!url) conf.channels.splice(i, 1);
     conf.enabled = conf.channels.length > 0;
     store.save('autoLine');
-    if (!conf.imageUrl) return ctx.reply('• تم حفظ القناة، أضف رابط صورة الخط ليعمل النظام.');
+    if (!conf.imageUrl) return ctx.reply('• انحفظت القناة، ضيف رابط صورة الخط عشان يشتغل.');
     return ctx.reply(conf.channels.includes(ch.id) ? `${E.success} الخط التلقائي مفعل في ${ch}.` : `• تم إيقاف الخط في ${ch}.`);
   },
 };

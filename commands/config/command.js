@@ -14,7 +14,7 @@ module.exports = {
     const { lookup } = require('../../utils/commands');
     const cmd = lookup.get(ctx.get('name').toLowerCase().replace(/^\//, ''));
     if (!cmd || cmd.category === 'owner') return ctx.fail('أمر غير موجود.');
-    if (['command', 'help', 'setprefix'].includes(cmd.name)) return ctx.fail('لا يمكن تعطيل هذا الأمر.');
+    if (['command', 'help', 'setprefix'].includes(cmd.name)) return ctx.fail('هالأمر ما بينطفى.');
     const all = store.get('disabledCommands');
     const list = new Set(all[ctx.guild.id] || []);
     if (ctx.get('state')) list.delete(cmd.name);

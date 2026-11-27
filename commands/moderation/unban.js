@@ -9,7 +9,7 @@ module.exports = {
   options: [{ name: 'user_id', type: 'string', description: 'آيدي العضو', label: 'الآيدي', required: true }],
   async run(ctx) {
     const id = (ctx.get('user_id').match(/\d{17,21}/) || [])[0];
-    if (!id) return ctx.fail('آيدي غير صالح.');
+    if (!id) return ctx.fail('الآيدي مش زابط.');
     const ok = await ctx.guild.members.unban(id, `${ctx.user.tag}`).then(() => true).catch(() => false);
     if (!ok) return ctx.fail('هذا العضو غير محظور.');
     return ctx.reply({ content: `${E.unlock} تم فك الحظر عن <@${id}>.`, allowedMentions: { parse: [] } });

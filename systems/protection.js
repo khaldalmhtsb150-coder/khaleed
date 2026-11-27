@@ -130,7 +130,7 @@ async function onJoin(member) {
       [
         `${E.shield} **Anti-Raid — تم رصد هجوم دخول جماعي**`,
         `${E.dot} ${list.length} عضو دخلوا خلال ${conf.seconds} ثانية`,
-        `${E.dot} تم ${actionName} **${done}** عضو، وأي داخل جديد خلال 10 دقائق سيتم ${actionName}ه`,
+        `${E.dot} تم ${actionName} **${done}** عضو، وأي حدا بيدخل خلال الـ 10 دقايق الجاية بينعمله نفس الإشي`,
         locked ? `${E.lock} تم رفع مستوى التحقق للأعلى لمدة 10 دقائق` : null,
       ]
         .filter(Boolean)
@@ -186,7 +186,7 @@ async function onAudit(entry, guild) {
 /** Punishes someone for a protection hit. mode: strip | kick | ban | timeout. */
 async function punish(guild, userId, mode, reason) {
   const member = await guild.members.fetch(userId).catch(() => null);
-  let result = 'تعذر معاقبته (رتبته أعلى من البوت؟)';
+  let result = 'ما قدرت أعاقبه (يمكن رتبته أعلى من البوت)';
   try {
     if (mode === 'ban') {
       await guild.members.ban(userId, { reason });

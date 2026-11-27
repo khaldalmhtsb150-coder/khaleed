@@ -58,7 +58,7 @@ async function open(interaction) {
 
   const tickets = openTickets(guild.id);
   if (tickets[user.id] && guild.channels.cache.has(tickets[user.id]))
-    return interaction.reply({ content: `• لديك تذكرة عجلة مفتوحة بالفعل: <#${tickets[user.id]}>`, ephemeral: true });
+    return interaction.reply({ content: `• عندك تذكرة عجلة مفتوحة: <#${tickets[user.id]}>`, ephemeral: true });
 
   const e = inv.entry(guild.id, user.id);
   if (e.points < 1) return interaction.reply({ content: `• لا تملك نقاطاً كافية. رصيدك: **${e.points}** — ادعُ أعضاء جدد لتحصل على نقاط.`, ephemeral: true });
@@ -86,7 +86,7 @@ async function open(interaction) {
     tickets[user.id] = channel.id;
     store.save('wheelTickets');
 
-    await interaction.editReply(`${E.success} تم فتح تذكرة العجلة: ${channel}`);
+    await interaction.editReply(`${E.success} انفتحت تذكرة العجلة: ${channel}`);
 
     const reward = odds.pick(rewards);
     const closeRow = new ActionRowBuilder().addComponents(ui.button('wheel_close', 'إغلاق التذكرة', { emoji: 'lock', style: ButtonStyle.Danger }));
@@ -146,7 +146,7 @@ async function open(interaction) {
     }
   } catch (err) {
     console.error('[wheel]', err.message);
-    await interaction.editReply('• تعذر فتح التذكرة، تأكد من صلاحية إدارة القنوات للبوت.').catch(() => {});
+    await interaction.editReply('• ما قدرت أفتح التذكرة، تأكد إنه البوت معه صلاحية إدارة القنوات.').catch(() => {});
   } finally {
     busy.delete(user.id);
   }
@@ -161,7 +161,7 @@ async function close(interaction) {
     delete tickets[ownerId];
     store.save('wheelTickets');
   }
-  await interaction.reply({ content: `${E.lock} سيتم إغلاق التذكرة خلال 5 ثوانٍ...` });
+  await interaction.reply({ content: `${E.lock} التذكرة رح تتسكّر خلال 5 ثواني…` });
   setTimeout(() => interaction.channel.delete('Wheel ticket closed').catch(() => {}), 5000);
 }
 

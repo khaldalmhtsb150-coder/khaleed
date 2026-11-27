@@ -28,7 +28,7 @@ module.exports = {
         })
       );
     return ctx.reply({
-      content: `${E.settings} اختر الأحداث التي سيتم تسجيلها في ${ch}:`,
+      content: `${E.settings} اختار الأحداث اللي بدك تنسجل بـ ${ch}:`,
       components: [new ActionRowBuilder().addComponents(menu)],
     });
   },

@@ -41,7 +41,7 @@ module.exports = {
           `${E.dot} ${premium.PLANS.premium.ticketDepartments} قسم تذاكر بدل ${premium.PLANS.free.ticketDepartments}`,
           `${E.dot} جوائز عجلة بلا حدود بدل ${premium.PLANS.free.wheelRewards}`,
           '',
-          ui.hint(`لديك كود؟ استخدم ${ctx.isSlash ? '/premium code:' : `${ctx.prefix}premium `}الكود`),
+          ui.hint(`عندك كود؟ استخدم ${ctx.isSlash ? '/premium code:' : `${ctx.prefix}premium `}الكود`),
         ].filter((l) => l !== null);
     return ctx.reply({ embeds: [ui.embed().setDescription(lines.join('\n'))] });
   },

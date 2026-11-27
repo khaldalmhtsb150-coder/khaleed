@@ -313,7 +313,7 @@ async function onButton(interaction) {
   saveNow();
   await interaction.update({ ...render(g, interaction.guild), allowedMentions: { parse: [] } });
   return interaction.followUp({
-    content: idx === -1 ? `${E.success} تم تسجيل مشاركتك.` : '• تم سحب مشاركتك.',
+    content: idx === -1 ? `${E.success} دخلت القيفاواي، بالتوفيق 🤞` : '• طلعت من القيفاواي.',
     ephemeral: true,
   });
 }

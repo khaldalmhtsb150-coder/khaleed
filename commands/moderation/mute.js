@@ -16,7 +16,7 @@ module.exports = {
   async run(ctx) {
     const member = ctx.get('member');
     const ms = parseDuration(ctx.get('duration'));
-    if (!ms || ms > 28 * 86_400_000) return ctx.fail('مدة غير صالحة، الحد الأقصى 28 يوماً.');
+    if (!ms || ms > 28 * 86_400_000) return ctx.fail('المدة مش زابطة، أقصى شي 28 يوم.');
     const blocked = hierarchy(ctx, member, 'إسكات');
     if (blocked) return ctx.fail(blocked);
     const reason = ctx.get('reason') || 'بدون سبب';

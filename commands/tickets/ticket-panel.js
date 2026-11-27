@@ -14,10 +14,10 @@ module.exports = {
   ],
   async run(ctx) {
     const conf = tickets.config(ctx.guild.id);
-    if (!conf.categoryId) return ctx.fail('قم بإعداد النظام أولاً عبر /ticket-setup.');
+    if (!conf.categoryId) return ctx.fail('ركّب النظام أول بـ /ticket-setup.');
     const banner = ctx.get('banner');
     if (banner) {
-      if (!/^https?:\/\/\S+$/i.test(banner)) return ctx.fail('رابط البانر غير صالح.');
+      if (!/^https?:\/\/\S+$/i.test(banner)) return ctx.fail('رابط البانر مش زابط.');
       conf.bannerUrl = banner;
       store.save('ticketConfig');
     }

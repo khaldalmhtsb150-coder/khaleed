@@ -19,7 +19,7 @@ module.exports = {
   ],
   async run(ctx) {
     const ms = parseDuration(ctx.get('duration'));
-    if (!ms || ms < 10_000 || ms > 30 * 86_400_000) return ctx.fail('مدة غير صالحة، استخدم صيغة مثل 30m أو 1h أو 2d.');
+    if (!ms || ms < 10_000 || ms > 30 * 86_400_000) return ctx.fail('المدة مش زابطة، اكتبها هيك: 30m أو 1h أو 2d.');
     const channel = ctx.get('channel') || ctx.channel;
     const role = ctx.get('role');
     const invites = ctx.get('invites');

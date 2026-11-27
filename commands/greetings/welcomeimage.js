@@ -21,7 +21,7 @@ module.exports = {
       store.save('welcome');
       return ctx.reply(`${E.success} تمت إزالة صورة الترحيب.`);
     }
-    if (!/^https?:\/\/\S+$/i.test(url)) return ctx.fail('رابط غير صالح.');
+    if (!/^https?:\/\/\S+$/i.test(url)) return ctx.fail('الرابط مش زابط.');
     conf.imageUrl = url;
     if (ctx.get('x') !== null) conf.avatarX = ctx.get('x');
     if (ctx.get('y') !== null) conf.avatarY = ctx.get('y');

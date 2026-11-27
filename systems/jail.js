@@ -24,9 +24,9 @@ function logChannel(guild) {
 }
 
 function canAct(moderator, target) {
-  if (target.id === target.guild.ownerId) return 'لا يمكن سجن مالك السيرفر.';
-  if (target.id === moderator.id) return 'لا يمكنك سجن نفسك.';
-  if (target.user.bot) return 'لا يمكن سجن البوتات.';
+  if (target.id === target.guild.ownerId) return 'ما بتقدر تسجن مالك السيرفر.';
+  if (target.id === moderator.id) return 'ما بتقدر تسجن حالك 😅';
+  if (target.user.bot) return 'البوتات ما بتنسجن.';
   if (moderator.id !== moderator.guild.ownerId && moderator.roles.highest.comparePositionTo(target.roles.highest) <= 0)
     return 'رتبة العضو أعلى من رتبتك أو مساوية لها.';
   if (!target.manageable) return 'رتبة العضو أعلى من رتبتي، لا أستطيع تعديل رتبه.';
@@ -36,7 +36,7 @@ function canAct(moderator, target) {
 async function jail({ guild, target, moderator, durationMs = null, reason = 'بدون سبب' }) {
   const conf = cfg(guild.id);
   const role = conf.roleId ? guild.roles.cache.get(conf.roleId) : null;
-  if (!role) return { error: 'لم يتم إعداد رتبة السجن بعد. استخدم لوحة التحكم أو /jail-setup.' };
+  if (!role) return { error: 'رتبة السجن لسا مش مركّبة. ركّبها بـ /jail-setup أو من الداشبورد.' };
   if (!role.editable) return { error: 'رتبة السجن أعلى من رتبتي، ارفع رتبة البوت فوقها.' };
   const blocked = canAct(moderator, target);
   if (blocked) return { error: blocked };
@@ -256,10 +256,10 @@ async function onButton(interaction) {
     if (action === 'accept') {
       const res = await release(interaction.guild, userId, { by: interaction.user.id, reason: 'قبول طلب العفو' });
       if (res.error) return interaction.reply({ content: `• ${res.error}`, ephemeral: true });
-      res.member?.send(`${E.success} تم قبول طلب العفو الخاص بك في **${interaction.guild.name}**.`).catch(() => {});
+      res.member?.send(`${E.success} انقبل طلب العفو تبعك بـ **${interaction.guild.name}** 🤍`).catch(() => {});
     } else {
       const user = await interaction.client.users.fetch(userId).catch(() => null);
-      user?.send(`• تم رفض طلب العفو الخاص بك في **${interaction.guild.name}**.`).catch(() => {});
+      user?.send(`• انرفض طلب العفو تبعك بـ **${interaction.guild.name}**.`).catch(() => {});
     }
     return interaction.update({ embeds: [done], components: [] });
   }

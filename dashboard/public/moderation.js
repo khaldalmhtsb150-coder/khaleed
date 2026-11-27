@@ -1128,7 +1128,7 @@
     wrapped: () => [['wrapped', { enabled: checked('wr-enabled'), channelId: val('wr-channel'), city: val('wr-city'), weekly: checked('wr-weekly'), accent: val('wr-accent') }]],
     games: () => [['games', { enabled: checked('gm-enabled'), channels: chipState.games, starterRoleId: val('gm-starter'), lobbySeconds: val('gm-lobby'), winXp: val('gm-winxp'), playXp: val('gm-playxp'), perks: checked('gm-perks'), championRoleId: val('gm-champ'), night: { enabled: checked('gm-night'), channelId: val('gm-nch'), day: val('gm-nday'), time: val('gm-ntime'), roleId: val('gm-nrole'), games: [...document.querySelectorAll('[data-ngame]:checked')].map((c) => c.dataset.ngame) } }]],
     tempVoice: () => [['tempVoice', { enabled: checked('tv-enabled'), hubId: val('tv-hub'), categoryId: val('tv-cat'), nameTemplate: val('tv-name'), limit: val('tv-limit') }]],
-    ai: () => [['ai', { enabled: checked('ai-enabled'), name: val('ai-name'), dialect: val('ai-dialect'), instructions: val('ai-instr'), tickets: checked('ai-tickets'), mention: checked('ai-mention'), channels: chipState.aich, handoff: checked('ai-handoff'), learn: val('ai-learn'), canRoles: checked('ai-roles'), allowRoles: chipState.airoles, canTimeout: checked('ai-timeout'), maxTimeout: val('ai-maxto'), canCloseTicket: checked('ai-close') }]],
+    ai: () => [['ai', { enabled: checked('ai-enabled'), name: val('ai-name'), dialect: val('ai-dialect'), instructions: val('ai-instr'), tickets: checked('ai-tickets'), mention: checked('ai-mention'), channels: chipState.aich, handoff: checked('ai-handoff'), learn: val('ai-learn'), canRoles: checked('ai-roles'), allowRoles: chipState.airoles, canTimeout: checked('ai-timeout'), maxTimeout: val('ai-maxto'), canCloseTicket: checked('ai-close'), knowsBot: checked('ai-knowsbot') }]],
     apply: () => [
       [
         'apply',
@@ -2574,6 +2574,7 @@
         <div>${toggle('ai-tickets', A.tickets !== false, 'يرد بالتذاكر', 'أول ما العضو يكتب. وبيوقف لحاله إذا حدا من الإدارة استلم التذكرة أو كتب فيها')}</div>
         <div>${toggle('ai-mention', A.mention !== false, 'يرد لما حدا يمنشنه', 'بأي روم بالسيرفر')}</div>
       </div>
+      ${toggle('ai-knowsbot', A.knowsBot !== false, 'بيعرف أوامر البوت', 'لما حدا يسأل "كيف أركّب كذا؟" بيجاوبه بالأمر الصح. مهم بسيرفر الدعم')}
       ${field('رومات المساعدة', chips('aich', A.channels || []), 'بيرد على أسئلة الأعضاء فيها. وإذا حدا من الإدارة حكى، بيسكت 3 دقايق')}
       <div class="row">
         <div>${toggle('ai-handoff', A.handoff !== false, 'يحوّل للإدارة', 'إذا ما عرف الجواب أو العضو طلب إداري، بيمنشن رتبة الدعم وبيوقف')}</div>

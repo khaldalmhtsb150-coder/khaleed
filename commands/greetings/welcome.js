@@ -11,7 +11,7 @@ module.exports = {
     const conf = store.guild('welcome', ctx.guild.id, { enabled: false });
     conf.enabled = ctx.get('state');
     store.save('welcome');
-    if (conf.enabled && !conf.channelId) return ctx.reply('• تم التفعيل، لكن حدد القناة أولاً عبر setwelcome.');
+    if (conf.enabled && !conf.channelId) return ctx.reply('• تفعّل، بس حدد روم الترحيب أول بـ /setwelcome.');
     return ctx.reply(conf.enabled ? `${E.success} تم تفعيل الترحيب المتقدم.` : '• تم تعطيل الترحيب المتقدم.');
   },
 };
