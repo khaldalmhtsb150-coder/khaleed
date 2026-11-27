@@ -19,6 +19,6 @@ module.exports = {
     if (ctx.user.id !== ctx.guild.ownerId && ctx.member.roles.highest.comparePositionTo(role) <= 0) return ctx.fail('الرتبة أعلى من رتبتك أو مساوية لها.');
     const add = ctx.get('action') === 'add';
     await (add ? member.roles.add(role, ctx.user.tag) : member.roles.remove(role, ctx.user.tag));
-    return ctx.reply({ content: `${E.success} ${add ? 'أعطيت' : 'سحبت'} ${role} ${add ? 'لـ' : 'من'} ${member}`, allowedMentions: { parse: [] } });
+    return ctx.ok(`${add ? 'أعطيت' : 'سحبت'} ${role} ${add ? 'لـ' : 'من'} ${member}`);
   },
 };

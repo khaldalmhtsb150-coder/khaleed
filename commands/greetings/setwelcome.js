@@ -17,6 +17,6 @@ module.exports = {
     if (ctx.get('message')) conf.message = ctx.get('message').slice(0, 1800);
     conf.enabled = true;
     store.save('welcome');
-    return ctx.reply(`${E.success} تم تفعيل الترحيب في ${ctx.get('channel')}.\n${ui.hint('أضف صورة خلفية عبر welcomeimage أو من لوحة التحكم.')}`);
+    return ctx.ok(`تم تفعيل الترحيب في ${ctx.get('channel')}.\n${ui.hint('أضف صورة خلفية عبر welcomeimage أو من لوحة التحكم.')}`);
   },
 };

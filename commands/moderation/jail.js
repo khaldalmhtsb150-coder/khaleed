@@ -1,3 +1,4 @@
+const ui = require('../../utils/ui');
 const E = require('../../utils/emojis');
 const jail = require('../../systems/jail');
 const { parseDuration, formatDuration } = require('../../utils/time');
@@ -32,7 +33,7 @@ module.exports = {
     });
     if (res.error) return ctx.fail(res.error);
     return ctx.reply({
-      content: `${E.lock} تم سجن ${ctx.get('member')}${ms ? ` لمدة ${formatDuration(ms)}` : ''} — ${reason || 'بدون سبب'}`,
+      embeds: [ui.action({ title: 'سجن', kind: 'warning', user: ctx.get('member').user, moderator: ctx.user, reason: reason || 'بدون سبب', duration: ms ? formatDuration(ms) : 'لحد ما ينفك يدوياً' })],
       allowedMentions: { parse: [] },
     });
   },

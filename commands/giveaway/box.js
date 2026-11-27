@@ -27,6 +27,6 @@ module.exports = {
       hostName: ctx.member?.displayName || ctx.user.username,
       waitMs,
     });
-    return ctx.reply({ content: `${E.success} نزل البوكس في ${channel}.\n${ui.hint(`آيدي الرسالة: ${msg.id}`)}` }, { ephemeral: true });
+    return ctx.ok(`نزل البوكس في ${channel}.\n${ui.hint(`آيدي الرسالة: ${msg.id}`)}`, { ephemeral: true });
   },
 };

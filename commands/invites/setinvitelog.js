@@ -11,6 +11,6 @@ module.exports = {
     const ch = ctx.get('channel');
     store.guild('inviteConfig', ctx.guild.id).logChannelId = ch.id;
     store.save('inviteConfig');
-    return ctx.reply(`${E.success} تم تحديد ${ch} كسجل للدعوات.`);
+    return ctx.ok(`تم تحديد ${ch} كسجل للدعوات.`);
   },
 };

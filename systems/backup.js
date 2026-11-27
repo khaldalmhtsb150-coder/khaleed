@@ -10,6 +10,7 @@ const path = require('path');
 const { Events, ActionRowBuilder, ButtonStyle, ChannelType, PermissionsBitField, OverwriteType } = require('discord.js');
 const store = require('../utils/store');
 const ui = require('../utils/ui');
+const E = require('../utils/emojis');
 const premium = require('../utils/premium');
 const { isOwner } = require('../utils/perms');
 
@@ -119,14 +120,14 @@ function plan(guild, snap, mode = 'missing') {
 
 function planText(P) {
   const L = [];
-  if (P.roles.length) L.push(`🎭 رتب محذوفة بترجع: **${P.roles.length}**`);
-  if (P.channels.length) L.push(`💬 رومات محذوفة بترجع: **${P.channels.length}** (${P.channels.filter((c) => c.type === ChannelType.GuildCategory).length} كاتيقوري)`);
-  if (P.renameChannels.length) L.push(`✏️ رومات انغيّر اسمها بيرجع: **${P.renameChannels.length}**`);
-  if (P.renameRoles.length) L.push(`✏️ رتب انغيّر اسمها بيرجع: **${P.renameRoles.length}**`);
-  if (P.rolePerms.length) L.push(`🔐 صلاحيات رتب بترجع زي ما كانت: **${P.rolePerms.length}**`);
-  if (P.overwrites.length) L.push(`🔐 صلاحيات رومات بترجع: **${P.overwrites.length}**`);
-  if (P.spam.length) L.push(`🗑️ رومات سبام انعملت بعد النسخة بتنحذف: **${P.spam.length}**`);
-  return L.length ? L.join('\n') : '✅ السيرفر مطابق للنسخة، ما في إشي يتصلح.';
+  if (P.roles.length) L.push(`رتب محذوفة بترجع: **${P.roles.length}**`);
+  if (P.channels.length) L.push(`رومات محذوفة بترجع: **${P.channels.length}** (${P.channels.filter((c) => c.type === ChannelType.GuildCategory).length} كاتيقوري)`);
+  if (P.renameChannels.length) L.push(`رومات انغيّر اسمها بيرجع: **${P.renameChannels.length}**`);
+  if (P.renameRoles.length) L.push(`رتب انغيّر اسمها بيرجع: **${P.renameRoles.length}**`);
+  if (P.rolePerms.length) L.push(`صلاحيات رتب بترجع زي ما كانت: **${P.rolePerms.length}**`);
+  if (P.overwrites.length) L.push(`صلاحيات رومات بترجع: **${P.overwrites.length}**`);
+  if (P.spam.length) L.push(`رومات سبام انعملت بعد النسخة بتنحذف: **${P.spam.length}**`);
+  return L.length ? L.map((l) => `${E.dot} ${l}`).join('\n') : 'السيرفر مطابق للنسخة، ما في إشي يتصلح.';
 }
 
 const mapOverwrites = (overwrites, roleMap, guild) =>
@@ -245,20 +246,13 @@ function previewPayload(guild, idx = 0) {
     embeds: [
       ui
         .embed()
-        .setDescription(
-          [
-            `### 🛠️ إصلاح السيرفر من نسخة <t:${Math.round(snap.at / 1000)}:f>`,
-            `بالنسخة: ${snap.roles.length} رتبة • ${snap.channels.length} روم`,
-            '',
-            '**🔁 رجّع المحذوف بس:**',
-            planText(miss),
-            '',
-            '**♻️ الإصلاح الكامل** (المحذوف + الأسماء والصلاحيات + حذف السبام):',
-            planText(full),
-            '',
-            ui.hint('الرسائل القديمة ما بترجع، ديسكورد ما بيسمح لأي بوت يرجّعها. البوت بيرجع اللي تحت رتبته بس.'),
-          ].join('\n')
-        ),
+        .setTitle('إصلاح السيرفر')
+        .setDescription(`من نسخة <t:${Math.round(snap.at / 1000)}:f> · فيها ${snap.roles.length} رتبة و${snap.channels.length} روم`)
+        .addFields(
+          { name: 'رجّع المحذوف بس', value: ui.trim(planText(miss), 1024) },
+          { name: 'الإصلاح الكامل', value: ui.trim(`المحذوف + الأسماء والصلاحيات + حذف السبام\n${planText(full)}`, 1024) }
+        )
+        .setFooter({ text: 'الرسائل القديمة ما بترجع، ديسكورد ما بيسمح لأي بوت يرجّعها. البوت بيرجع اللي تحت رتبته بس.' }),
     ],
     components: [
       new ActionRowBuilder().addComponents(
@@ -279,14 +273,25 @@ async function onComponent(i) {
     const snap = list(i.guild.id).find((s) => String(s.at) === at);
     if (!snap) return i.reply({ content: '• هالنسخة ما عادت موجودة.', ephemeral: true });
     if (running.has(i.guild.id)) return i.reply({ content: '• في إصلاح شغال هلأ.', ephemeral: true });
-    await i.update({ components: [], embeds: [ui.embed().setDescription(`### ⏳ بصلّح السيرفر...\nممكن ياخد كم دقيقة حسب العدد، ديسكورد بيحدد سرعة إنشاء الرومات.`)] });
-    const progress = (d) => i.editReply({ embeds: [ui.embed().setDescription(`### ⏳ بصلّح السيرفر...\n🎭 ${d.roles} رتبة • 💬 ${d.channels} روم • ✏️ ${d.fixed} تعديل • 🗑️ ${d.deleted} محذوف`)] }).catch(() => {});
+    const stepFields = (d) => [
+      { name: 'رتب', value: String(d.roles), inline: true },
+      { name: 'رومات', value: String(d.channels), inline: true },
+      { name: 'تعديلات', value: String(d.fixed), inline: true },
+      { name: 'سبام انحذف', value: String(d.deleted), inline: true },
+    ];
+    await i.update({ components: [], embeds: [ui.embed('info').setTitle('بصلّح السيرفر…').setDescription('ممكن ياخد كم دقيقة حسب العدد، ديسكورد بيحدد سرعة إنشاء الرومات.')] });
+    const progress = (d) => i.editReply({ embeds: [ui.embed('info').setTitle('بصلّح السيرفر…').addFields(stepFields(d))] }).catch(() => {});
     try {
       const { done } = await repair(i.guild, snap, mode === 'full' ? 'full' : 'missing', progress);
-      const text = [`### ✅ خلص الإصلاح`, `🎭 رجعت **${done.roles}** رتبة • 💬 **${done.channels}** روم • ✏️ **${done.fixed}** تعديل • 🗑️ **${done.deleted}** سبام`, done.failed ? `⚠️ **${done.failed}** إشي ما زبط (غالباً لأنه فوق رتبة البوت).` : null, ui.hint('الرتب اللي رجعت فاضية: لازم ترجع توزعها على الأعضاء.')].filter(Boolean).join('\n');
-      await i.editReply({ embeds: [ui.embed().setDescription(text)] }).catch(() => i.channel?.send({ embeds: [ui.embed().setDescription(text)] }).catch(() => {}));
+      const doneEmbed = ui
+        .embed(done.failed ? 'warning' : 'success')
+        .setTitle('خلص الإصلاح')
+        .setDescription(done.failed ? `**${done.failed}** إشي ما زبط، غالباً لأنه فوق رتبة البوت.` : null)
+        .addFields(stepFields(done))
+        .setFooter({ text: 'الرتب اللي رجعت فاضية: لازم ترجع توزعها على الأعضاء.' });
+      await i.editReply({ embeds: [doneEmbed] }).catch(() => i.channel?.send({ embeds: [doneEmbed] }).catch(() => {}));
     } catch (e) {
-      await i.editReply({ embeds: [ui.embed().setDescription(`• ${e.message}`)] }).catch(() => {});
+      await i.editReply({ embeds: [ui.notice('danger', e.message)] }).catch(() => {});
     }
   }
 }

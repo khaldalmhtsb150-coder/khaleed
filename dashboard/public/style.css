@@ -315,67 +315,6 @@ footer.site { border-top: 1px solid var(--line); color: var(--faint); font-size:
 }
 
 
-/* ================= Purple premium theme ================= */
-body {
-  background:
-    radial-gradient(900px 500px at 85% -10%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%),
-    radial-gradient(700px 420px at 0% 10%, color-mix(in srgb, var(--accent-2) 10%, transparent), transparent 60%),
-    var(--bg);
-  background-attachment: fixed;
-}
-.brand span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.brand img { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
-.nav a.active { background: var(--accent-soft); color: var(--accent-ink); }
-
-.btn { border-radius: 10px; }
-.btn.primary { background: var(--grad); box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 35%, transparent); }
-.btn.primary:hover { background: var(--grad); filter: brightness(1.1); box-shadow: 0 8px 26px color-mix(in srgb, var(--accent) 50%, transparent); }
-.btn.ghost { border-color: var(--line-2); }
-.btn.ghost:hover { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
-
-.card, .stat, .feature, .server-card, .hero-card {
-  background: linear-gradient(180deg, rgba(var(--ov), .025), rgba(var(--ov), 0)) , var(--panel);
-  box-shadow: var(--shadow);
-}
-.card { border-radius: 16px; }
-.card-head { border-bottom-color: var(--line); }
-.card-foot { background: color-mix(in srgb, var(--accent) 4%, transparent); border-radius: 0 0 16px 16px; }
-
-.stat { position: relative; overflow: hidden; }
-.stat::after { content: ''; position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: 3px; background: var(--grad); }
-.stat .v { background: linear-gradient(135deg, #fff 0%, var(--accent-ink) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-
-.feature:hover, .server-card:hover { border-color: color-mix(in srgb, var(--accent) 40%, transparent); box-shadow: 0 14px 36px color-mix(in srgb, var(--accent) 22%, transparent); }
-.feature .ic { background: var(--accent-soft); color: var(--accent-ink); border: 1px solid var(--line-2); }
-
-.server-card .cover { background: var(--grad); }
-.server-card .ava { border-color: var(--panel); }
-
-.sidebar { background: var(--side-bg); backdrop-filter: blur(8px); }
-.side-link { border-radius: 10px; position: relative; }
-.side-link:hover { background: var(--accent-soft); }
-.side-link.active { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 8%, transparent), color-mix(in srgb, var(--accent) 22%, transparent)); color: #fff; }
-.side-link.active::before { content: ''; position: absolute; inset-inline-start: -12px; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: var(--grad); }
-.side-link.active .icon { color: var(--accent-ink); }
-.guild-head img, .guild-head .ph { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
-
-.input, .select, .textarea { background: var(--field); border-color: var(--line-2); border-radius: 10px; }
-.toggle-line, .list-item, .emoji-item, .chips { background: var(--field); border-color: var(--line); }
-.chip { background: var(--accent-soft); color: var(--accent-ink); }
-.pill { background: var(--accent-soft); color: var(--accent-ink); }
-.pill.on { background: rgba(34, 197, 94, .14); color: #4ade80; }
-
-.toast { background: var(--pop); border-color: var(--line-2); }
-.toast .bar { background: var(--grad); }
-.toast.success .bar { background: linear-gradient(180deg, #22c55e, #16a34a); }
-.toast.error .bar { background: linear-gradient(180deg, #f43f5e, #e11d48); }
-
-.mock-embed { border-inline-start-color: #8b5cf6; background: var(--surface); }
-.tag-bot { background: var(--grad); }
-.center-page .code { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.skeleton { background: linear-gradient(90deg, var(--panel) 25%, var(--surface-2) 50%, var(--panel) 75%); background-size: 200% 100%; }
-footer.site { border-top-color: var(--line); }
-
 /* ================= Mobile polish ================= */
 html, body { overflow-x: hidden; }
 .side-backdrop { display: none; }
@@ -824,13 +763,7 @@ input.input[type="color"]::-webkit-color-swatch { border: none; border-radius: 8
   --ease: cubic-bezier(.2, .8, .2, 1);
 }
 html[lang="ar"] body { font-family: 'IBM Plex Sans Arabic', 'Inter', system-ui, sans-serif; line-height: 1.75; }
-body {
-  background:
-    radial-gradient(1200px 500px at 85% -10%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%),
-    radial-gradient(900px 420px at 0% 0%, color-mix(in srgb, var(--accent-2) 4%, transparent), transparent 60%),
-    var(--bg);
-  background-attachment: fixed;
-}
+
 ::-webkit-scrollbar-thumb { background: var(--scroll); border-color: var(--bg); }
 ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 :focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }

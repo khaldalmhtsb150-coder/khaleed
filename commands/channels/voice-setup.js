@@ -25,7 +25,7 @@ module.exports = {
     if (action === 'off') {
       conf.enabled = false;
       store.save('tempVoice');
-      return ctx.reply(`${E.success} وقفت الرومات المؤقتة. الرومات الموجودة بتنحذف لما تفضى.`);
+      return ctx.ok(`وقفت الرومات المؤقتة. الرومات الموجودة بتنحذف لما تفضى.`);
     }
     if (action === 'hub') {
       const hub = ctx.get('hub');

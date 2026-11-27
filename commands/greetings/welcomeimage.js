@@ -19,7 +19,7 @@ module.exports = {
     if (url.toLowerCase() === 'off') {
       conf.imageUrl = '';
       store.save('welcome');
-      return ctx.reply(`${E.success} تمت إزالة صورة الترحيب.`);
+      return ctx.ok(`تمت إزالة صورة الترحيب.`);
     }
     if (!/^https?:\/\/\S+$/i.test(url)) return ctx.fail('الرابط مش زابط.');
     conf.imageUrl = url;
@@ -27,6 +27,6 @@ module.exports = {
     if (ctx.get('y') !== null) conf.avatarY = ctx.get('y');
     if (ctx.get('radius') !== null) conf.avatarRadius = ctx.get('radius');
     store.save('welcome');
-    return ctx.reply(`${E.success} تم حفظ صورة الترحيب.\n${ui.hint(`الأفتار: X ${conf.avatarX} · Y ${conf.avatarY} · R ${conf.avatarRadius}`)}`);
+    return ctx.ok(`تم حفظ صورة الترحيب.\n${ui.hint(`الأفتار: X ${conf.avatarX} · Y ${conf.avatarY} · R ${conf.avatarRadius}`)}`);
   },
 };

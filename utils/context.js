@@ -162,9 +162,28 @@ class CommandContext {
     });
   }
 
-  /** Short error/notice line. Ephemeral on slash. */
-  fail(text) {
-    return this.reply(`• ${text}`, { ephemeral: true });
+  // ---- the four response styles (utils/ui.notice): one look for every command ----
+  /** Error: red side, ephemeral on slash. */
+  fail(text, opts = {}) {
+    return this.reply({ embeds: [require('./ui').notice('danger', text, opts)], allowedMentions: { parse: [] } }, { ephemeral: true });
+  }
+  /** Done: green side. */
+  ok(text, opts = {}) {
+    return this._notice('success', text, opts);
+  }
+  /** Careful: amber side. */
+  warn(text, opts = {}) {
+    return this._notice('warning', text, opts);
+  }
+  /** Neutral information: blue side. */
+  info(text, opts = {}) {
+    return this._notice('info', text, opts);
+  }
+  _notice(kind, text, { ephemeral = false, components, files, allowedMentions, ...rest } = {}) {
+    const data = { embeds: [require('./ui').notice(kind, text, rest)], allowedMentions: allowedMentions || { parse: [] } };
+    if (components) data.components = components;
+    if (files) data.files = files;
+    return this.reply(data, { ephemeral });
   }
 }
 

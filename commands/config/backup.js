@@ -20,11 +20,11 @@ module.exports = {
     if (action === 'auto-on' || action === 'auto-off') {
       conf.auto = action === 'auto-on';
       store.save('backupConfig');
-      return ctx.reply(`${E.success} النسخ اليومي ${conf.auto ? 'شغال' : 'موقف'}.`);
+      return ctx.ok(`النسخ اليومي ${conf.auto ? 'شغال' : 'موقف'}.`);
     }
     if (action === 'create') {
       const { snap } = backup.take(ctx.guild);
-      return ctx.reply(`${E.success} انحفظت نسخة: **${snap.roles.length}** رتبة و **${snap.channels.length}** روم مع صلاحياتها. البوت بيحتفظ بآخر **${backup.keep(ctx.guild.id)}** نسخ.`);
+      return ctx.ok(`انحفظت نسخة: **${snap.roles.length}** رتبة و **${snap.channels.length}** روم مع صلاحياتها. البوت بيحتفظ بآخر **${backup.keep(ctx.guild.id)}** نسخ.`);
     }
     const snaps = backup.list(ctx.guild.id);
     if (!snaps.length) return ctx.fail('ما في نسخ لسا. اختار "نسخة هسا".');

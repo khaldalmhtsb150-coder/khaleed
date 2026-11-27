@@ -23,7 +23,7 @@ module.exports = {
     else if (!url) conf.channels.splice(i, 1);
     conf.enabled = conf.channels.length > 0;
     store.save('autoLine');
-    if (!conf.imageUrl) return ctx.reply('• انحفظت القناة، ضيف رابط صورة الخط عشان يشتغل.');
+    if (!conf.imageUrl) return ctx.warn('انحفظت القناة، ضيف رابط صورة الخط عشان يشتغل.');
     return ctx.reply(conf.channels.includes(ch.id) ? `${E.success} الخط التلقائي مفعل في ${ch}.` : `• تم إيقاف الخط في ${ch}.`);
   },
 };

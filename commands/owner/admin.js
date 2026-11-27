@@ -27,6 +27,6 @@ module.exports = {
       if (i !== -1) admins.splice(i, 1);
     }
     store.save('admins');
-    return ctx.reply({ content: `${E.success} تم ${action === 'add' ? 'إضافة' : 'إزالة'} ${user}.`, allowedMentions: { parse: [] } });
+    return ctx.ok(`تم ${action === 'add' ? 'إضافة' : 'إزالة'} ${user}.`);
   },
 };

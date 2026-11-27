@@ -1,3 +1,4 @@
+const ui = require('../../utils/ui');
 const E = require('../../utils/emojis');
 const hierarchy = require('./_hierarchy');
 const { parseDuration, formatDuration } = require('../../utils/time');
@@ -21,6 +22,6 @@ module.exports = {
     if (blocked) return ctx.fail(blocked);
     const reason = ctx.get('reason') || 'بدون سبب';
     await member.timeout(ms, `${ctx.user.tag}: ${reason}`);
-    return ctx.reply({ content: `${E.timer} تم إسكات ${member.user} لمدة ${formatDuration(ms)} — ${reason}`, allowedMentions: { parse: [] } });
+    return ctx.reply({ embeds: [ui.action({ title: 'إسكات', kind: 'warning', user: member.user, moderator: ctx.user, reason, duration: `${formatDuration(ms)} · بينفك <t:${Math.round((Date.now() + ms) / 1000)}:R>` })], allowedMentions: { parse: [] } });
   },
 };

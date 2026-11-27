@@ -10,6 +10,6 @@ module.exports = {
   async run(ctx) {
     const channel = ctx.get('channel') || ctx.channel;
     await channel.permissionOverwrites.edit(ctx.guild.roles.everyone, { ViewChannel: false, MentionEveryone: false }, { reason: `${ctx.user.tag}: hide` });
-    return ctx.reply(`${E.hide} تم إخفاء ${channel} عن الجميع.`);
+    return ctx.ok(`تم إخفاء ${channel} عن الجميع.`);
   },
 };

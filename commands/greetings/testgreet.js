@@ -12,6 +12,6 @@ module.exports = {
     const a = await welcome.sendWelcome(ctx.member, null, { force: true }).catch(() => false);
     const b = await welcome.sendGreeting(ctx.member, { force: true }).catch(() => false);
     if (!a && !b) return ctx.fail('الترحيب لسا مش مركّب.');
-    return ctx.reply(`${E.success} تم إرسال التجربة.`);
+    return ctx.ok(`تم إرسال التجربة.`);
   },
 };

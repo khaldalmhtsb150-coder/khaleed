@@ -69,18 +69,23 @@ function fmtGap(ms) {
 
 function reportEmbed(guild, days = 30) {
   const R = report(guild.id, days);
-  const lines = [
-    `### 📡 رادار الأعضاء الجداد — آخر ${days} يوم`,
-    `👋 دخلوا: **${R.joined}**`,
-    `💬 كتبوا ولو رسالة: **${R.spoke}** (${R.pct(R.spoke, R.joined)}٪) — منهم **${R.spoke24}** بأول 24 ساعة`,
-    `⏱️ نص الأعضاء بيكتبوا أول رسالة خلال: **${fmtGap(R.medianFirst)}**`,
-    `🏠 ثبتوا (مرّ عليهم أسبوع، لسا موجودين و5 رسائل وأكثر): **${R.stayed}** من **${R.oldCount}** (${R.pct(R.stayed, R.oldCount)}٪)`,
-    `🚪 طلعوا: **${R.left}** — منهم **${R.quickLeave}** بأول يوم`,
-    `🔕 صامتين هلأ: **${R.silentNow}** • 🤝 رحّبت فيهم الإدارة: **${R.greeted}**`,
-  ];
-  if (!R.joined) lines.push('', ui.hint('ما في بيانات لسا. الرادار بيبلش يحسب من أول عضو بيدخل بعد التحديث.'));
-  else if (R.pct(R.spoke, R.joined) < 40) lines.push('', ui.hint('أقل من نص الجداد بيحكوا. جرّب تفعّل الكفيل وتنبيهات الرادار عشان حدا يرحب فيهم بالاسم.'));
-  return ui.embed().setDescription(lines.join('\n'));
+  const e = ui
+    .embed()
+    .setTitle(`رادار الأعضاء الجداد · آخر ${days} يوم`)
+    .addFields(
+      { name: 'دخلوا', value: String(R.joined), inline: true },
+      { name: 'كتبوا ولو رسالة', value: `${R.spoke} · ${R.pct(R.spoke, R.joined)}٪`, inline: true },
+      { name: 'بأول 24 ساعة', value: String(R.spoke24), inline: true },
+      { name: 'ثبتوا', value: `${R.stayed} من ${R.oldCount} · ${R.pct(R.stayed, R.oldCount)}٪`, inline: true },
+      { name: 'طلعوا', value: `${R.left} · منهم ${R.quickLeave} بأول يوم`, inline: true },
+      { name: 'أول رسالة (الوسيط)', value: fmtGap(R.medianFirst), inline: true },
+      { name: 'صامتين هلأ', value: String(R.silentNow), inline: true },
+      { name: 'رحّبت فيهم الإدارة', value: String(R.greeted), inline: true }
+    )
+    .setFooter({ text: 'ثبتوا = مرّ عليهم أسبوع، لسا موجودين، و5 رسائل أو أكثر' });
+  if (!R.joined) e.setDescription(ui.hint('ما في بيانات لسا. الرادار بيبلش يحسب من أول عضو بيدخل بعد التحديث.'));
+  else if (R.pct(R.spoke, R.joined) < 40) e.setDescription(ui.hint('أقل من نص الجداد بيحكوا. جرّب تفعّل الكفيل وتنبيهات الرادار عشان حدا يرحب فيهم بالاسم.'));
+  return e;
 }
 
 async function alert(guild, uid, r) {
@@ -99,16 +104,10 @@ async function alert(guild, uid, r) {
       ui
         .embed()
         .setThumbnail(member.displayAvatarURL?.() || null)
-        .setDescription(
-          [
-            `### ${require('../utils/art').i('radar', '📡')} عضو جديد ما حكى ولا كلمة`,
-            `${member} دخل <t:${Math.round(r.joinedAt / 1000)}:R> ولسا ما كتب شي.`,
-            sponsor ? `🤝 كفيله: <@${sponsor}>` : null,
-            ui.hint('رحّبوا فيه بالاسم بالشات العام — الترحيب الشخصي أكثر شي بيخلي العضو الجديد يثبت.'),
-          ]
-            .filter(Boolean)
-            .join('\n')
-        ),
+        .setTitle('عضو جديد ما حكى ولا كلمة')
+        .setDescription(`${member} دخل <t:${Math.round(r.joinedAt / 1000)}:R> ولسا ما كتب شي.`)
+        .addFields(...(sponsor ? [{ name: 'كفيله', value: `<@${sponsor}>`, inline: true }] : []))
+        .setFooter({ text: 'رحّبوا فيه بالاسم بالشات العام، الترحيب الشخصي أكثر شي بيخلي العضو الجديد يثبت.' }),
     ],
     components: [new ActionRowBuilder().addComponents(ui.button(`rd:greet:${uid}`, 'رحّبت فيه', { emoji: 'greet', style: ButtonStyle.Success }), ui.button(`rd:dm:${uid}`, 'رسالة خاصة', { emoji: 'mail' }))],
   });
@@ -158,7 +157,7 @@ async function onComponent(i) {
     if (r.dmBy) return i.reply({ content: `• <@${r.dmBy}> بعتله رسالة قبل.`, ephemeral: true, allowedMentions: { parse: [] } });
     const user = await i.client.users.fetch(uid).catch(() => null);
     const ok = await user
-      ?.send(`👋 هلا فيك بـ **${i.guild.name}**! لاحظنا إنك جديد عنا، وحابين نسمع صوتك 🙂 عرّف عن حالك بالشات، وإذا احتجت أي إشي إحنا موجودين.\n— ${i.member?.displayName || i.user.username} من الإدارة`)
+      ?.send(`هلا فيك بـ **${i.guild.name}**! لاحظنا إنك جديد عنا، وحابين نسمع صوتك. عرّف عن حالك بالشات، وإذا احتجت أي إشي إحنا موجودين.\n— ${i.member?.displayName || i.user.username} من الإدارة`)
       .then(() => true)
       .catch(() => false);
     if (!ok) return i.reply({ content: '• الخاص عنده مسكّر، رحّب فيه بالشات العام.', ephemeral: true });

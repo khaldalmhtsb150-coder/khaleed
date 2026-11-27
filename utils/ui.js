@@ -1,19 +1,21 @@
 const { EmbedBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
 const E = require('./emojis');
 
-// One palette for every message, so the bot reads as one product: a teal brand, a gold for wins and
-// premium, and clear status colours. Pick by meaning (ui.embed('success')), never by mood.
+// MarkaBot design tokens for Discord. One palette shared with the dashboard and the drawn cards:
+// a restrained royal purple for the brand, gold only for wins/premium, and four status colours.
+// Pick by meaning (ui.embed('success')), never by mood.
 const PALETTE = {
-  brand: 0x14b8a6,
-  info: 0x3b82f6,
-  success: 0x22c55e,
-  warning: 0xf59e0b,
-  danger: 0xef4444,
-  gold: 0xeab308,
-  pink: 0xec4899,
-  muted: 0x64748b,
+  brand: 0x6e56cf, // royal purple
+  info: 0x3e63dd,
+  success: 0x30a46c,
+  warning: 0xe5a23a,
+  danger: 0xe5484d,
+  gold: 0xd4a72c,
+  pink: 0xd6409f,
+  muted: 0x5b6170,
 };
 const COLOR = PALETTE.brand;
+const STATUS_ICON = { success: 'success', danger: 'error', warning: 'warning', info: 'dot' };
 
 const ui = {
   COLOR,
@@ -21,6 +23,40 @@ const ui = {
 
   embed(kind = 'brand') {
     return new EmbedBuilder().setColor(PALETTE[kind] ?? COLOR);
+  },
+
+  /**
+   * The four response styles every command uses: success · danger · warning · info.
+   * A compact embed: the status colour on the side, one line (optionally a bold title) and optional fields.
+   */
+  notice(kind, text, { title = null, fields = [], footer = null } = {}) {
+    const icon = kind === 'info' ? require('./art').i('info', E.dot) : E[STATUS_ICON[kind] || 'dot'];
+    const e = new EmbedBuilder().setColor(PALETTE[kind] ?? COLOR);
+    const body = title ? `${icon} **${title}**${text ? `\n${text}` : ''}` : `${icon} ${text}`;
+    e.setDescription(ui.trim(body, 4000));
+    if (fields.length) e.addFields(fields.filter(Boolean).map((f) => ({ name: f.name, value: ui.trim(String(f.value || '—'), 1024), inline: f.inline ?? true })));
+    if (footer) e.setFooter({ text: footer });
+    return e;
+  },
+
+  /**
+   * A moderation action, one layout for every punishment:
+   * `**Banned** @user` + Member / Moderator / Reason fields (+ duration when there is one).
+   */
+  action({ title, user, moderator, reason, duration = null, kind = 'danger', extra = [] }) {
+    const e = new EmbedBuilder()
+      .setColor(PALETTE[kind] ?? PALETTE.danger)
+      .setDescription(`**${title}**`)
+      .addFields(
+        { name: 'العضو', value: user ? `${user} \`${user.id || ''}\``.trim() : '—', inline: true },
+        { name: 'المشرف', value: moderator ? String(moderator) : '—', inline: true },
+        ...(duration ? [{ name: 'المدة', value: String(duration), inline: true }] : []),
+        { name: 'السبب', value: ui.trim(String(reason || 'بدون سبب'), 1024), inline: false },
+        ...extra
+      )
+      .setTimestamp();
+    if (user?.displayAvatarURL) e.setThumbnail(user.displayAvatarURL({ size: 128 }));
+    return e;
   },
 
   /** `78/100 ▰▰▰▰▰▰▰▱▱▱` style meter for scores. */

@@ -14,11 +14,11 @@ module.exports = {
     if (!value || ['off', 'none', 'clear', 'الغاء', 'إلغاء'].includes(value.toLowerCase())) {
       delete prefixes[ctx.guild.id];
       store.save('prefixes');
-      return ctx.reply(`${E.success} انلغت البادئة النصية.\n${ui.hint('البوت هسا بيشتغل بأوامر السلاش / بس.')}`);
+      return ctx.ok(`انلغت البادئة النصية.\n${ui.hint('البوت هسا بيشتغل بأوامر السلاش / بس.')}`);
     }
     if (value.length > 5 || /\s/.test(value)) return ctx.fail('البادئة لازم تكون من 1 لـ 5 حروف وبدون مسافات.');
     prefixes[ctx.guild.id] = value;
     store.save('prefixes');
-    return ctx.reply(`${E.success} تم تعيين البادئة إلى \`${value}\`\n${ui.hint(`مثال: ${value}help`)}`);
+    return ctx.ok(`تم تعيين البادئة إلى \`${value}\`\n${ui.hint(`مثال: ${value}help`)}`);
   },
 };

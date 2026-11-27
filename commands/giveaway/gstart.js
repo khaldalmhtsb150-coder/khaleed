@@ -34,6 +34,6 @@ module.exports = {
       requiredRoleId: role?.id || null,
       minInvites: invites || undefined,
     });
-    return ctx.reply({ content: `${E.success} تم بدء القيفاواي في ${channel}.\n${ui.hint(`آيدي الرسالة: ${msg.id}`)}` }, { ephemeral: true });
+    return ctx.ok(`تم بدء القيفاواي في ${channel}.\n${ui.hint(`آيدي الرسالة: ${msg.id}`)}`, { ephemeral: true });
   },
 };

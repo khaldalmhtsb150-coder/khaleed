@@ -11,6 +11,6 @@ module.exports = {
     const url = ctx.get('url') || ctx.message?.attachments.first()?.url;
     if (!url) return ctx.fail('أرفق صورة أو ضع رابطاً.');
     const ok = await ctx.client.user.setAvatar(url).then(() => true).catch((e) => e.message);
-    return ok === true ? ctx.reply(`${E.success} تم تغيير الصورة.`) : ctx.fail(`تعذر التغيير: ${ok}`);
+    return ok === true ? ctx.ok(`تم تغيير الصورة.`) : ctx.fail(`تعذر التغيير: ${ok}`);
   },
 };

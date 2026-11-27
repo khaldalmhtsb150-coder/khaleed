@@ -47,12 +47,12 @@ module.exports = {
       action === 'trust' ? wl.add(u.id) : wl.delete(u.id);
       conf.antiNuke.whitelist = [...wl].slice(0, 50);
       save();
-      return ctx.reply({ content: `${E.success} ${u} ${action === 'trust' ? 'صار موثوق (الحماية ما بتعاقبه)' : 'ما عاد موثوق'}`, allowedMentions: { parse: [] } });
+      return ctx.ok(`${u} ${action === 'trust' ? 'صار موثوق (الحماية ما بتعاقبه)' : 'ما عاد موثوق'}`);
     }
     if (action === 'alerts') {
       conf.alertChannelId = (ctx.get('channel') || ctx.channel).id;
       save();
-      return ctx.reply(`${E.success} تنبيهات الحماية بتنزل بـ <#${conf.alertChannelId}>`);
+      return ctx.ok(`تنبيهات الحماية بتنزل بـ <#${conf.alertChannelId}>`);
     }
     const line = ([k, [name, desc, prem]]) => {
       const locked = prem && !premium.has(ctx.guild.id, prem);

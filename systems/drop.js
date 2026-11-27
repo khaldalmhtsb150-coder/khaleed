@@ -86,9 +86,9 @@ async function onClaim(interaction) {
       .then((p) => interaction.message?.edit?.({ ...p, allowedMentions: { parse: [] } }))
       .catch(() => {});
     await interaction.channel
-      .send({ content: `🎉 مبروك <@${d.winnerId}>، فزت بـ **${d.prize}**! تواصل مع <@${d.hostId}> عشان تستلمها.`, reply: { messageReference: id, failIfNotExists: false }, components: [require('./growth').brandRow(interaction.guild.id)].filter(Boolean), allowedMentions: { users: [d.winnerId] } })
+      .send({ content: `مبروك <@${d.winnerId}>، فزت بـ **${d.prize}**! تواصل مع <@${d.hostId}> عشان تستلمها.`, reply: { messageReference: id, failIfNotExists: false }, components: [require('./growth').brandRow(interaction.guild.id)].filter(Boolean), allowedMentions: { users: [d.winnerId] } })
       .catch(() => {});
-    interaction.user.send({ content: `🎁 مبروك! فزت بـ **${d.prize}** بسيرفر **${interaction.guild.name}**. تواصل مع <@${d.hostId}> عشان تستلم جائزتك.` }).catch(() => {});
+    interaction.user.send({ content: `مبروك! فزت بـ **${d.prize}** بسيرفر **${interaction.guild.name}**. تواصل مع <@${d.hostId}> عشان تستلم جائزتك.` }).catch(() => {});
     logs.send(interaction.guild, 'moderation_actions', {
       content: `${E.gift} بوكس **${d.prize}** — الفائز <@${d.winnerId}> (${interaction.user.username}) · نزّله <@${d.hostId}>`,
     });

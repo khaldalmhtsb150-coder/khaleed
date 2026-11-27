@@ -11,6 +11,6 @@ module.exports = {
     const g = ctx.client.guilds.cache.get(ctx.get('server_id'));
     if (!g) return ctx.fail('السيرفر غير موجود.');
     await g.leave();
-    return ctx.reply(`${E.success} تم الخروج من **${g.name}**.`);
+    return ctx.ok(`تم الخروج من **${g.name}**.`);
   },
 };

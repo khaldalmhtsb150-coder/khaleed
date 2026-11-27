@@ -1,3 +1,4 @@
+const ui = require('../../utils/ui');
 const E = require('../../utils/emojis');
 const art = require('../../utils/art');
 const hierarchy = require('./_hierarchy');
@@ -19,7 +20,16 @@ module.exports = {
     if (member.user.bot) return ctx.fail('ما بنحذر بوتات.');
     const { warn, count, applied } = await warns.add(ctx.guild, member, ctx.user.id, ctx.get('reason'));
     return ctx.reply({
-      content: [`${art.i('bell', '⚠️')} ${member} أخذ تحذير **#${warn.id}** · صار معه **${count}**`, `-# ${warn.reason}${applied ? ` · العقوبة التلقائية: ${applied}` : ''}`].join('\n'),
+      embeds: [
+        ui.action({
+          title: `تحذير #${warn.id}`,
+          kind: 'warning',
+          user: member.user,
+          moderator: ctx.user,
+          reason: warn.reason,
+          extra: [{ name: 'مجموع تحذيراته', value: String(count), inline: true }, ...(applied ? [{ name: 'العقوبة التلقائية', value: String(applied), inline: true }] : [])],
+        }),
+      ],
       allowedMentions: { parse: [] },
     });
   },

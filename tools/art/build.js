@@ -14,24 +14,26 @@ const F = (w, px) => `${px}px "Tajawal ${w}"`;
 
 // ---------- palette ----------
 // Flat and editorial: charcoal surfaces, one accent per piece, no gradients or glows.
-const BRAND = { ink: '#121317', surface: '#1a1c21', line: 'rgba(255,255,255,0.08)', text: '#f3f4f6', muted: '#9aa1ad', teal: '#14b8a6' };
+// MarkaBot identity: charcoal and deep navy surfaces, a restrained royal purple, no gradients or glows.
+const BRAND = { ink: '#0b0d12', surface: '#12151d', line: 'rgba(255,255,255,0.07)', text: '#eceef3', muted: '#9aa0ae', purple: '#6e56cf', lilac: '#a594f9' };
+// Icon tiles: one flat colour each, tuned to sit together (and to keep a white glyph readable).
 const TILE = {
-  green: '#16a34a',
-  red: '#dc2626',
-  blurple: '#4f46e5',
-  violet: '#7c3aed',
-  slate: '#475569',
-  amber: '#d97706',
-  blue: '#2563eb',
-  pink: '#db2777',
-  teal: '#0d9488',
-  emerald: '#059669',
+  green: '#2f9e68',
+  red: '#d9434a',
+  blurple: '#5b5bd6',
+  violet: '#6e56cf',
+  slate: '#3c4252',
+  amber: '#c98a1e',
+  blue: '#3e63dd',
+  pink: '#c2408f',
+  teal: '#12a594',
+  emerald: '#2f9e68',
 };
 
 // name → [lucide icon, tile colour]
 const ICONS = {
   join: ['log-in', 'green'], leave: ['log-out', 'red'], start: ['play', 'blurple'], cancel: ['x', 'red'],
-  players: ['users', 'slate'], help: ['circle-question-mark', 'slate'], info: ['info', 'slate'],
+  players: ['users', 'slate'], help: ['circle-question-mark', 'slate'], info: ['info', 'blue'],
   shop: ['shopping-bag', 'amber'], trophy: ['trophy', 'amber'], crown: ['crown', 'amber'], medal: ['medal', 'amber'], star: ['star', 'amber'],
   shield: ['shield', 'blue'], life: ['heart', 'pink'], double: ['swords', 'red'], dice: ['dices', 'violet'], random: ['shuffle', 'violet'],
   withdraw: ['flag', 'slate'], check: ['check', 'green'], lock: ['lock', 'slate'], unlock: ['lock-open', 'green'],
@@ -43,7 +45,7 @@ const ICONS = {
   chair: ['armchair', 'teal'], mafia: ['venetian-mask', 'red'], spy: ['user-round-search', 'violet'],
   rock: ['hand-fist', 'amber'], paper: ['hand', 'blue'], scissors: ['scissors', 'pink'], vote: ['vote', 'blurple'],
   night: ['moon', 'violet'], day: ['sun', 'amber'], doctor: ['stethoscope', 'emerald'], detective: ['search', 'blue'], dead: ['skull', 'slate'],
-  timer: ['timer', 'slate'], gift: ['gift', 'pink'], voice: ['volume-2', 'teal'], backup: ['archive', 'blue'],
+  warn: ['triangle-alert', 'amber'], timer: ['timer', 'slate'], gift: ['gift', 'pink'], voice: ['volume-2', 'teal'], backup: ['archive', 'blue'],
   radar: ['radar', 'teal'], bell: ['bell', 'amber'], party: ['party-popper', 'pink'], hourglass: ['hourglass', 'slate'],
   userplus: ['user-plus', 'green'], zap: ['zap', 'amber'], chat: ['message-circle', 'blurple'], door: ['door-open', 'green'],
   tasks: ['clipboard-list', 'slate'], megaphone: ['megaphone', 'violet'], sparkles: ['sparkles', 'violet'],
@@ -112,17 +114,24 @@ function brandMark(ctx, x, y, s = 1) {
   ctx.lineTo(20, 20.5);
   ctx.lineTo(30, 12);
   ctx.lineTo(30, 30);
-  ctx.strokeStyle = BRAND.muted;
+  ctx.strokeStyle = BRAND.text;
   ctx.lineWidth = 3.6;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(20, 6.5, 2.6, 0, Math.PI * 2);
+  ctx.fillStyle = BRAND.lilac;
+  ctx.fill();
   ctx.restore();
   ctx.font = F('ExtraBold', 22);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = BRAND.muted;
-  ctx.fillText('MarkaBot', x + 42 * s, y + 21 * s);
+  ctx.fillStyle = BRAND.text;
+  ctx.fillText('Marka', x + 42 * s, y + 21 * s);
+  const w = ctx.measureText('Marka').width;
+  ctx.fillStyle = BRAND.lilac;
+  ctx.fillText('Bot', x + 42 * s + w, y + 21 * s);
 }
 
 /** The main glyph in an outlined ring, with the supporting icons as small flat tiles in a row. */
@@ -216,7 +225,7 @@ function wheelArt(ctx, accent) {
   ctx.stroke();
   ctx.beginPath();
   ctx.arc(cx, cy - 22, 4, 0, Math.PI * 2);
-  ctx.fillStyle = BRAND.teal;
+  ctx.fillStyle = BRAND.purple;
   ctx.fill();
   // pointer
   ctx.save();
@@ -358,31 +367,31 @@ function textBlock(ctx, { kicker, title, line, chips = [] }, accent) {
 }
 
 const BANNERS = {
-  roulette: { accent: '#b26bff', kicker: 'ROULETTE', title: 'روليت', line: 'العجلة بتختار، وإنت بتقرر مين يطلع', chips: ['حتى 30 لاعب', 'آخر واحد بيفوز'], art: 'wheel' },
-  mafia: { accent: '#ff4d5e', kicker: 'MAFIA', title: 'مافيا', line: 'اكشفوا المافيا قبل ما يخلّصوا عليكم', chips: ['حتى 20 لاعب', 'ليل ونهار'], main: 'venetian-mask', sats: [['moon', 'violet'], ['stethoscope', 'emerald'], ['search', 'blue'], ['skull', 'slate']] },
-  chairs: { accent: '#2fd6c3', kicker: 'CHAIRS', title: 'الكراسي', line: 'كرسي ناقص كل جولة، اقعد بسرعة', chips: ['حتى 25 لاعب', 'سرعة'], main: 'armchair', sats: [['timer', 'slate'], ['zap', 'amber'], ['bomb', 'red']] },
-  spy: { accent: '#8b7bff', kicker: 'OUTSIDER', title: 'برا السالفة', line: 'واحد بينكم ما بيعرف الكلمة، مين هو؟', chips: ['حتى 15 لاعب', 'تصويت'], main: 'user-round-search', sats: [['eye-off', 'slate'], ['vote', 'blurple'], ['message-circle', 'violet']] },
-  xo: { accent: '#4aa8ff', kicker: 'XO CUP', title: 'بطولة XO', line: 'إقصائيات لحد ما يضل بطل واحد', chips: ['حتى 16 لاعب', 'بطولة'], art: 'xo' },
-  rps: { accent: '#ffb02e', kicker: 'ROCK · PAPER · SCISSORS', title: 'حجرة ورقة مقص', line: 'كل جولة، الإشارة الخسرانة بتطلع', chips: ['حتى 25 لاعب', 'حظ وذكاء'], art: 'rps' },
-  deathbox: { accent: '#ff4d6d', kicker: 'DEATH BOX', title: 'صندوق الموت', line: 'خمس صناديق، اثنين منهم فخ', chips: ['حتى 20 لاعب', 'حظ'], art: 'boxes' },
-  rebelka: { accent: '#3fd9c6', kicker: 'REBELKA', title: 'ريبلكا', line: 'إنسان، حيوان، نبات، جماد، بلاد', chips: ['حتى 20 لاعب', 'كل الحروف'], art: 'letters' },
-  fasttype: { accent: '#ffc83a', kicker: 'FAST TYPE', title: 'أسرع كاتب', line: 'أول واحد بيكتب الجملة صح بياخد النقطة', chips: ['5 جولات', 'كل الشات'], main: 'keyboard', sats: [['timer', 'slate'], ['zap', 'amber']] },
-  flags: { accent: '#3ddc84', kicker: 'FLAGS', title: 'أعلام', line: 'شوف العلم واكتب اسم الدولة', chips: ['5 جولات', 'كل الشات'], main: 'flag', sats: [['earth', 'blue'], ['timer', 'slate']] },
-  capitals: { accent: '#22c7e8', kicker: 'CAPITALS', title: 'عواصم', line: 'اكتب عاصمة الدولة قبل الكل', chips: ['5 جولات', 'كل الشات'], main: 'landmark', sats: [['map-pin', 'red'], ['timer', 'slate']] },
-  unscramble: { accent: '#a37bff', kicker: 'UNSCRAMBLE', title: 'فكّك الكلمة', line: 'الحروف مخربطة، رتّبها بسرعة', chips: ['5 جولات', 'كل الشات'], main: 'spell-check', sats: [['shuffle', 'violet'], ['timer', 'slate']] },
-  math: { accent: '#ff8a3d', kicker: 'QUICK MATH', title: 'حساب سريع', line: 'حل المسألة قبل ما حدا يسبقك', chips: ['5 جولات', 'كل الشات'], main: 'calculator', sats: [['zap', 'amber'], ['timer', 'slate']] },
-  night: { accent: '#9b7bff', kicker: 'GAME NIGHT', title: 'سهرة الألعاب', line: 'ألعاب ورا بعض، وبالآخر أبطال السهرة', chips: ['كل أسبوع'], main: 'moon', sats: [['trophy', 'amber'], ['dices', 'violet'], ['star', 'amber']] },
-  shop: { accent: '#ffb02e', kicker: 'GAME SHOP', title: 'متجر الألعاب', line: 'ميزات بتنشرى بنقاط اللعب، بدون مراهنات', chips: [], main: 'shopping-bag', sats: [['shield', 'blue'], ['heart', 'pink'], ['swords', 'red']] },
-  top: { accent: '#ffcb47', kicker: 'LEADERBOARD', title: 'الترتيب', line: 'أقوى لاعبين السيرفر', chips: [], main: 'trophy', sats: [['crown', 'amber'], ['medal', 'amber'], ['star', 'amber']] },
-  tempvoice: { accent: '#3fd9c6', kicker: 'TEMP VOICE', title: 'رومك الخاص', line: 'قفل، إخفاء، اسم، عدد، وطرد. كله من هون', chips: [], main: 'volume-2', sats: [['lock', 'slate'], ['users', 'blurple'], ['pencil', 'slate']] },
-  khatma: { accent: '#34d399', kicker: 'KHATMA', title: 'الختمة الجماعية', line: 'جزء منك، وختمة منا كلنا', chips: [], main: 'book-open', sats: [['check', 'green'], ['moon', 'violet'], ['star', 'amber']] },
-  tickets: { accent: '#3b82f6', kicker: 'SUPPORT', title: 'مركز الدعم', line: 'افتح تذكرة والفريق بيرد عليك', chips: [], main: 'ticket', sats: [['message-circle', 'blurple'], ['check', 'green'], ['users', 'slate']] },
-  verify: { accent: '#22c55e', kicker: 'VERIFICATION', title: 'التحقق', line: 'خطوة وحدة وبتفتحلك كل الرومات', chips: [], main: 'badge-check', sats: [['shield', 'blue'], ['lock-open', 'green']] },
-  help: { accent: '#14b8a6', kicker: 'COMMANDS', title: 'ماركا بوت', line: 'كل أوامر البوت مرتبة بأقسام', chips: [], main: 'list', sats: [['shield', 'blue'], ['dices', 'violet'], ['ticket', 'violet'], ['gift', 'pink']] },
-  apply: { accent: '#14b8a6', kicker: 'STAFF APPLICATIONS', title: 'تقديم الإدارة', line: 'قدّم، وخلّينا نتعرّف عليك', chips: [], main: 'user-check', sats: [['clipboard-list', 'blue'], ['shield', 'blue'], ['star', 'amber']] },
-  appeal: { accent: '#5fb0ff', kicker: 'BAN APPEAL', title: 'طلب فك الحظر', line: 'احكي قصتك، والإدارة بتقرر', chips: [], main: 'scale', sats: [['mail', 'blue'], ['check', 'green'], ['x', 'red']] },
-  backup: { accent: '#ffb02e', kicker: 'SERVER REPAIR', title: 'إصلاح السيرفر', line: 'المحذوف بيرجع زي ما كان', chips: [], main: 'archive', sats: [['wrench', 'amber'], ['rotate-ccw', 'blue'], ['shield', 'blue']] },
-  radar: { accent: '#3fd9e8', kicker: 'NEWCOMER RADAR', title: 'عضو جديد ساكت', line: 'رحّبوا فيه قبل ما يطلع', chips: [], main: 'radar', sats: [['user-plus', 'green'], ['hand', 'amber'], ['bell', 'amber']] },
+  roulette: { accent: '#8e4ec6', kicker: 'ROULETTE', title: 'روليت', line: 'العجلة بتختار، وإنت بتقرر مين يطلع', chips: ['حتى 30 لاعب', 'آخر واحد بيفوز'], art: 'wheel' },
+  mafia: { accent: '#e5484d', kicker: 'MAFIA', title: 'مافيا', line: 'اكشفوا المافيا قبل ما يخلّصوا عليكم', chips: ['حتى 20 لاعب', 'ليل ونهار'], main: 'venetian-mask', sats: [['moon', 'violet'], ['stethoscope', 'emerald'], ['search', 'blue'], ['skull', 'slate']] },
+  chairs: { accent: '#12a594', kicker: 'CHAIRS', title: 'الكراسي', line: 'كرسي ناقص كل جولة، اقعد بسرعة', chips: ['حتى 25 لاعب', 'سرعة'], main: 'armchair', sats: [['timer', 'slate'], ['zap', 'amber'], ['bomb', 'red']] },
+  spy: { accent: '#6e56cf', kicker: 'OUTSIDER', title: 'برا السالفة', line: 'واحد بينكم ما بيعرف الكلمة، مين هو؟', chips: ['حتى 15 لاعب', 'تصويت'], main: 'user-round-search', sats: [['eye-off', 'slate'], ['vote', 'blurple'], ['message-circle', 'violet']] },
+  xo: { accent: '#3e63dd', kicker: 'XO CUP', title: 'بطولة XO', line: 'إقصائيات لحد ما يضل بطل واحد', chips: ['حتى 16 لاعب', 'بطولة'], art: 'xo' },
+  rps: { accent: '#d9932b', kicker: 'ROCK · PAPER · SCISSORS', title: 'حجرة ورقة مقص', line: 'كل جولة، الإشارة الخسرانة بتطلع', chips: ['حتى 25 لاعب', 'حظ وذكاء'], art: 'rps' },
+  deathbox: { accent: '#e5484d', kicker: 'DEATH BOX', title: 'صندوق الموت', line: 'خمس صناديق، اثنين منهم فخ', chips: ['حتى 20 لاعب', 'حظ'], art: 'boxes' },
+  rebelka: { accent: '#12a594', kicker: 'REBELKA', title: 'ريبلكا', line: 'إنسان، حيوان، نبات، جماد، بلاد', chips: ['حتى 20 لاعب', 'كل الحروف'], art: 'letters' },
+  fasttype: { accent: '#d4a72c', kicker: 'FAST TYPE', title: 'أسرع كاتب', line: 'أول واحد بيكتب الجملة صح بياخد النقطة', chips: ['5 جولات', 'كل الشات'], main: 'keyboard', sats: [['timer', 'slate'], ['zap', 'amber']] },
+  flags: { accent: '#30a46c', kicker: 'FLAGS', title: 'أعلام', line: 'شوف العلم واكتب اسم الدولة', chips: ['5 جولات', 'كل الشات'], main: 'flag', sats: [['earth', 'blue'], ['timer', 'slate']] },
+  capitals: { accent: '#0d9cc0', kicker: 'CAPITALS', title: 'عواصم', line: 'اكتب عاصمة الدولة قبل الكل', chips: ['5 جولات', 'كل الشات'], main: 'landmark', sats: [['map-pin', 'red'], ['timer', 'slate']] },
+  unscramble: { accent: '#8e4ec6', kicker: 'UNSCRAMBLE', title: 'فكّك الكلمة', line: 'الحروف مخربطة، رتّبها بسرعة', chips: ['5 جولات', 'كل الشات'], main: 'spell-check', sats: [['shuffle', 'violet'], ['timer', 'slate']] },
+  math: { accent: '#e07a2f', kicker: 'QUICK MATH', title: 'حساب سريع', line: 'حل المسألة قبل ما حدا يسبقك', chips: ['5 جولات', 'كل الشات'], main: 'calculator', sats: [['zap', 'amber'], ['timer', 'slate']] },
+  night: { accent: '#6e56cf', kicker: 'GAME NIGHT', title: 'سهرة الألعاب', line: 'ألعاب ورا بعض، وبالآخر أبطال السهرة', chips: ['كل أسبوع'], main: 'moon', sats: [['trophy', 'amber'], ['dices', 'violet'], ['star', 'amber']] },
+  shop: { accent: '#d9932b', kicker: 'GAME SHOP', title: 'متجر الألعاب', line: 'ميزات بتنشرى بنقاط اللعب، بدون مراهنات', chips: [], main: 'shopping-bag', sats: [['shield', 'blue'], ['heart', 'pink'], ['swords', 'red']] },
+  top: { accent: '#d4a72c', kicker: 'LEADERBOARD', title: 'الترتيب', line: 'أقوى لاعبين السيرفر', chips: [], main: 'trophy', sats: [['crown', 'amber'], ['medal', 'amber'], ['star', 'amber']] },
+  tempvoice: { accent: '#12a594', kicker: 'TEMP VOICE', title: 'رومك الخاص', line: 'قفل، إخفاء، اسم، عدد، وطرد. كله من هون', chips: [], main: 'volume-2', sats: [['lock', 'slate'], ['users', 'blurple'], ['pencil', 'slate']] },
+  khatma: { accent: '#30a46c', kicker: 'KHATMA', title: 'الختمة الجماعية', line: 'جزء منك، وختمة منا كلنا', chips: [], main: 'book-open', sats: [['check', 'green'], ['moon', 'violet'], ['star', 'amber']] },
+  tickets: { accent: '#3e63dd', kicker: 'SUPPORT', title: 'مركز الدعم', line: 'افتح تذكرة والفريق بيرد عليك', chips: [], main: 'ticket', sats: [['message-circle', 'blurple'], ['check', 'green'], ['users', 'slate']] },
+  verify: { accent: '#30a46c', kicker: 'VERIFICATION', title: 'التحقق', line: 'خطوة وحدة وبتفتحلك كل الرومات', chips: [], main: 'badge-check', sats: [['shield', 'blue'], ['lock-open', 'green']] },
+  help: { accent: '#6e56cf', kicker: 'COMMANDS', title: 'ماركا بوت', line: 'كل أوامر البوت مرتبة بأقسام', chips: [], main: 'list', sats: [['shield', 'blue'], ['dices', 'violet'], ['ticket', 'violet'], ['gift', 'pink']] },
+  apply: { accent: '#6e56cf', kicker: 'STAFF APPLICATIONS', title: 'تقديم الإدارة', line: 'قدّم، وخلّينا نتعرّف عليك', chips: [], main: 'user-check', sats: [['clipboard-list', 'blue'], ['shield', 'blue'], ['star', 'amber']] },
+  appeal: { accent: '#3e63dd', kicker: 'BAN APPEAL', title: 'طلب فك الحظر', line: 'احكي قصتك، والإدارة بتقرر', chips: [], main: 'scale', sats: [['mail', 'blue'], ['check', 'green'], ['x', 'red']] },
+  backup: { accent: '#d9932b', kicker: 'SERVER REPAIR', title: 'إصلاح السيرفر', line: 'المحذوف بيرجع زي ما كان', chips: [], main: 'archive', sats: [['wrench', 'amber'], ['rotate-ccw', 'blue'], ['shield', 'blue']] },
+  radar: { accent: '#0d9cc0', kicker: 'NEWCOMER RADAR', title: 'عضو جديد ساكت', line: 'رحّبوا فيه قبل ما يطلع', chips: [], main: 'radar', sats: [['user-plus', 'green'], ['hand', 'amber'], ['bell', 'amber']] },
 };
 
 function lettersArt(ctx, accent) {

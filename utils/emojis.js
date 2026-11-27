@@ -83,7 +83,7 @@ function stored(key) {
 
 // The bot's own icon set (application emojis, see systems/appEmojis) stands in for the
 // plain symbols when no custom emoji was set for a key.
-const ICON_FOR = { success: 'check', error: 'cancel', crown: 'crown', star: 'star', gift: 'gift', timer: 'timer', ticket: 'ticket', shield: 'shield', lock: 'lock', unlock: 'unlock', show: 'show', hide: 'hide', edit: 'rename', voice: 'voice', announce: 'megaphone', wheel: 'dice', ban: 'kick', settings: 'repair', delete: 'cancel', roles: 'players', joinLeave: 'door', heart: 'life', warning: 'bell' };
+const ICON_FOR = { success: 'check', error: 'cancel', crown: 'crown', star: 'star', gift: 'gift', timer: 'timer', ticket: 'ticket', shield: 'shield', lock: 'lock', unlock: 'unlock', show: 'show', hide: 'hide', edit: 'rename', voice: 'voice', announce: 'megaphone', wheel: 'dice', ban: 'kick', settings: 'repair', delete: 'cancel', roles: 'players', joinLeave: 'door', heart: 'life', warning: 'warn' };
 let art = null;
 function appIcon(key) {
   art = art || require('./art');

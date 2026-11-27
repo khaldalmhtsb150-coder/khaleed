@@ -39,12 +39,12 @@ module.exports = {
       } catch (e) {
         return ctx.fail(e.message);
       }
-      return ctx.reply(`${E.success} بلشت الختمة بـ ${ch} 📖`, { ephemeral: true });
+      return ctx.ok(`بلشت الختمة بـ ${ch} 📖`, { ephemeral: true });
     }
     if (action === 'end') {
       if (!d.active) return ctx.fail('ما في ختمة شغالة.');
       await khatma.finish(ctx.guild, { cancelled: true });
-      return ctx.reply(`${E.success} أنهيت الختمة الحالية بدون ما تنحسب.`);
+      return ctx.ok(`أنهيت الختمة الحالية بدون ما تنحسب.`);
     }
     if (!d.active) {
       return ctx.reply(

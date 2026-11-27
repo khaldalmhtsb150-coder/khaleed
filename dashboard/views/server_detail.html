@@ -59,9 +59,9 @@
       const T = {
         ar: {
           title: 'نظرة عامة', settings: 'إعدادات السيرفر', online: 'البوت متصل', offline: 'البوت غير متصل',
-          members: 'الأعضاء', boosts: 'بوست', openTickets: 'تذاكر مفتوحة', week: 'هذا الأسبوع', giveaways: 'قيفاواي شغال', none: 'لا يوجد حالياً',
+          members: 'الأعضاء', boosts: 'بوست', vsPrev: 'مقارنة بالأسبوع اللي قبله', running: 'شغالة هلأ', days: 'يوم', openTickets: 'تذاكر مفتوحة', week: 'هذا الأسبوع', giveaways: 'قيفاواي شغال', none: 'لا يوجد حالياً',
           joins: 'دخول عبر الدعوات اليوم', joinsWeek: 'هذا الأسبوع',
-          chart: 'النشاط', chartP: 'آخر 14 يوم — من سجلات البوت', lJoins: 'دخول عبر دعوة', lTickets: 'تذاكر جديدة',
+          chart: 'النشاط', chartP: 'آخر 14 يوم، من سجلات البوت', lJoins: 'دخول عبر دعوة', lTickets: 'تذاكر جديدة',
           quick: 'إجراءات سريعة', qGiveaway: 'قيفاواي جديد', qTickets: 'إعداد التذاكر', qWelcome: 'محرر الترحيب', qCommands: 'الأوامر', qLogs: 'قنوات السجلات', qInvite: 'أضف البوت لسيرفر آخر',
           feed: 'آخر الأحداث', feedP: 'من التذاكر والسجن والقيفاواي والدعوات', empty: 'لا توجد أحداث بعد — ستظهر هنا أول ما يبدأ البوت بالعمل في السيرفر.',
           mods: 'الأنظمة', modsP: 'حالة كل نظام في هذا السيرفر', on: 'مفعّل', off: 'غير مُعد',
@@ -77,7 +77,7 @@
         },
         en: {
           title: 'Overview', settings: 'Server settings', online: 'Bot online', offline: 'Bot offline',
-          members: 'Members', boosts: 'boosts', openTickets: 'Open tickets', week: 'this week', giveaways: 'Active giveaways', none: 'None right now',
+          members: 'Members', boosts: 'boosts', vsPrev: 'vs. the week before', running: 'running now', days: 'days', openTickets: 'Open tickets', week: 'this week', giveaways: 'Active giveaways', none: 'None right now',
           joins: 'Invite joins today', joinsWeek: 'this week',
           chart: 'Activity', chartP: 'Last 14 days — from the bot’s records', lJoins: 'Invite joins', lTickets: 'New tickets',
           quick: 'Quick actions', qGiveaway: 'New giveaway', qTickets: 'Ticket setup', qWelcome: 'Welcome editor', qCommands: 'Commands', qLogs: 'Log channels', qInvite: 'Add to another server',
@@ -110,17 +110,40 @@
       status.querySelector('span').textContent = o.bot.ready ? `${T.online} · ${o.bot.ping}ms` : T.offline;
 
       const s = o.stats;
-      const tile = (ic, label, v, sub) => `<div class="ov-stat"><div class="top"><span>${label}</span>${MB.icon(ic)}</div><div class="v">${v}</div><div class="sub">${sub}</div></div>`;
+      // trends come only from the bot's own 14-day series: this week against the week before
+      const series = o.series || [];
+      const sum = (arr, k) => arr.reduce((n, d) => n + (d[k] || 0), 0);
+      const last7 = series.slice(-7), prev7 = series.slice(-14, -7);
+      const delta = (k) => {
+        if (prev7.length < 7) return '';
+        const a = sum(last7, k), b = sum(prev7, k);
+        if (!a && !b) return '';
+        if (!b) return `<span class="delta up" title="${T.vsPrev}">+${MB.num(a)}</span>`;
+        const p = Math.round(((a - b) / b) * 100);
+        return `<span class="delta ${p > 0 ? 'up' : p < 0 ? 'down' : 'flat'}" title="${T.vsPrev}">${p > 0 ? '+' : ''}${p}%</span>`;
+      };
+      const spark = (k) => {
+        if (series.length < 2) return '';
+        const vals = series.map((d) => d[k] || 0);
+        const max = Math.max(1, ...vals);
+        const rtl = document.documentElement.dir === 'rtl';
+        const pts = vals.map((v, i) => {
+          const x = (i / (vals.length - 1)) * 96;
+          return `${(rtl ? 96 - x : x).toFixed(1)},${(30 - (v / max) * 26).toFixed(1)}`;
+        });
+        return `<svg class="spark" viewBox="0 0 96 32" aria-hidden="true"><polyline points="${pts.join(' ')}" fill="none" stroke="var(--${k === 'joins' ? 'accent-2' : 'ice'})" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+      };
+      const tile = (ic, label, v, sub, extra = '') => `<div class="ov-stat"><div class="top"><span>${label}</span>${MB.icon(ic)}</div><div class="row-v"><div class="v">${v}</div>${extra}</div><div class="sub">${sub}</div></div>`;
       stats.innerHTML = [
         tile('users', T.members, MB.num(s.members), `${MB.num(s.boosts)} ${T.boosts}`),
-        tile('ticket', T.openTickets, MB.num(s.openTickets), `${MB.num(s.ticketsWeek)} ${T.week}`),
-        tile('gift', T.giveaways, MB.num(s.activeGiveaways), s.activeGiveaways ? '&nbsp;' : T.none),
-        tile('link', T.joins, MB.num(s.joinsToday), `${MB.num(s.joinsWeek)} ${T.joinsWeek}`),
+        tile('ticket', T.openTickets, MB.num(s.openTickets), `${MB.num(s.ticketsWeek)} ${T.week} ${delta('tickets')}`, spark('tickets')),
+        tile('link', T.joins, MB.num(s.joinsToday), `${MB.num(s.joinsWeek)} ${T.joinsWeek} ${delta('joins')}`, spark('joins')),
+        tile('gift', T.giveaways, MB.num(s.activeGiveaways), s.activeGiveaways ? T.running : T.none),
       ].join('');
 
       // chart
       hChart.textContent = T.chart; pChart.textContent = T.chartP;
-      legend.innerHTML = `<span><i style="background:#7950E8"></i>${T.lJoins}</span><span><i style="background:#91C8FF"></i>${T.lTickets}</span>`;
+      legend.innerHTML = `<span><i style="background:var(--accent)"></i>${T.lJoins}</span><span><i style="background:var(--ice)"></i>${T.lTickets}</span>`;
       drawChart(o.series);
 
       // quick actions
@@ -165,17 +188,21 @@
         const rtl = document.documentElement.dir === 'rtl';
         const xAt = (i) => (rtl ? W - pad.r - (i + 0.5) * step : pad.l + (i + 0.5) * step);
         const fmt = new Intl.DateTimeFormat(MB.lang, { day: 'numeric', month: 'short' });
+        const cs = getComputedStyle(document.documentElement);
+        const C = { a: cs.getPropertyValue('--accent').trim() || '#6e56cf', b: cs.getPropertyValue('--ice').trim() || '#8da4ef', grid: cs.getPropertyValue('--line').trim() || 'rgba(255,255,255,.06)', txt: cs.getPropertyValue('--faint').trim() || '#6f7686' };
+        const totals = `<div class="chart-sum"><div><b>${MB.num(series.reduce((n, d) => n + d.joins, 0))}</b><small>${T.lJoins} · 14 ${T.days}</small></div><div><b>${MB.num(series.reduce((n, d) => n + d.tickets, 0))}</b><small>${T.lTickets} · 14 ${T.days}</small></div></div>`;
         let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${T.chart}">`;
-        for (const tk of ticks) svg += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${y(tk)}" y2="${y(tk)}" stroke="rgba(145,152,173,.12)"/><text x="${rtl ? W - 2 : 2}" y="${y(tk) + 4}" fill="#6f7590" font-size="11" text-anchor="${rtl ? 'end' : 'start'}">${tk}</text>`;
+        for (const tk of ticks) svg += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${y(tk)}" y2="${y(tk)}" stroke="${C.grid}"/><text x="${rtl ? W - 2 : 2}" y="${y(tk) + 4}" fill="${C.txt}" font-size="11" text-anchor="${rtl ? 'end' : 'start'}">${tk}</text>`;
         series.forEach((d, i) => {
           const cx = xAt(i);
-          svg += `<rect x="${cx - bw - 1}" y="${y(d.joins)}" width="${bw}" height="${Math.max(0, H - pad.b - y(d.joins))}" rx="3" fill="#7950E8"/>`;
-          svg += `<rect x="${cx + 1}" y="${y(d.tickets)}" width="${bw}" height="${Math.max(0, H - pad.b - y(d.tickets))}" rx="3" fill="#91C8FF"/>`;
-          if (i % 2 === 0 || series.length < 8) svg += `<text x="${cx}" y="${H - 6}" fill="#6f7590" font-size="11" text-anchor="middle">${fmt.format(d.day)}</text>`;
+          svg += `<rect x="${cx - bw - 1}" y="${y(d.joins)}" width="${bw}" height="${Math.max(0, H - pad.b - y(d.joins))}" rx="2" fill="${C.a}"/>`;
+          svg += `<rect x="${cx + 1}" y="${y(d.tickets)}" width="${bw}" height="${Math.max(0, H - pad.b - y(d.tickets))}" rx="2" fill="${C.b}"/>`;
+          if (i % 2 === 0 || series.length < 8) svg += `<text x="${cx}" y="${H - 6}" fill="${C.txt}" font-size="11" text-anchor="middle">${fmt.format(d.day)}</text>`;
           svg += `<rect x="${cx - step / 2}" y="0" width="${step}" height="${H - pad.b}" fill="transparent" data-i="${i}" class="hit"/>`;
         });
         svg += '</svg><div class="chart-tip" id="tip"></div>';
         chart.innerHTML = svg;
+        chart.insertAdjacentHTML('beforebegin', totals);
         const tip = chart.querySelector('#tip');
         chart.querySelectorAll('.hit').forEach((r) => {
           r.addEventListener('mouseenter', () => {

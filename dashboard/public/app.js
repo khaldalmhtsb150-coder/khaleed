@@ -1,4 +1,4 @@
-const AVA_FB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="16" fill="#1e2236"/><circle cx="16" cy="13" r="5" fill="#a78bfa"/><path d="M7 27c1.6-4.6 5-7 9-7s7.4 2.4 9 7" fill="#a78bfa"/></svg>');
+const AVA_FB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="16" fill="#1f2430"/><circle cx="16" cy="13" r="5" fill="#6f7686"/><path d="M7 27c1.6-4.6 5-7 9-7s7.4 2.4 9 7" fill="#6f7686"/></svg>');
 /* MarkaBot dashboard — shared client helpers (shell, icons, i18n, api) */
 (function () {
   // Lucide-style icons (24×24, stroke)
@@ -56,9 +56,9 @@ const AVA_FB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://ww
   };
   const icon = (name, cls = 'icon') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 
-  // the MarkaBot emblem: an "M" drawn as two towers joined by a roofline, with an ice-blue light on top
+  // the MarkaBot emblem: the "M" (two towers joined by a roofline) with its light on top — flat, one accent
   const logoSvg = () =>
-    '<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="9" fill="#141733" stroke="rgba(167,139,250,.35)"/><path d="M8.5 23.5V10l7.5 6.5 7.5-6.5v13.5" fill="none" stroke="#A78BFA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 23.5V10" stroke="#7950E8" stroke-width="2.6" stroke-linecap="round"/><circle cx="16" cy="8.4" r="1.7" fill="#91C8FF"/></svg>';
+    '<svg viewBox="0 0 32 32" aria-hidden="true"><rect x=".5" y=".5" width="31" height="31" rx="8" fill="#12151d" stroke="rgba(255,255,255,.1)"/><path d="M9 23V10.5l7 6 7-6V23" fill="none" stroke="#a594f9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 23V10.5" stroke="#6e56cf" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.6" fill="#a594f9"/></svg>';
   const logo = (href = '/') => `<a class="mk-logo" href="${href}">${logoSvg()}<b>Marka<em>Bot</em></b></a>`;
 
   const esc = (s) =>
@@ -246,20 +246,21 @@ const AVA_FB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://ww
     ['moderation', 'shield', (id) => `/dashboard/${id}#moderation`, 'management'],
     ['tickets', 'ticket', (id) => `/dashboard/${id}#tickets`, 'management'],
     ['logs', 'log', (id) => `/dashboard/${id}#logs`, 'management'],
-    ['giveaways', 'gift', (id) => `/dashboard/${id}#giveaways`, 'engagement'],
-    ['welcome', 'wave', (id) => `/dashboard/${id}#welcome`, 'engagement'],
-    ['responses', 'chat', (id) => `/dashboard/${id}#responses`, 'engagement'],
-    ['levels', 'trophy', (id) => `/dashboard/${id}#levels`, 'engagement'],
-    ['rolemenus', 'layers', (id) => `/dashboard/${id}#rolemenus`, 'engagement'],
-    ['embeds', 'edit', (id) => `/dashboard/${id}#embeds`, 'management'],
-    ['ai', 'bot', (id) => `/dashboard/${id}#ai`, 'management'],
     ['apply', 'role', (id) => `/dashboard/${id}#apply`, 'management'],
     ['staff', 'chart', (id) => `/dashboard/${id}#staff`, 'management'],
-    ['community', 'users', (id) => `/dashboard/${id}#community`, 'engagement'],
+    ['ai', 'bot', (id) => `/dashboard/${id}#ai`, 'management'],
+    ['embeds', 'edit', (id) => `/dashboard/${id}#embeds`, 'management'],
+    ['welcome', 'wave', (id) => `/dashboard/${id}#welcome`, 'engagement'],
+    ['giveaways', 'gift', (id) => `/dashboard/${id}#giveaways`, 'engagement'],
+    ['levels', 'trophy', (id) => `/dashboard/${id}#levels`, 'engagement'],
     ['invites', 'link', (id) => `/dashboard/${id}#invites`, 'engagement'],
+    ['responses', 'chat', (id) => `/dashboard/${id}#responses`, 'engagement'],
+    ['rolemenus', 'layers', (id) => `/dashboard/${id}#rolemenus`, 'engagement'],
+    ['community', 'users', (id) => `/dashboard/${id}#community`, 'engagement'],
     ['customization', 'palette', (id) => `/dashboard/${id}#customization`, 'bot'],
     ['premium', 'crown', (id) => `/dashboard/${id}#premium`, 'bot'],
   ];
+
 
   /** Renders the server sidebar + mobile bottom nav. active = one of NAV keys. */
   async function guildSidebar(active) {
@@ -352,7 +353,19 @@ const AVA_FB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://ww
     return rtf.format(Math.round(s / 86400), 'day');
   }
 
+  /** One server as a compact row: icon, name, status, one action. Used by Home and Servers. */
+  function serverRow(g) {
+    const ar = lang === 'ar';
+    const ava = g.icon ? `<img src="${esc(g.icon)}" alt="" loading="lazy">` : esc((g.name || '?').trim()[0] || '?');
+    const status = g.hasBot ? (g.ownerView ? (ar ? 'عرض المالك' : 'Owner view') : ar ? 'البوت مضاف' : 'Bot added') : ar ? 'البوت مش مضاف' : 'Bot not added';
+    const action = g.hasBot
+      ? `<a class="btn sm primary" href="/dashboard/${g.id}/overview">${ar ? 'إدارة' : 'Manage'}</a>`
+      : `<a class="btn sm ghost" href="${esc(g.invite || '/invite')}" target="_blank" rel="noopener">${ar ? 'إضافة البوت' : 'Add bot'}</a>`;
+    return `<div class="srv ${g.hasBot ? 'on' : ''}" data-name="${esc((g.name || '').toLowerCase())}"><span class="ava">${ava}</span><span class="meta"><b title="${esc(g.name)}">${esc(g.name)}</b><small><i></i>${status}</small></span>${action}</div>`;
+  }
+
   window.MB = {
+    serverRow,
     api, toast, icon, esc, topbar, guildSidebar, setActiveNav, guildIdFromPath, options, loadMe, logo, logoSvg, langSwitch, t, num, ago, setLang,
     get lang() { return lang; },
     get me() { return me; },

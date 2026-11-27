@@ -12,25 +12,25 @@
   <main class="container">
     <div class="page-head">
       <div>
-        <h1 id="hello">أهلاً بك</h1>
-        <p>هذه نظرة سريعة على البوت وسيرفراتك.</p>
+        <h1 id="hello">أهلاً</h1>
+        <p>حالة البوت وسيرفراتك بنظرة وحدة.</p>
       </div>
       <a class="btn primary" href="/servers">إدارة السيرفرات</a>
     </div>
 
     <div class="grid-4">
       <div class="stat"><div class="k">السيرفرات</div><div class="v" id="sServers">—</div></div>
-      <div class="stat"><div class="k">إجمالي الأعضاء</div><div class="v" id="sUsers">—</div></div>
-      <div class="stat"><div class="k">مدة التشغيل</div><div class="v" id="sUptime" style="font-size:20px;padding-top:6px">—</div></div>
-      <div class="stat"><div class="k">الاستجابة</div><div class="v" id="sPing">—</div></div>
+      <div class="stat"><div class="k">الأعضاء بكل السيرفرات</div><div class="v" id="sUsers">—</div></div>
+      <div class="stat"><div class="k">مدة التشغيل</div><div class="v" id="sUptime">—</div></div>
+      <div class="stat"><div class="k">سرعة الاستجابة</div><div class="v" id="sPing">—</div></div>
     </div>
 
     <div class="card mt">
       <div class="card-head">
-        <div><h2>سيرفراتك</h2><p>السيرفرات التي تملك فيها صلاحية إدارة السيرفر أو المسؤول.</p></div>
+        <div><h2>سيرفراتك</h2><p>اللي عندك فيها صلاحية إدارة السيرفر أو المسؤول.</p></div>
         <a class="btn ghost sm" href="/servers">عرض الكل</a>
       </div>
-      <div class="card-body"><div class="servers" id="servers"><div class="skeleton" style="height:150px"></div><div class="skeleton" style="height:150px"></div><div class="skeleton" style="height:150px"></div></div></div>
+      <div class="card-body"><div class="servers" id="servers"><div class="skeleton" style="height:64px"></div><div class="skeleton" style="height:64px"></div></div></div>
     </div>
 
     <div class="card" id="ownerCard" style="display:none">
@@ -66,8 +66,8 @@
       const guilds = await MB.api('/api/guilds');
       const mine = guilds.filter((g) => !g.ownerView).slice(0, 6);
       servers.innerHTML = mine.length
-        ? mine.map(card).join('')
-        : '<div class="empty" style="grid-column:1/-1">لا توجد سيرفرات تملك فيها صلاحية الإدارة.</div>';
+        ? mine.map(MB.serverRow).join('')
+        : '<div class="empty" style="grid-column:1/-1">ما في سيرفرات عندك فيها صلاحية الإدارة.</div>';
 
       if (user?.isOwner) {
         ownerCard.style.display = '';
@@ -80,16 +80,6 @@
       }
     })();
 
-    function card(g) {
-      const ava = g.icon ? `<img src="${MB.esc(g.icon)}" alt="">` : MB.esc(g.name[0]);
-      return `<div class="server-card">
-        <div class="cover">${g.icon ? `<img src="${MB.esc(g.icon)}" alt="">` : ''}</div>
-        <div class="body">
-          <div class="ava">${ava}</div>
-          <h3>${MB.esc(g.name)}</h3>
-          ${g.hasBot ? `<a class="btn primary" href="/dashboard/${g.id}/overview">إدارة</a>` : `<a class="btn ghost" href="${MB.esc(g.invite)}" target="_blank">إضافة البوت</a>`}
-        </div></div>`;
-    }
   </script>
 </body>
 </html>

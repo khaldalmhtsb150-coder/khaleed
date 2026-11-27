@@ -23,7 +23,7 @@ module.exports = {
     if (action === 'remove') {
       if (!ctx.get('id')) return ctx.fail('حط رقم التحذير.');
       const n = warns.remove(ctx.guild, user.id, ctx.get('id'), ctx.user.id);
-      return n ? ctx.reply({ content: `${E.success} انحذف التحذير #${ctx.get('id')} لـ ${user}`, allowedMentions: { parse: [] } }) : ctx.fail('ما لقيت هالتحذير.');
+      return n ? ctx.ok(`انحذف التحذير #${ctx.get('id')} لـ ${user}`) : ctx.fail('ما لقيت هالتحذير.');
     }
     const list = warns.list(ctx.guild.id, user.id);
     const conf = warns.config(ctx.guild.id);

@@ -23,6 +23,6 @@ module.exports = {
     }
     const channel = ctx.get('channel') || ctx.channel;
     await channel.send(tickets.buildPanel(ctx.guild));
-    return ctx.reply({ content: `${E.success} تم إرسال لوحة التذاكر في ${channel}.` }, { ephemeral: true });
+    return ctx.ok(`تم إرسال لوحة التذاكر في ${channel}.`, { ephemeral: true });
   },
 };

@@ -25,7 +25,7 @@ module.exports = {
     await ctx.defer?.();
     try {
       const r = await logs.autoSetup(ctx.guild, { mode: ctx.get('mode') || 'separate', overwrite: Boolean(ctx.get('overwrite')) });
-      if (!r.set) return ctx.reply(`${E.success} كل أنواع السجلات مربوطة برومات من قبل. إذا بدك تستبدلها، استخدم \`overwrite:True\`.`);
+      if (!r.set) return ctx.ok(`كل أنواع السجلات مربوطة برومات من قبل. إذا بدك تستبدلها، استخدم \`overwrite:True\`.`);
       return ctx.reply(
         [
           `${E.success} تم إعداد السجلات بكاتيجوري **${r.category.name}**`,

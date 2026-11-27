@@ -68,7 +68,7 @@ module.exports = {
       }
     }
     if (action === 'facts') {
-      if (!b.facts.length) return ctx.reply(`${E.dot} لسا ما علّمته ولا معلومة.`);
+      if (!b.facts.length) return ctx.info(`لسا ما علّمته ولا معلومة.`);
       const lines = b.facts.slice(0, 40).map((f, k) => `\`${k + 1}\` ${ui.trim(f.text, 140)}${f.source !== 'admin' ? ' 🧠' : ''}`);
       return ctx.reply({ embeds: [ui.embed().setDescription(ui.trim([`### اللي بيعرفه ${assistant.config(gid).name}`, ...lines, '', ui.hint('🧠 = تعلّمها من الإدارة. لحذف وحدة: /ai action:انسى معلومة text:رقمها')].join('\n'), 4000))] }, { ephemeral: true });
     }
@@ -77,7 +77,7 @@ module.exports = {
       const f = b.facts[n - 1];
       if (!f) return ctx.fail('اكتب رقم المعلومة من القائمة.');
       assistant.removeFact(gid, f.id);
-      return ctx.reply(`${E.success} نسيها: ${ui.trim(f.text, 120)}`);
+      return ctx.ok(`نسيها: ${ui.trim(f.text, 120)}`);
     }
     if (action === 'pending') return ctx.reply(assistant.pendingPayload(ctx.guild), { ephemeral: true });
     if (action === 'resume') {
@@ -86,7 +86,7 @@ module.exports = {
       t.aiOff = false;
       t.claimedBy = t.claimedBy || null;
       store.save('tickets');
-      return ctx.reply(`${E.success} ${assistant.config(gid).name} رجع يرد بهالتذكرة.`);
+      return ctx.ok(`${assistant.config(gid).name} رجع يرد بهالتذكرة.`);
     }
     if (action === 'test') {
       if (!text) return ctx.fail('اكتب سؤال كأنك عضو.');

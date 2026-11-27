@@ -35,7 +35,7 @@ module.exports = {
       conf.rewards = conf.rewards.filter((r) => !((role && r.roleId === role.id) || (!role && ctx.get('level') && r.level === ctx.get('level') && r.type === type)));
       if (conf.rewards.length === before) return ctx.fail('ما لقيت مكافأة بهالرتبة أو اللفل.');
       store.save('levelConfig');
-      return ctx.reply(`${E.success} تم حذف المكافأة.`);
+      return ctx.ok(`تم حذف المكافأة.`);
     }
 
     const level = ctx.get('level');
@@ -46,6 +46,6 @@ module.exports = {
     conf.rewards = conf.rewards.filter((r) => !(r.level === level && r.type === type));
     conf.rewards.push({ level, roleId: role.id, type });
     store.save('levelConfig');
-    return ctx.reply({ content: `${E.success} اللي بيوصل لفل **${level}** ${type === 'voice' ? 'بالفويس' : 'بالكتابة'} بياخد ${role}.`, allowedMentions: { parse: [] } });
+    return ctx.ok(`اللي بيوصل لفل **${level}** ${type === 'voice' ? 'بالفويس' : 'بالكتابة'} بياخد ${role}.`);
   },
 };

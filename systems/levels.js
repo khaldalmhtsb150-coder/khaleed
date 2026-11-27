@@ -321,8 +321,8 @@ async function renderCard(member) {
   ctx.clip();
   const conf = config(gid);
   const custom = require('../utils/premium').has(gid, 'rankCard') ? conf.card || {} : {};
-  const accent = /^#[0-9a-f]{6}$/i.test(custom.accent || '') ? custom.accent : '#14B8A6';
-  ctx.fillStyle = '#121317';
+  const accent = /^#[0-9a-f]{6}$/i.test(custom.accent || '') ? custom.accent : '#6E56CF';
+  ctx.fillStyle = '#0B0D12';
   ctx.fillRect(0, 0, W, H);
   if (custom.background) {
     try {
@@ -336,7 +336,7 @@ async function renderCard(member) {
   }
   // flat: the avatar side on a slightly lighter panel, a hairline between, the accent band at the edge
   if (!custom.background) {
-    ctx.fillStyle = '#1a1c21';
+    ctx.fillStyle = '#151924';
     ctx.fillRect(0, 0, 284, H);
   }
   ctx.fillStyle = 'rgba(255,255,255,.08)';
@@ -356,7 +356,7 @@ async function renderCard(member) {
   try {
     ctx.drawImage(await loadImage(member.displayAvatarURL({ extension: 'png', size: 256 })), ax - ar, ay - ar, ar * 2, ar * 2);
   } catch {
-    ctx.fillStyle = '#1a1c21';
+    ctx.fillStyle = '#151924';
     ctx.fillRect(ax - ar, ay - ar, ar * 2, ar * 2);
   }
   ctx.restore();

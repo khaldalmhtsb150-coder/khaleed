@@ -11,6 +11,6 @@ module.exports = {
     const member = ctx.get('member');
     if (!member.isCommunicationDisabled()) return ctx.fail('العضو غير مُسكت.');
     await member.timeout(null, ctx.user.tag);
-    return ctx.reply({ content: `${E.unlock} تم فك الإسكات عن ${member.user}.`, allowedMentions: { parse: [] } });
+    return ctx.ok(`تم فك الإسكات عن ${member.user}.`);
   },
 };

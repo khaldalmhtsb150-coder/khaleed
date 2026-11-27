@@ -53,7 +53,7 @@ async function onComponent(i) {
       return i.reply({ content: `• انرفض طلبك. بتقدر تقدّم من جديد <t:${Math.ceil((r.decidedAt + conf.cooldownDays * DAY) / 1000)}:R>.`, ephemeral: true });
     }
     const ban = await guild.bans.fetch(i.user.id).catch(() => null);
-    if (!ban) return i.reply({ content: '• إنت مش محظور من هالسيرفر 🙂', ephemeral: true });
+    if (!ban) return i.reply({ content: '• إنت مش محظور من هالسيرفر', ephemeral: true });
     const q = (id, label, style, max) => new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId(id).setLabel(label).setStyle(style).setMaxLength(max).setRequired(true));
     return i.showModal(
       new ModalBuilder()
@@ -77,7 +77,7 @@ async function onComponent(i) {
           .setDescription(
             ui.trim(
               [
-                `### 📝 طلب فك حظر من <@${i.user.id}> \`${i.user.id}\``,
+                `### طلب فك حظر من <@${i.user.id}> \`${i.user.id}\``,
                 `**سبب الحظر:** ${ban?.reason || recs[i.user.id].reason || 'غير مذكور'}`,
                 '',
                 `**ليش انحظر برأيه؟**\n> ${answers.why.replace(/\n/g, '\n> ')}`,

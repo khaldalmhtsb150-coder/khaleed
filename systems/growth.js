@@ -35,7 +35,7 @@ function brandRow(gid) {
 function onboardPayload(guild) {
   const e = ui
     .embed()
-    .setTitle(`أهلاً فيك بماركا 👋`)
+    .setTitle(`أهلاً فيك بماركا`)
     .setDescription(
       [
         `شكراً إنك ضفت البوت لـ **${guild.name}**. ركّبه بـ 3 خطوات:`,
@@ -47,7 +47,7 @@ function onboardPayload(guild) {
         '**3. جرّب اللي بيحبه أعضاءك**',
         '-# `/play` للألعاب • `/azkar-setup` للأذكار • `/ai` للمساعد الذكي • `/apply-setup` لتقديم الإدارة',
         '',
-        refOn() ? '🎁 عندك سيرفر ثاني أو صاحبك عنده سيرفر؟ `/refer` بيعطيكم الاثنين أسبوع بريميوم.' : null,
+        refOn() ? 'عندك سيرفر ثاني أو صاحبك عنده سيرفر؟ `/refer` بيعطيكم الاثنين أسبوع بريميوم.' : null,
       ]
         .filter((x) => x !== null)
         .join('\n')
@@ -168,9 +168,9 @@ async function redeemRef(guild, user, rawCode) {
   store.save('referrals');
   if (both) {
     const owner = await src.fetchOwner?.().catch(() => null);
-    owner?.send({ embeds: [ui.embed().setDescription(`🎁 سيرفر **${guild.name}** ضاف ماركا بكودك، وأخذ **${src.name}** ${REF_DAYS()} أيام بريميوم. شكراً إنك بتنشر البوت 🤍`)] }).catch(() => {});
+    owner?.send({ embeds: [ui.embed().setDescription(`سيرفر **${guild.name}** ضاف ماركا بكودك، وأخذ **${src.name}** ${REF_DAYS()} أيام بريميوم. شكراً إنك بتنشر البوت`)] }).catch(() => {});
   }
-  return { ok: true, text: `🎉 تم! **${guild.name}** أخذ ${REF_DAYS()} أيام بريميوم${both ? `، و**${src.name}** كمان` : ''}.` };
+  return { ok: true, text: `تم! **${guild.name}** أخذ ${REF_DAYS()} أيام بريميوم${both ? `، و**${src.name}** كمان` : ''}.` };
 }
 function refStats(gid) {
   const r = refData();
@@ -229,12 +229,12 @@ async function cupRoll() {
     if (c.history.length > 52) c.history.shift();
     const g = client?.guilds?.cache?.get(top.gid);
     const owner = g ? await g.fetchOwner().catch(() => null) : null;
-    owner?.send({ embeds: [ui.embed().setTitle('🏆 سيرفرك بطل كأس ماركا!').setDescription(`**${g.name}** فاز ببطولة الأسبوع بـ **${top.pts}** نقطة، وأخذ أسبوع بريميوم هدية. مبروك لأعضاءك 🎉`)] }).catch(() => {});
+    owner?.send({ embeds: [ui.embed().setTitle('سيرفرك بطل كأس ماركا!').setDescription(`**${g.name}** فاز ببطولة الأسبوع بـ **${top.pts}** نقطة، وأخذ أسبوع بريميوم هدية. مبروك لأعضاءك`)] }).catch(() => {});
     const ch = process.env.TOURNEY_CHANNEL_ID ? await client?.channels?.fetch(process.env.TOURNEY_CHANNEL_ID).catch(() => null) : null;
     if (ch?.isTextBased?.()) {
       const medals = ['🥇', '🥈', '🥉'];
       await ch
-        .send({ embeds: [ui.embed().setTitle('🏆 نتائج كأس ماركا الأسبوعي').setDescription([...board.map((b, k) => `${medals[k]} **${b.name}** — ${b.pts} نقطة`), '', `-# البطل أخذ أسبوع بريميوم. البطولة الجديدة بلّشت، العبوا \`/play\` بسيرفراتكم 🔥`].join('\n'))] })
+        .send({ embeds: [ui.embed().setTitle('نتائج كأس ماركا الأسبوعي').setDescription([...board.map((b, k) => `${medals[k]} **${b.name}** — ${b.pts} نقطة`), '', `-# البطل أخذ أسبوع بريميوم. البطولة الجديدة بلّشت، العبوا \`/play\` بسيرفراتكم 🔥`].join('\n'))] })
         .catch(() => {});
     }
   }
@@ -255,7 +255,7 @@ function cupPayload(gid) {
     embeds: [
       ui
         .embed()
-        .setTitle('🏆 كأس ماركا — بطولة السيرفرات')
+        .setTitle('كأس ماركا — بطولة السيرفرات')
         .setDescription(
           [
             'كل لعبة بتخلص بسيرفركم بتعطيه نقطة (ونقطتين إذا لعبها 4 أو أكثر). أقوى سيرفر آخر الأسبوع بياخذ **أسبوع بريميوم**.',
@@ -281,7 +281,7 @@ async function onButton(i) {
   await i.deferReply({ ephemeral: Boolean(i.guild) });
   const lines = await require('../utils/guildContext').run(guild.id, () => quickSetup(guild));
   const dash = dashboardUrl(guild.id);
-  return i.editReply({ content: [`**${guild.name}** — التركيب السريع:`, ...lines, '', dash ? `الخطوة الجاية: الترحيب والتذاكر من الداشبورد 👇\n${dash}` : 'الخطوة الجاية: الترحيب والتذاكر من الداشبورد.'].join('\n') });
+  return i.editReply({ content: [`**${guild.name}** — التركيب السريع:`, ...lines, '', dash ? `الخطوة الجاية: الترحيب والتذاكر من الداشبورد\n${dash}` : 'الخطوة الجاية: الترحيب والتذاكر من الداشبورد.'].join('\n') });
 }
 
 function init(c) {

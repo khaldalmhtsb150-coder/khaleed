@@ -19,7 +19,7 @@ module.exports = {
     const action = ctx.get('action');
     if (action === 'list') {
       const list = yt.feeds(ctx.guild.id);
-      if (!list.length) return ctx.reply(`${E.dot} ما في قنوات مضافة. أضف وحدة بـ \`/youtube action:إضافة قناة link:...\``);
+      if (!list.length) return ctx.info(`ما في قنوات مضافة. أضف وحدة بـ \`/youtube action:إضافة قناة link:...\``);
       return ctx.reply({
         embeds: [ui.embed().setDescription(['### 🔔 تنبيهات يوتيوب', ...list.map((f) => `▶️ **${f.name}** ← <#${f.discordChannelId}>${f.roleId ? ` • <@&${f.roleId}>` : ''}${f.errors >= 3 ? ' ⚠️ ما قدرت أوصل للقناة آخر مرة' : ''}`), '', ui.hint(`${list.length}/${yt.limit(ctx.guild.id)} قنوات. البوت بيفحص كل 5 دقائق.`)].join('\n'))],
         allowedMentions: { parse: [] },
@@ -29,7 +29,7 @@ module.exports = {
     if (!link) return ctx.fail('حط رابط القناة.');
     if (action === 'remove') {
       const f = yt.remove(ctx.guild.id, link);
-      return f ? ctx.reply(`${E.success} شلت تنبيهات **${f.name}**.`) : ctx.fail('ما لقيت هالقناة بالقائمة.');
+      return f ? ctx.ok(`شلت تنبيهات **${f.name}**.`) : ctx.fail('ما لقيت هالقناة بالقائمة.');
     }
     await ctx.defer();
     try {
@@ -45,7 +45,7 @@ module.exports = {
           .join('\n')
       );
     } catch (e) {
-      return ctx.reply(`• ${e.message}`);
+      return ctx.fail(e.message);
     }
   },
 };

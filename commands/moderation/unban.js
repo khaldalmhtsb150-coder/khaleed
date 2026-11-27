@@ -12,6 +12,6 @@ module.exports = {
     if (!id) return ctx.fail('الآيدي مش زابط.');
     const ok = await ctx.guild.members.unban(id, `${ctx.user.tag}`).then(() => true).catch(() => false);
     if (!ok) return ctx.fail('هذا العضو غير محظور.');
-    return ctx.reply({ content: `${E.unlock} تم فك الحظر عن <@${id}>.`, allowedMentions: { parse: [] } });
+    return ctx.ok(`تم فك الحظر عن <@${id}>.`);
   },
 };

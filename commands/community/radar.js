@@ -26,7 +26,7 @@ module.exports = {
     if (action === 'off') {
       conf.enabled = false;
       store.save('radarConfig');
-      return ctx.reply(`${E.success} وقفت تنبيهات الرادار. الإحصائيات بتضل تنحسب.`);
+      return ctx.ok(`وقفت تنبيهات الرادار. الإحصائيات بتضل تنحسب.`);
     }
     if (!conf.channelId) conf.channelId = ctx.channel.id;
     conf.enabled = true;

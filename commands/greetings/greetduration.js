@@ -11,6 +11,6 @@ module.exports = {
     const conf = store.guild('greetings', ctx.guild.id, { enabled: false });
     conf.duration = ctx.get('seconds');
     store.save('greetings');
-    return ctx.reply(`${E.timer} ${conf.duration ? `ستحذف رسالة الترحيب بعد **${conf.duration}** ثانية.` : 'رسالة الترحيب ستبقى دائمة.'}`);
+    return ctx.info(`${conf.duration ? `ستحذف رسالة الترحيب بعد **${conf.duration}** ثانية.` : 'رسالة الترحيب ستبقى دائمة.'}`);
   },
 };

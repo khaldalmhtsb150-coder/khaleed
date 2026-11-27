@@ -1,3 +1,4 @@
+const ui = require('../../utils/ui');
 const E = require('../../utils/emojis');
 const hierarchy = require('./_hierarchy');
 const appeals = require('../../systems/appeals');
@@ -20,8 +21,8 @@ module.exports = {
     if (blocked) return ctx.fail(blocked);
     // with appeals on, the DM carries an "appeal" button; it must go out before the ban (after it the DM usually fails)
     const appealed = appeals.config(ctx.guild.id).enabled ? await appeals.notify(ctx.guild, user, reason).catch(() => false) : false;
-    if (!appealed) await member?.send(`${E.ban} تم حظرك من **${ctx.guild.name}**\n${E.dot} السبب: ${reason}`).catch(() => {});
+    if (!appealed) await member?.send({ embeds: [ui.notice('danger', `**${ctx.guild.name}**`, { title: 'انحظرت من السيرفر', fields: [{ name: 'السبب', value: reason, inline: false }] })] }).catch(() => {});
     await ctx.guild.members.ban(user.id, { reason: `${ctx.user.tag}: ${reason}`, deleteMessageSeconds: 0 });
-    return ctx.reply({ content: `${E.ban} تم حظر ${user} — ${reason}`, allowedMentions: { parse: [] } });
+    return ctx.reply({ embeds: [ui.action({ title: 'حظر', user, moderator: ctx.user, reason })], allowedMentions: { parse: [] } });
   },
 };

@@ -26,7 +26,7 @@ module.exports = {
       delete ga[key];
       media.remove(`game-${key}-${ctx.guild.id}`);
       store.save('gameArt');
-      return ctx.reply(`${E.success} رجعت صورة **${NAMES[key]}** الأصلية.`);
+      return ctx.ok(`رجعت صورة **${NAMES[key]}** الأصلية.`);
     }
     const att = ctx.get('image');
     const link = (att && typeof att === 'object' ? att.url : null) || ctx.message?.attachments?.first()?.url || ctx.get('url') || (typeof att === 'string' ? att : null);
@@ -37,7 +37,7 @@ module.exports = {
       ga[key] = media.saveDataUri(await media.fetchToDataUri(link), `game-${key}-${ctx.guild.id}`);
       store.save('gameArt');
     } catch (e) {
-      return ctx.reply(`• ${e.message}`);
+      return ctx.fail(e.message);
     }
     const preview = art.customArt(key === 'rouletteWheel' ? 'roulette' : key, ctx.guild.id) && key !== 'rouletteWheel' ? art.customArt(key, ctx.guild.id) : null;
     return ctx.reply({ content: `${E.success} صارت صورة **${NAMES[key]}** هاي${key === 'rouletteWheel' ? ' (بتظهر ورا العجلة وهي بتلف)' : ''}`, files: preview ? [preview] : [] });

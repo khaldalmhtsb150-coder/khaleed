@@ -21,6 +21,6 @@ module.exports = {
     else list.add(cmd.name);
     all[ctx.guild.id] = [...list];
     store.save('disabledCommands');
-    return ctx.reply(`${E.success} تم ${ctx.get('state') ? 'تفعيل' : 'تعطيل'} الأمر \`${cmd.name}\`.`);
+    return ctx.ok(`تم ${ctx.get('state') ? 'تفعيل' : 'تعطيل'} الأمر \`${cmd.name}\`.`);
   },
 };

@@ -23,6 +23,6 @@ module.exports = {
     if (type === 'all') for (const k of Object.keys(LOG_TYPES)) delete conf[k];
     else delete conf[type];
     store.save('logsConfig');
-    return ctx.reply(`${E.success} تم تعطيل ${type === 'all' ? 'جميع السجلات' : `سجل ${LOG_TYPES[type].label}`}.`);
+    return ctx.ok(`تم تعطيل ${type === 'all' ? 'جميع السجلات' : `سجل ${LOG_TYPES[type].label}`}.`);
   },
 };

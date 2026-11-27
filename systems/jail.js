@@ -25,7 +25,7 @@ function logChannel(guild) {
 
 function canAct(moderator, target) {
   if (target.id === target.guild.ownerId) return 'ما بتقدر تسجن مالك السيرفر.';
-  if (target.id === moderator.id) return 'ما بتقدر تسجن حالك 😅';
+  if (target.id === moderator.id) return 'ما بتقدر تسجن حالك';
   if (target.user.bot) return 'البوتات ما بتنسجن.';
   if (moderator.id !== moderator.guild.ownerId && moderator.roles.highest.comparePositionTo(target.roles.highest) <= 0)
     return 'رتبة العضو أعلى من رتبتك أو مساوية لها.';
@@ -256,7 +256,7 @@ async function onButton(interaction) {
     if (action === 'accept') {
       const res = await release(interaction.guild, userId, { by: interaction.user.id, reason: 'قبول طلب العفو' });
       if (res.error) return interaction.reply({ content: `• ${res.error}`, ephemeral: true });
-      res.member?.send(`${E.success} انقبل طلب العفو تبعك بـ **${interaction.guild.name}** 🤍`).catch(() => {});
+      res.member?.send(`${E.success} انقبل طلب العفو تبعك بـ **${interaction.guild.name}**`).catch(() => {});
     } else {
       const user = await interaction.client.users.fetch(userId).catch(() => null);
       user?.send(`• انرفض طلب العفو تبعك بـ **${interaction.guild.name}**.`).catch(() => {});

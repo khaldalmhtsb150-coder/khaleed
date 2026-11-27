@@ -13,7 +13,7 @@ try {
 } catch {}
 
 // ---------- app emojis ----------
-const VERSION = 'mk2'; // bump when the icon designs change → fresh uploads
+const VERSION = 'mk3'; // bump when the icon designs change → fresh uploads
 const icons = new Map(); // key → { id, name }
 const iconName = (key) => `${VERSION}_${key}`.slice(0, 32);
 
@@ -51,7 +51,7 @@ function banner(key, gid = null) {
   if (!hasBanner(key)) return null;
   return new AttachmentBuilder(bannerPath(key), { name: `${key}.jpg` });
 }
-const accent = (key, d = '#7c5cff') => manifest.banners?.[key]?.accent || d;
+const accent = (key, d = '#6e56cf') => manifest.banners?.[key]?.accent || d;
 const accentInt = (key) => parseInt(accent(key).slice(1), 16);
 
 // ---------- canvas ----------
@@ -94,7 +94,7 @@ function rr(ctx, x, y, w, h, r) {
 
 /** The brand backdrop: flat charcoal with the accent band on the reading side. No glows or gradients. */
 function backdrop(ctx, W, H, acc) {
-  ctx.fillStyle = '#121317';
+  ctx.fillStyle = '#0b0d12';
   ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = acc;
   ctx.fillRect(W - 10, 0, 10, H);
@@ -163,7 +163,7 @@ async function winnerCard({ gameKey, gameTitle, title, winners, reward }) {
     ctx.fill();
     ctx.beginPath();
     ctx.arc(x + size / 2, y + size / 2, size / 2 + 2, 0, Math.PI * 2);
-    ctx.fillStyle = '#121317';
+    ctx.fillStyle = '#0b0d12';
     ctx.fill();
     ctx.save();
     ctx.beginPath();
@@ -171,7 +171,7 @@ async function winnerCard({ gameKey, gameTitle, title, winners, reward }) {
     ctx.clip();
     if (img) ctx.drawImage(img, x, y, size, size);
     else {
-      ctx.fillStyle = '#1a1c21';
+      ctx.fillStyle = '#151924';
       ctx.fillRect(x, y, size, size);
       ctx.fillStyle = '#fff';
       ctx.font = font('Black', size * 0.45);

@@ -16,6 +16,6 @@ module.exports = {
     const user = ctx.get('user');
     const res = await jail.release(ctx.guild, user.id, { by: ctx.user.id, reason: ctx.get('reason') || 'تحرير يدوي' });
     if (res.error) return ctx.fail(res.error);
-    return ctx.reply({ content: `${E.unlock} تم تحرير ${user} وإرجاع رتبه.`, allowedMentions: { parse: [] } });
+    return ctx.ok(`تم تحرير ${user} ورجعت رتبه.`);
   },
 };

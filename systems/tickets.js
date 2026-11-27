@@ -96,15 +96,9 @@ function buildPanel(guild) {
   const embed = ui
     .embed()
     .setAuthor({ name: guild.name, iconURL: guild.iconURL() || undefined })
-    .setDescription(
-      [
-        `### ${E.ticket} ${conf.panelTitle || 'مركز الدعم'}`,
-        'اختار القسم من القائمة تحت، وبتنفتحلك تذكرة خاصة مع فريق الدعم.',
-        '',
-        '**قبل ما تفتح**',
-        rules,
-      ].join('\n')
-    );
+    .setTitle(conf.panelTitle || 'مركز الدعم')
+    .setDescription('اختار القسم من القائمة تحت، وبتنفتحلك تذكرة خاصة مع فريق الدعم.')
+    .addFields({ name: 'قبل ما تفتح', value: ui.trim(rules, 1024) });
   let files = [];
   if (conf.bannerUrl) embed.setImage(conf.bannerUrl);
   else {
@@ -139,26 +133,21 @@ function parseEmoji(value) {
 /** The first message of a ticket. Rebuilt on claim so the status line stays true. */
 function openEmbed(guild, record) {
   const ai = require('./aiStaff').ticketLine(guild.id);
-  const status = record.claimedBy ? `${E.crown} مع <@${record.claimedBy}>` : `${E.timer} بانتظار الفريق`;
   return ui
     .embed(record.claimedBy ? 'info' : 'brand')
     .setAuthor({ name: guild.name, iconURL: guild.iconURL() || undefined })
-    .setTitle(`${E.ticket} تذكرة #${String(record.number).padStart(4, '0')}`)
+    .setTitle(`تذكرة #${String(record.number).padStart(4, '0')}`)
     .setDescription(
-      [
-        `أهلاً <@${record.ownerId}> 👋`,
-        'اكتب طلبك بالتفصيل، ولو عندك صور أو روابط ابعتها هون. حدا من الفريق رح يرد عليك بأقرب وقت.',
-        ai ? `\n${ai}` : null,
-      ]
+      [`أهلاً <@${record.ownerId}>، اكتب طلبك بالتفصيل وابعت أي صور أو روابط بتساعد. حدا من الفريق رح يرد عليك بأقرب وقت.`, ai ? `\n${ai}` : null]
         .filter((x) => x !== null)
         .join('\n')
     )
     .addFields(
       { name: 'القسم', value: record.department || '—', inline: true },
       { name: 'فُتحت', value: ts(record.openedAt), inline: true },
-      { name: 'الحالة', value: status, inline: true }
+      { name: 'الحالة', value: record.claimedBy ? `مع <@${record.claimedBy}>` : 'بانتظار الفريق', inline: true }
     )
-    .setFooter({ text: 'لإغلاق التذكرة استخدم الزر تحت' });
+    .setFooter({ text: 'للإغلاق استخدم زر «إغلاق» تحت' });
 }
 
 function controlRow(record) {
@@ -300,7 +289,7 @@ async function openTicket(interaction, dept, answers) {
 
   const embeds = [embed];
   if (answers?.length) {
-    const form = ui.embed().setDescription(`**${E.edit} إجابات النموذج**`);
+    const form = ui.embed().setTitle('إجابات النموذج');
     for (const { q, a } of answers) form.addFields({ name: ui.trim(q, 256), value: ui.trim(a || '—', 1024) });
     embeds.push(form);
   }
@@ -317,12 +306,18 @@ async function openTicket(interaction, dept, answers) {
 
   logChannel(guild, conf)
     ?.send({
-      embeds: [ui.embed().setDescription(`**${E.ticket} فتح تذكرة**\n${E.dot} ${channel} — ${dept.label}\n${E.dot} بواسطة: ${user}`)],
+      embeds: [
+        ui
+          .embed()
+          .setTitle(`تذكرة جديدة #${String(record.number).padStart(4, '0')}`)
+          .addFields({ name: 'الروم', value: `${channel}`, inline: true }, { name: 'القسم', value: dept.label, inline: true }, { name: 'صاحبها', value: `${user}`, inline: true })
+          .setTimestamp(),
+      ],
       allowedMentions: { parse: [] },
     })
     .catch(() => {});
 
-  return interaction.editReply(`${E.success} انفتحت تذكرتك: ${channel}`);
+  return interaction.editReply({ embeds: [ui.notice('success', `انفتحت تذكرتك: ${channel}`)] });
 }
 
 // ---------- Claim ----------
@@ -349,11 +344,17 @@ async function claim(interaction, record, conf) {
 
   const first = interaction.message?.embeds?.length ? [openEmbed(interaction.guild, record), ...interaction.message.embeds.slice(1)] : undefined;
   await interaction.update({ components: [controlRow(record)], ...(first ? { embeds: first } : {}) });
-  await ch.send({ content: `${E.crown} معك ${interaction.user} من فريق الدعم 👋 كيف بقدر أساعدك؟`, allowedMentions: { parse: [] } });
+  await ch.send({ embeds: [ui.notice('info', `معك ${interaction.user} من فريق الدعم، كيف بقدر أساعدك؟`)], allowedMentions: { parse: [] } });
 
   logChannel(interaction.guild, conf)
     ?.send({
-      embeds: [ui.embed().setDescription(`**${E.crown} استلام تذكرة**\n${E.dot} ${ch} #${record.number}\n${E.dot} المستلم: ${interaction.user}`)],
+      embeds: [
+        ui
+          .embed('info')
+          .setTitle(`استلام تذكرة #${String(record.number).padStart(4, '0')}`)
+          .addFields({ name: 'الروم', value: `${ch}`, inline: true }, { name: 'المستلم', value: `${interaction.user}`, inline: true })
+          .setTimestamp(),
+      ],
       allowedMentions: { parse: [] },
     })
     .catch(() => {});
@@ -367,7 +368,7 @@ async function askClose(interaction, record, conf) {
     ui.button('ticket_close_confirm', 'أيوا سكّرها', { emoji: 'lock', style: ButtonStyle.Danger }),
     ui.button('ticket_close_cancel', 'لا، خليها')
   );
-  return interaction.reply({ content: '• أكيد بدك تسكّر التذكرة؟\n-# بنحفظ نسخة كاملة من المحادثة.', components: [row], ephemeral: true });
+  return interaction.reply({ embeds: [ui.notice('warning', 'بنحفظ نسخة كاملة من المحادثة قبل ما تنحذف الروم.', { title: 'أكيد بدك تسكّر التذكرة؟' })], components: [row], ephemeral: true });
 }
 
 async function closeTicket(channel, record, closer) {
@@ -388,7 +389,7 @@ async function closeTicket(channel, record, closer) {
     if (closer.id === guild.client.user.id) st.autoClosed++;
   });
 
-  await channel.send({ content: `${E.lock} التذكرة رح تتسكّر خلال 5 ثواني… شكراً إنك تواصلت معنا 🤍`, allowedMentions: { parse: [] } }).catch(() => {});
+  await channel.send({ embeds: [ui.notice('warning', 'التذكرة رح تتسكّر خلال 5 ثواني. شكراً إنك تواصلت معنا.')], allowedMentions: { parse: [] } }).catch(() => {});
   // let the AI assistant read what the team taught here before the channel goes away
   await require('./aiStaff').learnFromTicket(channel, record).catch(() => {});
 
@@ -407,19 +408,19 @@ async function closeTicket(channel, record, closer) {
   const duration = formatDuration(record.closedAt - record.openedAt);
 
   const summary = ui
-    .embed()
+    .embed('muted')
     .setAuthor({ name: guild.name, iconURL: guild.iconURL() || undefined })
-    .setDescription(`**${E.ticket} إغلاق تذكرة #${String(record.number).padStart(4, '0')}**`)
+    .setTitle(`إغلاق تذكرة #${String(record.number).padStart(4, '0')}`)
     .addFields(
-      { name: 'رقم التذكرة', value: `\`${channel.name}\``, inline: true },
+      { name: 'صاحب التذكرة', value: `<@${record.ownerId}>`, inline: true },
+      { name: 'المستلم', value: record.claimedBy ? `<@${record.claimedBy}>` : 'ما انستلمت', inline: true },
+      { name: 'أغلقها', value: `<@${closer.id}>`, inline: true },
       { name: 'القسم', value: record.department || '—', inline: true },
       { name: 'المدة', value: duration, inline: true },
-      { name: 'صاحب التذكرة', value: `<@${record.ownerId}>`, inline: true },
-      { name: 'المستلم', value: record.claimedBy ? `<@${record.claimedBy}>` : 'لم تُستلم', inline: true },
-      { name: 'أغلقها', value: `<@${closer.id}>`, inline: true }
+      { name: 'الرسائل', value: transcript ? `${transcript.count}` : '—', inline: true }
     )
+    .setFooter({ text: channel.name })
     .setTimestamp();
-  if (transcript) summary.addFields({ name: 'الرسائل', value: `${transcript.count}`, inline: true });
 
   const card = await require('../utils/cards')
     .ticketCard({
@@ -452,24 +453,21 @@ async function closeTicket(channel, record, closer) {
 
   if (opener) {
     const dm = ui
-      .embed()
+      .embed('muted')
       .setAuthor({ name: guild.name, iconURL: guild.iconURL() || undefined })
-      .setDescription(
-        [
-          `**تذكرتك #${String(record.number).padStart(4, '0')} انسكّرت**`,
-          served ? `ساعدك <@${served}> بقسم **${record.department}** خلال ${duration}.` : `القسم: **${record.department}** • المدة: ${duration}`,
-          '',
-          served ? 'كيف كانت الخدمة؟ قيّمها بكبسة 👇' : null,
-          ui.hint('نسخة المحادثة مرفقة مع الرسالة.'),
-        ]
-          .filter((l) => l !== null)
-          .join('\n')
-      );
+      .setTitle(`تذكرتك #${String(record.number).padStart(4, '0')} انسكّرت`)
+      .setDescription(served ? 'كيف كانت الخدمة؟ قيّمها من الأزرار تحت.' : null)
+      .addFields(
+        { name: 'القسم', value: record.department || '—', inline: true },
+        { name: 'المدة', value: duration, inline: true },
+        ...(served ? [{ name: 'ساعدك', value: `<@${served}>`, inline: true }] : [])
+      )
+      .setFooter({ text: 'نسخة المحادثة مرفقة مع الرسالة' });
     const components = [];
     if (served) {
       const row = new ActionRowBuilder();
       for (let n = 1; n <= 5; n++) {
-        row.addComponents(ui.button(`ticket_rate_${guild.id}_${channel.id}_${n}`, '⭐'.repeat(n), { emoji: undefined, style: n >= 4 ? ButtonStyle.Success : ButtonStyle.Secondary }));
+        row.addComponents(ui.button(`ticket_rate_${guild.id}_${channel.id}_${n}`, `${n}`, { emoji: 'star' }));
       }
       components.push(row);
     }
@@ -482,7 +480,7 @@ async function closeTicket(channel, record, closer) {
       })
       .catch(() => {
         // DMs closed: tell the staff in the log channel instead of failing silently
-        if (log) log.send({ content: `${E.dot} ما قدرت أبعت ملخص التذكرة #${String(record.number).padStart(4, '0')}${served ? ' وطلب التقييم' : ''} لـ <@${record.ownerId}> — الخاص عنده مسكّر.`, allowedMentions: { parse: [] } }).catch(() => {});
+        if (log) log.send({ embeds: [ui.notice('warning', `ما قدرت أبعت ملخص التذكرة #${String(record.number).padStart(4, '0')}${served ? ' وطلب التقييم' : ''} لـ <@${record.ownerId}>، الخاص عنده مسكّر.`)], allowedMentions: { parse: [] } }).catch(() => {});
       });
   }
 
@@ -543,16 +541,16 @@ async function onManageSelect(interaction, record, conf) {
     const embed = ui
       .embed()
       .setAuthor({ name: interaction.guild.name, iconURL: interaction.guild.iconURL() || undefined })
-      .setDescription(
-        `**${E.announce} تذكرتك بتستنى ردك**\n${interaction.user} من فريق الدعم بيستناك بـ ${interaction.channel}.\n${ui.hint('اكبس الزر وبتروح عليها مباشرة.')}`
-      );
+      .setTitle('تذكرتك بتستنى ردك')
+      .setDescription(`${interaction.user} من فريق الدعم بيستناك بـ ${interaction.channel}.`)
+      .setFooter({ text: 'اكبس الزر وبتروح عليها مباشرة' });
     const sent = await user
       ?.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(ui.linkButton(interaction.channel.url, 'الانتقال للتذكرة'))] })
       .catch(() => null);
     if (!sent) return interaction.update({ content: '• ما قدرت أبعتله، الخاص عنده مسكّر.', components: [] });
     record.lastAlert = Date.now();
     store.save('tickets');
-    await interaction.channel.send({ content: `${E.announce} بعتنا تنبيه لـ <@${record.ownerId}> بالخاص.`, allowedMentions: { parse: [] } });
+    await interaction.channel.send({ embeds: [ui.notice('info', `انبعت تنبيه لـ <@${record.ownerId}> بالخاص.`)], allowedMentions: { parse: [] } });
     return interaction.update({ content: `${E.success} انبعت التنبيه.`, components: [] });
   }
 }
@@ -573,7 +571,7 @@ async function onModal(interaction, record, conf) {
     ]);
     if (ok === 'slow') return interaction.editReply('• الاسم رح يتغير خلال دقايق، لأنه ديسكورد بيحدد كم مرة بتقدر تغيّر الأسماء.');
     if (!ok) return interaction.editReply('• ما قدرت أغيّر الاسم.');
-    await ch.send({ content: `${E.edit} ${interaction.user} غيّر اسم التذكرة لـ \`${name}\`.`, allowedMentions: { parse: [] } });
+    await ch.send({ embeds: [ui.notice('info', `${interaction.user} غيّر اسم التذكرة لـ \`${name}\`.`)], allowedMentions: { parse: [] } });
     return interaction.editReply(`${E.success} تم.`);
   }
 
@@ -583,11 +581,11 @@ async function onModal(interaction, record, conf) {
 
   if (kind === 'add') {
     await ch.permissionOverwrites.edit(member.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true });
-    await interaction.reply({ content: `${E.success} انضاف ${member} للتذكرة.`, allowedMentions: { users: [member.id] } });
+    await interaction.reply({ embeds: [ui.notice('success', `انضاف ${member} للتذكرة.`)], allowedMentions: { users: [member.id] } });
   } else if (kind === 'remove') {
     if (member.id === record.ownerId) return interaction.reply({ content: '• ما بتقدر تشيل صاحب التذكرة.', ephemeral: true });
     await ch.permissionOverwrites.delete(member.id).catch(() => {});
-    await interaction.reply({ content: `${E.error} انشال ${member} من التذكرة.`, allowedMentions: { parse: [] } });
+    await interaction.reply({ embeds: [ui.notice('info', `انشال ${member} من التذكرة.`)], allowedMentions: { parse: [] } });
   }
 }
 
@@ -605,7 +603,7 @@ async function onRate(interaction) {
 
   const servedBy = record?.servedBy || record?.claimedBy;
   if (!record || record.rated || !servedBy) {
-    return interaction.update({ components: disabledRows, content: record?.rated ? '• قيّمت هالتذكرة من قبل، شكراً 🤍' : '• هالتذكرة ما عاد فيك تقيّمها.' });
+    return interaction.update({ components: disabledRows, content: record?.rated ? '• قيّمت هالتذكرة من قبل، شكراً.' : '• هالتذكرة ما عاد فيك تقيّمها.' });
   }
   record.rated = stars;
   store.save('tickets');
@@ -615,7 +613,7 @@ async function onRate(interaction) {
   store.save('staffRatings');
 
   await interaction.update({
-    content: `${E.heart} شكراً على تقييمك ${'⭐'.repeat(stars)}`,
+    content: `شكراً على تقييمك: ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`,
     components: disabledRows,
   });
 
@@ -625,10 +623,14 @@ async function onRate(interaction) {
     ?.send({
       embeds: [
         ui
-          .embed()
-          .setDescription(
-            `**${E.star} تقييم جديد**\n${E.dot} التذكرة: #${String(record.number).padStart(4, '0')}\n${E.dot} الموظف: <@${servedBy}>\n${E.dot} التقييم: ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} (${stars}/5)\n${E.dot} من: <@${interaction.user.id}>`
-          ),
+          .embed(stars >= 4 ? 'success' : stars <= 2 ? 'warning' : 'brand')
+          .setTitle(`تقييم تذكرة #${String(record.number).padStart(4, '0')}`)
+          .addFields(
+            { name: 'التقييم', value: `${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} · ${stars}/5`, inline: true },
+            { name: 'الموظف', value: `<@${servedBy}>`, inline: true },
+            { name: 'من', value: `<@${interaction.user.id}>`, inline: true }
+          )
+          .setTimestamp(),
       ],
       allowedMentions: { parse: [] },
     })
@@ -704,12 +706,13 @@ async function autoCloseTick(client) {
           store.save('tickets');
           await channel
             .send({
-              content: `<@${record.ownerId}> ${E.warning} التذكرة صارلها فترة بدون رد — رح تتسكّر لحالها ${ts(record.autoWarnedAt + WARN_BEFORE)} إذا ما في رد.`,
+              content: `<@${record.ownerId}>`,
+              embeds: [ui.notice('warning', `التذكرة صارلها فترة بدون رد، ورح تتسكّر لحالها ${ts(record.autoWarnedAt + WARN_BEFORE)} إذا ما في رد.`)],
               allowedMentions: { users: [record.ownerId] },
             })
             .catch(() => {});
         } else if (record.autoWarnedAt && Date.now() - record.autoWarnedAt >= WARN_BEFORE) {
-          await channel.send({ content: `${E.lock} انسكّرت التذكرة لحالها لأنه ما في رد.` }).catch(() => {});
+          await channel.send({ embeds: [ui.notice('warning', 'انسكّرت التذكرة لحالها لأنه ما في رد.')] }).catch(() => {});
           await closeTicket(channel, record, client.user).catch((e) => console.error('[tickets] auto-close', e.message));
         }
       }

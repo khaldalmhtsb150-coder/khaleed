@@ -21,7 +21,7 @@ module.exports = {
       const before = e.points;
       e.points = 0;
       store.save('invites');
-      return ctx.reply({ content: `${E.success} تم تصفير نقاط ${user} (كانت **${before}**).`, allowedMentions: { parse: [] } });
+      return ctx.ok(`تم تصفير نقاط ${user} (كانت **${before}**).`);
     }
 
     // everyone — ask for confirmation first

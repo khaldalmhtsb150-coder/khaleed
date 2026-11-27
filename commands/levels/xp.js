@@ -46,7 +46,7 @@ module.exports = {
     if (action === 'reset') {
       Object.assign(e, { tx: 0, vx: 0, echo: 0, vmin: 0, wtx: 0, wvx: 0 });
       store.save('levels');
-      return ctx.reply({ content: `${E.success} تم تصفير مستوى ${user}.`, allowedMentions: { parse: [] } });
+      return ctx.ok(`تم تصفير مستوى ${user}.`);
     }
     if (amount === null) return ctx.fail('اكتب الكمية.');
 
@@ -62,7 +62,7 @@ module.exports = {
     }
     const now = lv.levelOf(e[key]);
     botlog.log('owner', `xp ${action} ${amount} (${type}) لـ ${user.username}`, { user: { id: ctx.user.id, name: ctx.user.username }, guild: ctx.guild });
-    return ctx.reply({ content: `${E.success} ${user} صار لفل **${now.level}** بـ${label} (${e[key]} XP).`, allowedMentions: { parse: [] } });
+    return ctx.ok(`${user} صار لفل **${now.level}** بـ${label} (${e[key]} XP).`);
   },
 };
 

@@ -10,6 +10,6 @@ module.exports = {
   async run(ctx) {
     const channel = ctx.get('channel') || ctx.channel;
     await channel.permissionOverwrites.edit(ctx.guild.roles.everyone, { SendMessages: false, SendMessagesInThreads: false, AddReactions: false }, { reason: `${ctx.user.tag}: lock` });
-    return ctx.reply(`${E.lock} تم قفل ${channel}.`);
+    return ctx.ok(`تم قفل ${channel}.`);
   },
 };

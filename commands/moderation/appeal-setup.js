@@ -20,7 +20,7 @@ module.exports = {
     if (ctx.get('action') === 'off') {
       conf.enabled = false;
       store.save('appealsConfig');
-      return ctx.reply(`${E.success} وقفت طلبات فك الحظر.`);
+      return ctx.ok(`وقفت طلبات فك الحظر.`);
     }
     if (!conf.channelId) conf.channelId = ctx.channel.id;
     conf.enabled = true;

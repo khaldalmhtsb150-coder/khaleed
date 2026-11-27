@@ -198,8 +198,8 @@ function panelPayload(guild) {
   const b = custom ? null : art.banner('apply');
   const lines = conf.positions.map((p) => {
     const left = seatsLeft(guild.id, p);
-    const state = !p.open || !conf.enabled ? '🔴 مسكّر' : left === 0 ? '🔴 اكتمل العدد' : left === Infinity ? '🟢 مفتوح' : `🟢 باقي ${left}`;
-    return `${p.emoji ? `${p.emoji} ` : ''}**${p.name}** — ${state}${p.description ? `\n-# ${p.description}` : ''}`;
+    const state = !p.open || !conf.enabled ? 'مسكّر' : left === 0 ? 'اكتمل العدد' : left === Infinity ? 'مفتوح' : `مفتوح · باقي ${left}`;
+    return `${p.emoji ? `${p.emoji} ` : ''}**${p.name}** · \`${state}\`${p.description ? `\n-# ${p.description}` : ''}`;
   });
   const e = ui
     .embed()
@@ -269,8 +269,8 @@ async function checkView(guild, member, pos) {
         list.length ? list.map((c) => `${mark(c.ok)} ${c.label}${c.ok === false || c.ok === null ? `\n-# ${c.fix.replace(/\n/g, '\n-# ')}` : ''}`).join('\n') : 'ما في شروط على هالمنصب.',
         '',
         failing.length
-          ? 'زبّط اللي ناقص واكبس **فحص مرة ثانية** 👇'
-          : `كل شي تمام 👌 عندك **${count(questionsOf(pos).length, 'سؤال واحد', 'سؤالين', 'أسئلة')}**${questionsOf(pos).length > PAGE ? ` على ${count(Math.ceil(questionsOf(pos).length / PAGE), 'صفحة', 'صفحتين', 'صفحات')}` : ''}. جاوب بصراحة وبتفصيل، لأنه الإجابات القصيرة بتنزّل تقييمك.`,
+          ? 'زبّط اللي ناقص واكبس **فحص مرة ثانية**'
+          : `كل شي تمام، عندك **${count(questionsOf(pos).length, 'سؤال واحد', 'سؤالين', 'أسئلة')}**${questionsOf(pos).length > PAGE ? `على ${count(Math.ceil(questionsOf(pos).length / PAGE), 'صفحة', 'صفحتين', 'صفحات')}` : ''}. جاوب بصراحة وبتفصيل، لأنه الإجابات القصيرة بتنزّل تقييمك.`,
       ].join('\n')
     );
   const row = new ActionRowBuilder();
@@ -664,7 +664,7 @@ function missing(app) {
 }
 function roomOpening(guild, app, pos) {
   const miss = missing(app);
-  const lines = [`أهلاً <@${app.uid}> 👋 هاي تذكرة تقديمك على **${pos.name}** 📝`];
+  const lines = [`أهلاً <@${app.uid}>، هاي تذكرة تقديمك على **${pos.name}**`];
   if (miss.length) {
     lines.push('', 'قبل ما نكمّل في كم شغلة ناقصة:');
     for (const c of miss) {
@@ -673,7 +673,7 @@ function roomOpening(guild, app, pos) {
     }
     lines.push('', 'لما تخلّص احكيلي هون.');
   } else if (app.ai?.followups?.length) {
-    lines.push('', `قرأت إجاباتك 👌 عندي كم سؤال صغير:\n**${app.ai.followups[0]}**`);
+    lines.push('', `قرأت إجاباتك، عندي كم سؤال صغير:\n**${app.ai.followups[0]}**`);
     app.asked = 1;
   } else lines.push('', 'تقديمك كامل، والإدارة بتراجعه هون قريباً.');
   return lines.join('\n');
@@ -948,16 +948,16 @@ async function accept(guild, app, by, { auto = false } = {}) {
   const welcome = ui
     .embed()
     .setColor(ui.PALETTE.success)
-    .setTitle(`أهلاً فيك بالفريق 🎉`)
+    .setTitle(`أهلاً فيك بالفريق`)
     .setDescription([`مبروك <@${app.uid}>، انقبلت **${pos.name}**${roles.length ? ` وأخذت ${roles.map((r) => `<@&${r}>`).join(' ')}` : ''}.`, pos.trialDays > 0 ? `-# أول ${pos.trialDays} يوم فترة تجربة، وبعدها الإدارة بتثبّتك.` : null, '', '**مهامك:**', duties].filter((x) => x !== null).join('\n').slice(0, 4000));
   const room = app.roomId ? guild.channels.cache.get(app.roomId) || (await guild.channels.fetch(app.roomId).catch(() => null)) : null;
   const card = await resultImage(guild, app, true);
   if (card) welcome.setImage('attachment://result.png');
   if (room) {
     await room.send({ content: `<@${app.uid}>`, embeds: [welcome], files: card ? [new AttachmentBuilder(card, { name: 'result.png' })] : [], allowedMentions: { users: [app.uid] } }).catch(() => {});
-    await room.send({ content: aiOn(guild.id, pos) ? 'إذا عندك أي سؤال عن المهام أو الشغل، اسألني هون 👇' : 'إذا عندك أي سؤال، اسأل الإدارة هون 👇', allowedMentions: { parse: [] } }).catch(() => {});
+    await room.send({ content: aiOn(guild.id, pos) ? 'إذا عندك أي سؤال عن المهام أو الشغل، اسألني هون' : 'إذا عندك أي سؤال، اسأل الإدارة هون', allowedMentions: { parse: [] } }).catch(() => {});
   }
-  await dm(guild, app.uid, `🎉 انقبل تقديمك على **${pos.name}** بـ **${guild.name}**${room ? `\nتفاصيل مهامك هون: <#${room.id}>` : `\n\n**مهامك:**\n${duties}`}`, card);
+  await dm(guild, app.uid, `انقبل تقديمك على **${pos.name}** بـ **${guild.name}**${room ? `\nتفاصيل مهامك هون: <#${room.id}>` : `\n\n**مهامك:**\n${duties}`}`, card);
   await updateCard(guild, app);
   require('./logs').modAction(guild, { title: auto ? 'قبول تقديم إدارة (تلقائي)' : 'قبول تقديم إدارة', target: app.uid, by: by.id, reason: pos.name, color: 0x23a55a });
   refreshPanel(guild).catch(() => {});
@@ -975,12 +975,12 @@ async function reject(guild, app, by, reason = '') {
   store.save('applyUsers');
   const room = app.roomId ? guild.channels.cache.get(app.roomId) : null;
   if (room) {
-    await room.send({ content: `شكراً إنك قدّمت <@${app.uid}> 🤍 المرة هاي ما زبطت${app.reason ? `\n-# ${app.reason}` : ''}${pos?.cooldownDays ? `\nبتقدر تقدّم من جديد بعد ${days(pos.cooldownDays)}.` : ''}\n-# التذكرة بتنسكّر بعد 10 دقايق.`, allowedMentions: { users: [app.uid] } }).catch(() => {});
+    await room.send({ content: `شكراً إنك قدّمت <@${app.uid}>، المرة هاي ما زبطت${app.reason ? `\n-# ${app.reason}` : ''}${pos?.cooldownDays ? `\nبتقدر تقدّم من جديد بعد ${days(pos.cooldownDays)}.` : ''}\n-# التذكرة بتنسكّر بعد 10 دقايق.`, allowedMentions: { users: [app.uid] } }).catch(() => {});
     if (isThreadRoom(room)) await room.setLocked?.(true).catch(() => {});
     else await room.permissionOverwrites?.edit(app.uid, { SendMessages: false }).catch(() => {});
     app.closeAt = Date.now() + 10 * 60_000; // gone in 10 minutes
   }
-  await dm(guild, app.uid, `شكراً إنك قدّمت على **${app.posName}** بـ **${guild.name}** 🤍\nالمرة هاي ما زبطت${pos?.cooldownDays ? `، وبتقدر تقدّم من جديد بعد ${days(pos.cooldownDays)}` : ''}.${app.reason ? `\n-# السبب: ${app.reason}` : ''}`, await resultImage(guild, app, false));
+  await dm(guild, app.uid, `شكراً إنك قدّمت على **${app.posName}** بـ **${guild.name}**\nالمرة هاي ما زبطت${pos?.cooldownDays ? `، وبتقدر تقدّم من جديد بعد ${days(pos.cooldownDays)}` : ''}.${app.reason ? `\n-# السبب: ${app.reason}` : ''}`, await resultImage(guild, app, false));
   await updateCard(guild, app);
   require('./logs').modAction(guild, { title: 'رفض تقديم إدارة', target: app.uid, by: by.id, reason: app.reason || app.posName, color: 0xed4245 });
 }
@@ -1046,7 +1046,7 @@ async function tick(client) {
         store.save('applications');
         await updateCard(guild, app).catch(() => {});
         const ch = guild.channels.cache.get(config(gid).reviewChannelId);
-        if (ch && app.reviewMsgId) await ch.send({ content: `⏳ خلصت فترة تجربة <@${app.uid}> (${app.posName}) — قرّروا من الكرت فوق.`, reply: { messageReference: app.reviewMsgId }, allowedMentions: { parse: [] } }).catch(() => {});
+        if (ch && app.reviewMsgId) await ch.send({ content: `خلصت فترة تجربة <@${app.uid}> (${app.posName}) — قرّروا من الكرت فوق.`, reply: { messageReference: app.reviewMsgId }, allowedMentions: { parse: [] } }).catch(() => {});
       }
       if (app.stage === 'onboarding' && app.onboardUntil && Date.now() > app.onboardUntil && app.roomId) {
         await closeRoom(guild, app, { delay: 0, note: null });
@@ -1079,7 +1079,7 @@ async function onInteraction(i) {
     const block = gate(guild.id, i.user.id, pos);
     if (action === 'pick' && i.message) i.message.edit({ components: i.message.components.map((r) => ActionRowBuilder.from(r)) }).catch(() => {});
     if (block) return i.reply({ content: `• ${block}`, ephemeral: true });
-    if (pos.roles?.length && pos.roles.every((r) => i.member.roles.cache.has(r))) return i.reply({ content: '• إنت أصلاً معك رتبة هالمنصب 🙂', ephemeral: true });
+    if (pos.roles?.length && pos.roles.every((r) => i.member.roles.cache.has(r))) return i.reply({ content: '• إنت أصلاً معك رتبة هالمنصب', ephemeral: true });
     if (action === 'check') await i.deferUpdate();
     else await i.deferReply({ ephemeral: true });
     const { ephemeral, ...view } = await checkView(guild, i.member, pos);
@@ -1118,7 +1118,7 @@ async function onInteraction(i) {
     drafts.set(key, d);
     const pages = Math.ceil(qs.length / PAGE);
     if (page + 1 < pages) {
-      return i.reply({ content: `تمام ✓ ${page + 1 === pages - 1 ? 'باقي صفحة أخيرة' : `باقي ${count(pages - page - 1, 'صفحة وحدة', 'صفحتين', 'صفحات')}`}، كمّل 👇`, components: [new ActionRowBuilder().addComponents(ui.button(`apply:next:${pos.id}:${page + 1}`, `كمّل (${page + 2}/${pages})`, { style: ButtonStyle.Primary }))], ephemeral: true });
+      return i.reply({ content: `تمام ✓ ${page + 1 === pages - 1 ? 'باقي صفحة أخيرة' : `باقي ${count(pages - page - 1, 'صفحة وحدة', 'صفحتين', 'صفحات')}`}، كمّل`, components: [new ActionRowBuilder().addComponents(ui.button(`apply:next:${pos.id}:${page + 1}`, `كمّل (${page + 2}/${pages})`, { style: ButtonStyle.Primary }))], ephemeral: true });
     }
     drafts.delete(key);
     const block = gate(guild.id, i.user.id, pos);
@@ -1126,7 +1126,7 @@ async function onInteraction(i) {
     await i.deferReply({ ephemeral: true });
     const answers = qs.map((q, k) => d.answers[k] || { q, a: '' });
     const room = await submit(i, pos, answers);
-    return i.editReply(room ? `✅ وصل تقديمك. كمّل معنا هون: ${room}` : '✅ وصل تقديمك للإدارة، بيوصلك الرد قريباً.');
+    return i.editReply({ embeds: [ui.notice('success', room ? `وصل تقديمك. كمّل معنا هون: ${room}` : 'وصل تقديمك للإدارة، بيوصلك الرد قريباً.')] });
   }
 
   // ----- staff buttons on the review card -----
@@ -1185,7 +1185,7 @@ async function onInteraction(i) {
       if (!room) return i.reply({ content: '• ما قدرت أفتح تذكرة — تأكد إن البوت معه صلاحية إدارة القنوات.', ephemeral: true });
       app.human = true;
       store.save('applications');
-      await room.send({ content: `<@${app.uid}> أهلاً، حابين نحكي معك شوي عن تقديمك على **${app.posName}** 👋`, allowedMentions: { users: [app.uid] } }).catch(() => {});
+      await room.send({ content: `<@${app.uid}> أهلاً، حابين نحكي معك شوي عن تقديمك على **${app.posName}**`, allowedMentions: { users: [app.uid] } }).catch(() => {});
       updateCard(guild, app).catch(() => {});
     }
     if (isThreadRoom(room)) {
@@ -1213,7 +1213,7 @@ async function onInteraction(i) {
       const pos = posOf(guild.id, app.pos);
       const member = await guild.members.fetch(app.uid).catch(() => null);
       for (const r of pos?.roles || []) await member?.roles.remove(r, 'انتهت فترة التجربة').catch(() => {});
-      await dm(guild, app.uid, `خلصت فترة التجربة على **${app.posName}** بـ **${guild.name}**، وشكراً على وقتك معنا 🤍`);
+      await dm(guild, app.uid, `خلصت فترة التجربة على **${app.posName}** بـ **${guild.name}**، وشكراً على وقتك معنا`);
     }
     app.decidedBy = i.user.id;
     store.save('applications');

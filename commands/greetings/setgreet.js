@@ -25,6 +25,6 @@ module.exports = {
     conf.message = ctx.get('message').slice(0, 1800);
     conf.enabled = true;
     store.save('greetings');
-    return ctx.reply(`${E.success} تم حفظ رسالة الترحيب. القنوات: ${ids.map((id) => `<#${id}>`).join(' ')}\n${ui.hint('ضيف أو شيل قنوات بأمر greetchannel · جرّبها عبر testgreet')}`);
+    return ctx.ok(`تم حفظ رسالة الترحيب. القنوات: ${ids.map((id) => `<#${id}>`).join(' ')}\n${ui.hint('ضيف أو شيل قنوات بأمر greetchannel · جرّبها عبر testgreet')}`);
   },
 };

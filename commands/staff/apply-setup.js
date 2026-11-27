@@ -61,7 +61,7 @@ module.exports = {
       await ctx.defer(true);
       try {
         await apply.publish(g, ch);
-        return ctx.reply(`${E.success} نزلت لوحة التقديم بـ ${ch}. التقديمات بتوصل <#${conf.reviewChannelId}>.`);
+        return ctx.ok(`نزلت لوحة التقديم بـ ${ch}. التقديمات بتوصل <#${conf.reviewChannelId}>.`);
       } catch (e) {
         return ctx.fail(`ما قدرت أنشر: ${e.message}`);
       }
@@ -70,7 +70,7 @@ module.exports = {
       conf.enabled = action === 'open';
       store.save('applyConfig');
       await apply.refreshPanel(g);
-      return ctx.reply(`${E.success} ${conf.enabled ? 'فتحت' : 'سكّرت'} التقديم.`);
+      return ctx.ok(`${conf.enabled ? 'فتحت' : 'سكّرت'} التقديم.`);
     }
     if (action === 'stats') {
       const s = apply.stats(g.id);

@@ -48,18 +48,22 @@ function fillTemplate(text, g) {
     .replace(/{gift}/g, E.gift);
 }
 
-function requirementLines(g, guild) {
+function requirementFields(g) {
   const out = [];
   const r = g.req || {};
   const parts = [];
   if (r.roleId) parts.push(`رتبة <@&${r.roleId}>`);
   if (r.minInvites) parts.push(`${r.minInvites} دعوات`);
   if (r.minAccountAgeDays) parts.push(`عمر الحساب ${r.minAccountAgeDays} يوم`);
-  if (parts.length) out.push(`${E.lock} **الشروط:** ${parts.join(' · ')}`);
-  if (g.bonus?.length) out.push(`${E.star} **إدخالات إضافية:** ${g.bonus.map((b) => `<@&${b.roleId}> ×${b.entries}`).join(' · ')}`);
+  if (parts.length) out.push({ name: 'الشروط', value: parts.join(' · '), inline: false });
+  if (g.bonus?.length) out.push({ name: 'إدخالات إضافية', value: g.bonus.map((b) => `<@&${b.roleId}> ×${b.entries}`).join(' · '), inline: false });
   return out;
 }
 
+/**
+ * The giveaway message. The three lines (Hosted By / Ends / Winners) with the server's own emojis are the
+ * house format; the prize is the title, the colour says whether it's running (brand) or over (muted).
+ */
 function render(g, guild) {
   const st = g.style;
   let lines;
@@ -72,19 +76,48 @@ function render(g, guild) {
       `${E.gwWinners} **Winners:** ${g.winnersCount}`,
     ];
   }
-  const req = requirementLines(g, guild);
-  if (req.length) lines.push('', ...req);
   if (g.ended) {
-    lines.push('', g.winners.length ? `**Winner${g.winners.length > 1 ? 's' : ''}:** ${g.winners.map((w) => `<@${w}>`).join(', ')}` : '• لم يشارك أحد.');
+    lines.push('', g.winners.length ? `**Winner${g.winners.length > 1 ? 's' : ''}:** ${g.winners.map((w) => `<@${w}>`).join(', ')}` : 'ما في فائز، ما شارك حدا.');
   }
   const embed = ui
-    .embed()
-    .setAuthor({ name: (st?.title ? fillTemplate(st.title, g) : g.prize).slice(0, 256), iconURL: guild?.iconURL({ size: 128 }) || undefined })
+    .embed(g.ended ? 'muted' : 'brand')
+    .setTitle((st?.title ? fillTemplate(st.title, g) : g.prize).slice(0, 256))
     .setDescription(ui.trim(lines.join('\n'), 4000));
-  if (st?.color) embed.setColor(parseInt(st.color.slice(1), 16));
+  if (guild?.name) embed.setAuthor({ name: guild.name, iconURL: guild.iconURL?.({ size: 128 }) || undefined });
+  const fields = requirementFields(g);
+  if (g.ended) fields.push({ name: 'المشاركين', value: String(g.entrants?.length || 0), inline: true });
+  if (fields.length) embed.addFields(fields);
+  if (st?.color && !g.ended) embed.setColor(parseInt(st.color.slice(1), 16));
   if (st?.imageUrl) embed.setImage(st.imageUrl);
   if (g.hostName) embed.setFooter({ text: g.hostName, iconURL: g.hostAvatar || undefined });
   return { embeds: [embed], components: [] };
+}
+
+/** The result, posted as a reply to the giveaway: winners pinged in the content, the details in a card. */
+function resultPayload(g, msg, { reroll = false } = {}) {
+  const won = g.winners.length > 0;
+  const line = won
+    ? g.style?.winMessage
+      ? fillTemplate(g.style.winMessage, g)
+      : `مبروك ${g.winners.map((w) => `<@${w}>`).join('، ')}! فزتوا بـ **${g.prize}**`
+    : `ما في فائز: ${g.req && g.entrants.length ? 'ولا مشارك استوفى الشروط' : 'ما شارك حدا'}.`;
+  const e = ui
+    .embed(won ? 'gold' : 'muted')
+    .setTitle(reroll ? 'إعادة سحب' : 'انتهى القيفاواي')
+    .setDescription(line)
+    .addFields(
+      { name: 'الجائزة', value: g.prize, inline: true },
+      { name: 'المشاركين', value: String(g.entrants.length), inline: true },
+      ...(g.req ? [{ name: 'استوفوا الشروط', value: String(g.eligible ?? 0), inline: true }] : []),
+      { name: 'المنظم', value: `<@${g.hostId}>`, inline: true }
+    );
+  const rows = [];
+  const row = new ActionRowBuilder();
+  if (msg?.url) row.addComponents(ui.linkButton(msg.url, 'عرض القيفاواي'));
+  const brand = require('./growth').brandRow(msg?.guild?.id || g.guildId);
+  if (brand) row.addComponents(...brand.components);
+  if (row.components.length) rows.push(row);
+  return { content: won ? g.winners.map((w) => `<@${w}>`).join(' ') : undefined, embeds: [e], components: rows };
 }
 
 async function start(channel, { prize, winnersCount, durationMs, hostId, hostName, hostAvatar, requiredRoleId, minInvites }) {
@@ -266,11 +299,8 @@ async function endInner(client, g, { reroll = false } = {}) {
     );
 
     if (msg) await msg.edit({ ...render(g, channel.guild), allowedMentions: { parse: [] } }).catch(() => {});
-    const text = g.winners.length
-      ? `${reroll ? 'إعادة سحب — ' : ''}${fillTemplate(g.style?.winMessage || DEFAULT_WIN, g)}`
-      : `• انتهى القيفاواي على **${g.prize}** بدون ${g.req && g.entrants.length ? 'مشاركين مستوفين للشروط' : 'مشاركين'}.`;
     await channel
-      .send({ content: text, components: [require('./growth').brandRow(channel.guild.id)].filter(Boolean), reply: msg ? { messageReference: msg.id, failIfNotExists: false } : undefined, allowedMentions: { users: g.winners } })
+      .send({ ...resultPayload(g, msg, { reroll }), reply: msg ? { messageReference: msg.id, failIfNotExists: false } : undefined, allowedMentions: { users: g.winners } })
       .catch(() => {});
     return g;
   } finally {
@@ -313,9 +343,9 @@ async function onButton(interaction) {
   saveNow();
   await interaction.update({ ...render(g, interaction.guild), allowedMentions: { parse: [] } });
   return interaction.followUp({
-    content: idx === -1 ? `${E.success} دخلت القيفاواي، بالتوفيق 🤞` : '• طلعت من القيفاواي.',
+    embeds: [ui.notice(idx === -1 ? 'success' : 'info', idx === -1 ? 'دخلت القيفاواي، بالتوفيق.' : 'طلعت من القيفاواي.')],
     ephemeral: true,
   });
 }
 
-module.exports = { DEFAULT_CONFIG, start, end, find, list, init, pick, fillTemplate, components: [{ prefix: 'gw_join', type: 'button', handle: onButton }] };
+module.exports = { DEFAULT_CONFIG, DEFAULT_WIN, render, resultPayload, start, end, find, list, init, pick, fillTemplate, components: [{ prefix: 'gw_join', type: 'button', handle: onButton }] };

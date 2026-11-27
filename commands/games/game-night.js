@@ -45,9 +45,9 @@ module.exports = {
       if (!conf.night.channelId) conf.night.channelId = ctx.channel.id;
       store.save('gamesConfig');
       games.runNight(ctx.guild, games.config(ctx.guild.id), ctx.client).catch(() => {});
-      return ctx.reply(`${E.success} بلشت سهرة الألعاب بـ <#${conf.night.channelId}> 🎉`);
+      return ctx.ok(`بلشت سهرة الألعاب بـ <#${conf.night.channelId}> 🎉`);
     }
-    if (action === 'off') return ctx.reply(`${E.success} وقفت سهرة الألعاب الأسبوعية.`);
+    if (action === 'off') return ctx.ok(`وقفت سهرة الألعاب الأسبوعية.`);
     return ctx.reply(
       [
         `${E.success} سهرة الألعاب كل **${DAYS[conf.night.day]}** الساعة **${conf.night.time}** بـ <#${conf.night.channelId}>`,

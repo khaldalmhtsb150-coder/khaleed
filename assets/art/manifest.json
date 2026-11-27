@@ -52,6 +52,7 @@
     "doctor",
     "detective",
     "dead",
+    "warn",
     "timer",
     "gift",
     "voice",
@@ -70,103 +71,103 @@
   ],
   "banners": {
     "roulette": {
-      "accent": "#b26bff",
+      "accent": "#8e4ec6",
       "title": "روليت"
     },
     "mafia": {
-      "accent": "#ff4d5e",
+      "accent": "#e5484d",
       "title": "مافيا"
     },
     "chairs": {
-      "accent": "#2fd6c3",
+      "accent": "#12a594",
       "title": "الكراسي"
     },
     "spy": {
-      "accent": "#8b7bff",
+      "accent": "#6e56cf",
       "title": "برا السالفة"
     },
     "xo": {
-      "accent": "#4aa8ff",
+      "accent": "#3e63dd",
       "title": "بطولة XO"
     },
     "rps": {
-      "accent": "#ffb02e",
+      "accent": "#d9932b",
       "title": "حجرة ورقة مقص"
     },
     "deathbox": {
-      "accent": "#ff4d6d",
+      "accent": "#e5484d",
       "title": "صندوق الموت"
     },
     "rebelka": {
-      "accent": "#3fd9c6",
+      "accent": "#12a594",
       "title": "ريبلكا"
     },
     "fasttype": {
-      "accent": "#ffc83a",
+      "accent": "#d4a72c",
       "title": "أسرع كاتب"
     },
     "flags": {
-      "accent": "#3ddc84",
+      "accent": "#30a46c",
       "title": "أعلام"
     },
     "capitals": {
-      "accent": "#22c7e8",
+      "accent": "#0d9cc0",
       "title": "عواصم"
     },
     "unscramble": {
-      "accent": "#a37bff",
+      "accent": "#8e4ec6",
       "title": "فكّك الكلمة"
     },
     "math": {
-      "accent": "#ff8a3d",
+      "accent": "#e07a2f",
       "title": "حساب سريع"
     },
     "night": {
-      "accent": "#9b7bff",
+      "accent": "#6e56cf",
       "title": "سهرة الألعاب"
     },
     "shop": {
-      "accent": "#ffb02e",
+      "accent": "#d9932b",
       "title": "متجر الألعاب"
     },
     "top": {
-      "accent": "#ffcb47",
+      "accent": "#d4a72c",
       "title": "الترتيب"
     },
     "tempvoice": {
-      "accent": "#3fd9c6",
+      "accent": "#12a594",
       "title": "رومك الخاص"
     },
     "khatma": {
-      "accent": "#34d399",
+      "accent": "#30a46c",
       "title": "الختمة الجماعية"
     },
     "tickets": {
-      "accent": "#3b82f6",
+      "accent": "#3e63dd",
       "title": "مركز الدعم"
     },
     "verify": {
-      "accent": "#22c55e",
+      "accent": "#30a46c",
       "title": "التحقق"
     },
     "help": {
-      "accent": "#14b8a6",
+      "accent": "#6e56cf",
       "title": "ماركا بوت"
     },
     "apply": {
-      "accent": "#14b8a6",
+      "accent": "#6e56cf",
       "title": "تقديم الإدارة"
     },
     "appeal": {
-      "accent": "#5fb0ff",
+      "accent": "#3e63dd",
       "title": "طلب فك الحظر"
     },
     "backup": {
-      "accent": "#ffb02e",
+      "accent": "#d9932b",
       "title": "إصلاح السيرفر"
     },
     "radar": {
-      "accent": "#3fd9e8",
+      "accent": "#0d9cc0",
       "title": "عضو جديد ساكت"
     }
   }

@@ -21,7 +21,7 @@ module.exports = {
     if (!ch && ctx.get('interval') === null && ctx.get('sabah_masa') === null && ctx.get('friday') === null && !ctx.get('role')) {
       conf.enabled = false;
       store.save('adhkarConfig');
-      return ctx.reply(`${E.success} تم إيقاف نشر الأذكار التلقائي.`);
+      return ctx.ok(`تم إيقاف نشر الأذكار التلقائي.`);
     }
     if (ch) {
       conf.channelId = ch.id;

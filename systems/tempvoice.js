@@ -112,7 +112,7 @@ async function onComponent(i) {
   const room = rooms()[cid];
   if (!ch || !room) return i.reply({ content: '• هالروم ما عاد موجود.', ephemeral: true });
   if (action === 'claim') {
-    if (room.owner === i.user.id) return i.reply({ content: '• إنت صاحب الروم أصلاً 👑', ephemeral: true });
+    if (room.owner === i.user.id) return i.reply({ content: '• إنت صاحب الروم أصلاً', ephemeral: true });
     if (ch.members.has(room.owner)) return i.reply({ content: '• صاحب الروم لسا موجود فيه.', ephemeral: true });
     if (!ch.members.has(i.user.id)) return i.reply({ content: '• لازم تكون جوا الروم عشان تستلمه.', ephemeral: true });
     room.owner = i.user.id;

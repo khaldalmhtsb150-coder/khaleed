@@ -12,6 +12,6 @@ module.exports = {
     if (!g || g.guildId !== ctx.guild.id) return ctx.fail('ما لقيت القيفاواي.');
     if (!g.ended) return ctx.fail('القيفاواي ما زال جارياً.');
     await gw.end(ctx.client, g, { reroll: true });
-    return ctx.reply({ content: `${E.success} تمت إعادة السحب.` }, { ephemeral: true });
+    return ctx.ok(`تمت إعادة السحب.`, { ephemeral: true });
   },
 };

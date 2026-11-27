@@ -14,6 +14,6 @@ module.exports = {
     if (!Array.isArray(list) || !list[i]) return ctx.fail('رقم غير صحيح.');
     const [removed] = list.splice(i, 1);
     store.save('wheelRewards');
-    return ctx.reply(`${E.delete} تم حذف: **${odds.nameOf(removed)}**`);
+    return ctx.ok(`تم حذف: **${odds.nameOf(removed)}**`);
   },
 };

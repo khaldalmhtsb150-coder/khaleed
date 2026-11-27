@@ -1,3 +1,4 @@
+const ui = require('../../utils/ui');
 const E = require('../../utils/emojis');
 const hierarchy = require('./_hierarchy');
 const guard = require('../../systems/guard');
@@ -23,8 +24,8 @@ module.exports = {
     const blocked = hierarchy(ctx, member, 'حظر');
     if (blocked) return ctx.fail(blocked);
     const reason = ctx.get('reason') || 'بدون سبب';
-    await member?.send(`${E.ban} انحظرت مؤقتاً من **${ctx.guild.name}** لمدة ${formatDuration(ms)}\n${E.dot} السبب: ${reason}`).catch(() => {});
+    await member?.send({ embeds: [ui.notice('danger', `**${ctx.guild.name}**`, { title: 'انحظرت مؤقتاً من السيرفر', fields: [{ name: 'السبب', value: reason, inline: false }, { name: 'المدة', value: formatDuration(ms), inline: false }] })] }).catch(() => {});
     await guard.tempBan(ctx.guild, user.id, ms, `${ctx.user.tag}: ${reason} (مؤقت ${formatDuration(ms)})`);
-    return ctx.reply({ content: `${E.ban} انحظر ${user} لمدة **${formatDuration(ms)}** — بينفك <t:${Math.round((Date.now() + ms) / 1000)}:R>\n-# ${reason}`, allowedMentions: { parse: [] } });
+    return ctx.reply({ embeds: [ui.action({ title: 'حظر مؤقت', user, moderator: ctx.user, reason, duration: `${formatDuration(ms)} · بينفك <t:${Math.round((Date.now() + ms) / 1000)}:R>` })], allowedMentions: { parse: [] } });
   },
 };

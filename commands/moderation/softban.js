@@ -1,3 +1,4 @@
+const ui = require('../../utils/ui');
 const E = require('../../utils/emojis');
 const hierarchy = require('./_hierarchy');
 
@@ -18,6 +19,6 @@ module.exports = {
     const reason = ctx.get('reason') || 'بدون سبب';
     await ctx.guild.members.ban(member.id, { reason: `${ctx.user.tag}: سوفت باند — ${reason}`, deleteMessageSeconds: 86400 });
     await ctx.guild.bans.remove(member.id, 'سوفت باند').catch(() => {});
-    return ctx.reply({ content: `${E.ban} ${member.user} طلع وانمسحت رسايله آخر 24 ساعة (بيقدر يرجع)\n-# ${reason}`, allowedMentions: { parse: [] } });
+    return ctx.reply({ embeds: [ui.action({ title: 'حظر ناعم', kind: 'warning', user: member.user, moderator: ctx.user, reason, extra: [{ name: 'النتيجة', value: 'طلع من السيرفر وانمسحت رسايله آخر 24 ساعة، وبيقدر يرجع.', inline: false }] })], allowedMentions: { parse: [] } });
   },
 };

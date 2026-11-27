@@ -33,6 +33,6 @@ module.exports = {
     else list.splice(i, 1);
     store.save('blacklist');
     if (type === 'server' && i === -1) ctx.client.guilds.cache.get(id)?.leave().catch(() => {});
-    return ctx.reply(`${E.success} ${i === -1 ? 'تمت الإضافة إلى' : 'تمت الإزالة من'} القائمة السوداء: \`${id}\``);
+    return ctx.ok(`${i === -1 ? 'تمت الإضافة إلى' : 'تمت الإزالة من'} القائمة السوداء: \`${id}\``);
   },
 };

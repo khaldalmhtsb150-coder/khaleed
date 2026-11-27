@@ -8,22 +8,22 @@ const art = require('./art');
 const W = 1200;
 const PAD = 72;
 const RIGHT = W - PAD - 10; // text edge, just inside the accent band
-const INK = '#121317';
-const SURFACE = '#1a1c21';
-const LINE = 'rgba(255,255,255,0.08)';
-const TEXT = '#f3f4f6';
-const MUTED = '#9aa1ad';
-const FAINT = '#6b7280';
+const INK = '#0b0d12'; // charcoal
+const SURFACE = '#151924'; // deep navy
+const LINE = 'rgba(255,255,255,0.07)';
+const TEXT = '#eceef3';
+const MUTED = '#9aa0ae';
+const FAINT = '#6e7587';
 
 /** Accents, matching ui.PALETTE. */
 const ACC = {
-  brand: '#14b8a6',
-  info: '#3b82f6',
-  success: '#22c55e',
-  danger: '#ef4444',
-  gold: '#eab308',
-  pink: '#ec4899',
-  muted: '#64748b',
+  brand: '#6e56cf',
+  info: '#3e63dd',
+  success: '#30a46c',
+  danger: '#e5484d',
+  gold: '#d4a72c',
+  pink: '#d6409f',
+  muted: '#5b6170',
 };
 
 function base(H, acc) {
@@ -129,7 +129,15 @@ function stats(ctx, items, y, { x1 = PAD, x2 = RIGHT } = {}) {
 function footer(ctx, H, str) {
   hline(ctx, H - 66);
   if (str) text(ctx, str, RIGHT, H - 28, { weight: 'Medium', size: 19, color: FAINT, max: 760 });
-  text(ctx, 'MARKA', PAD, H - 28, { weight: 'Black', size: 18, color: FAINT, align: 'left', max: 200 });
+  ctx.save();
+  ctx.font = art.font('ExtraBold', 19);
+  ctx.textAlign = 'left';
+  ctx.direction = 'ltr';
+  ctx.fillStyle = MUTED;
+  ctx.fillText('Marka', PAD, H - 28);
+  ctx.fillStyle = '#a594f9';
+  ctx.fillText('Bot', PAD + ctx.measureText('Marka').width, H - 28);
+  ctx.restore();
 }
 
 /**

@@ -13,6 +13,6 @@ module.exports = {
     store.get('botSettings').status = ctx.get('text').slice(0, 120);
     store.save('botSettings');
     applyPresence(ctx.client);
-    return ctx.reply(`${E.success} تم تحديث الحالة.`);
+    return ctx.ok(`تم تحديث الحالة.`);
   },
 };
