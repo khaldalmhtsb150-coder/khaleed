@@ -13,7 +13,7 @@ try {
 } catch {}
 
 // ---------- app emojis ----------
-const VERSION = 'mk1'; // bump when the icon designs change → fresh uploads
+const VERSION = 'mk2'; // bump when the icon designs change → fresh uploads
 const icons = new Map(); // key → { id, name }
 const iconName = (key) => `${VERSION}_${key}`.slice(0, 32);
 
@@ -92,37 +92,12 @@ function rr(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-/** The brand backdrop: indigo gradient, accent glow, soft waves. */
-function backdrop(ctx, W, H, acc, { glowX = W / 2, glowY = H * 0.45, waves = true } = {}) {
-  const g = ctx.createLinearGradient(0, 0, W, H);
-  g.addColorStop(0, '#0c0a1d');
-  g.addColorStop(0.55, '#15113a');
-  g.addColorStop(1, '#1d1650');
-  ctx.fillStyle = g;
+/** The brand backdrop: flat charcoal with the accent band on the reading side. No glows or gradients. */
+function backdrop(ctx, W, H, acc) {
+  ctx.fillStyle = '#121317';
   ctx.fillRect(0, 0, W, H);
-  const glow = (x, y, r, col, a) => {
-    const rg = ctx.createRadialGradient(x, y, 0, x, y, r);
-    rg.addColorStop(0, hexA(col, a));
-    rg.addColorStop(1, hexA(col, 0));
-    ctx.fillStyle = rg;
-    ctx.fillRect(0, 0, W, H);
-  };
-  glow(glowX, glowY, Math.max(W, H) * 0.45, acc, 0.4);
-  glow(W * 0.85, 0, W * 0.4, '#6d4aff', 0.25);
-  if (!waves) return;
-  ctx.save();
-  for (let k = 0; k < 7; k++) {
-    const y0 = H * 0.78 + k * (H * 0.035);
-    ctx.beginPath();
-    for (let x = -10; x <= W + 10; x += 12) {
-      const y = y0 + Math.sin(x / 160 + k * 0.7) * 8;
-      x === -10 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = k === 1 ? hexA(acc, 0.5) : 'rgba(150,160,255,0.08)';
-    ctx.lineWidth = k === 1 ? 2 : 1.2;
-    ctx.stroke();
-  }
-  ctx.restore();
+  ctx.fillStyle = acc;
+  ctx.fillRect(W - 10, 0, 10, H);
 }
 
 async function loadAvatar(url) {
@@ -172,7 +147,7 @@ async function winnerCard({ gameKey, gameTitle, title, winners, reward }) {
   const c = lib.createCanvas(W, H);
   const ctx = c.getContext('2d');
   const acc = accent(gameKey, '#ffcb47');
-  backdrop(ctx, W, H, acc, { glowX: W / 2, glowY: 210 });
+  backdrop(ctx, W, H, acc);
   const list = winners.slice(0, 5).reverse(); // RTL: the first winner sits on the right
   const size = list.length === 1 ? 190 : list.length === 2 ? 160 : 128;
   const gap = 40;
@@ -182,21 +157,21 @@ async function winnerCard({ gameKey, gameTitle, title, winners, reward }) {
   const crown = await glyph('crown', '#ffcb47');
   for (const w of list) {
     const img = await loadAvatar(w.avatar);
-    ctx.save();
-    ctx.shadowColor = hexA(acc, 0.9);
-    ctx.shadowBlur = 40;
     ctx.beginPath();
-    ctx.arc(x + size / 2, y + size / 2, size / 2 + 7, 0, Math.PI * 2);
+    ctx.arc(x + size / 2, y + size / 2, size / 2 + 6, 0, Math.PI * 2);
     ctx.fillStyle = acc;
     ctx.fill();
-    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(x + size / 2, y + size / 2, size / 2 + 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#121317';
+    ctx.fill();
     ctx.save();
     ctx.beginPath();
     ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
     ctx.clip();
     if (img) ctx.drawImage(img, x, y, size, size);
     else {
-      ctx.fillStyle = '#2a2160';
+      ctx.fillStyle = '#1a1c21';
       ctx.fillRect(x, y, size, size);
       ctx.fillStyle = '#fff';
       ctx.font = font('Black', size * 0.45);
@@ -210,8 +185,6 @@ async function winnerCard({ gameKey, gameTitle, title, winners, reward }) {
       ctx.save();
       ctx.translate(x + size * 0.82, y + size * 0.08);
       ctx.rotate(0.45);
-      ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      ctx.shadowBlur = 10;
       ctx.drawImage(crown, -cs / 2, -cs / 2, cs, cs);
       ctx.restore();
     }
@@ -229,19 +202,15 @@ async function winnerCard({ gameKey, gameTitle, title, winners, reward }) {
   ctx.textBaseline = 'alphabetic';
   const ty = list.length === 1 ? y + size + 92 : y + size + 120;
   const head = list.length === 1 ? winners[0].name : title || '';
-  ctx.save();
-  ctx.shadowColor = hexA(acc, 0.6);
-  ctx.shadowBlur = 30;
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#f3f4f6';
   ctx.fillText(fitText(ctx, head, W - 160, 'Black', list.length === 1 ? 72 : 56), W / 2, ty);
-  ctx.restore();
   ctx.font = font('Bold', 30);
   ctx.fillStyle = hexA(acc, 1);
   const sub = list.length === 1 ? (String(title || '').includes(gameTitle) ? title : `${title || 'الفائز'} • ${gameTitle}`) : gameTitle;
   ctx.fillText(sub, W / 2, ty + 52);
   if (reward) {
     ctx.font = font('Medium', 24);
-    ctx.fillStyle = 'rgba(230,226,255,0.7)';
+    ctx.fillStyle = '#9aa1ad';
     ctx.fillText(reward, W / 2, ty + 92);
   }
   return c.toBuffer('image/png');

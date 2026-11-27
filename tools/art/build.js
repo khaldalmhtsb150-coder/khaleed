@@ -13,18 +13,19 @@ for (const w of ['Medium', 'Bold', 'ExtraBold', 'Black']) GlobalFonts.registerFr
 const F = (w, px) => `${px}px "Tajawal ${w}"`;
 
 // ---------- palette ----------
-const BRAND = { ink: '#0b0a1a', deep: '#141033', violet: '#6d4aff', lilac: '#b9a6ff', sky: '#8ec5ff' };
+// Flat and editorial: charcoal surfaces, one accent per piece, no gradients or glows.
+const BRAND = { ink: '#121317', surface: '#1a1c21', line: 'rgba(255,255,255,0.08)', text: '#f3f4f6', muted: '#9aa1ad', teal: '#14b8a6' };
 const TILE = {
-  green: ['#2fd27a', '#14a058'],
-  red: ['#ff5d6c', '#d42d43'],
-  blurple: ['#7b86ff', '#4f5be8'],
-  violet: ['#9a7bff', '#6a44f0'],
-  slate: ['#4a4f6a', '#2d3046'],
-  amber: ['#ffc24a', '#e8901a'],
-  blue: ['#5fb0ff', '#2f7ae0'],
-  pink: ['#ff7ab6', '#e0407f'],
-  teal: ['#3fd9c6', '#109c8c'],
-  emerald: ['#34d399', '#0f9e6e'],
+  green: '#16a34a',
+  red: '#dc2626',
+  blurple: '#4f46e5',
+  violet: '#7c3aed',
+  slate: '#475569',
+  amber: '#d97706',
+  blue: '#2563eb',
+  pink: '#db2777',
+  teal: '#0d9488',
+  emerald: '#059669',
 };
 
 // name → [lucide icon, tile colour]
@@ -64,38 +65,16 @@ function rr(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-/** A glossy rounded tile with a white glyph — the look of the bot's buttons. */
+/** A flat rounded tile with a white glyph — the look of the bot's buttons. */
 async function tile(icon, color, S = 128) {
   const c = createCanvas(S, S);
   const ctx = c.getContext('2d');
-  const [a, b] = TILE[color];
   const pad = S * 0.04;
-  rr(ctx, pad, pad, S - pad * 2, S - pad * 2, S * 0.27);
-  const g = ctx.createLinearGradient(0, pad, 0, S - pad);
-  g.addColorStop(0, a);
-  g.addColorStop(1, b);
-  ctx.fillStyle = g;
+  rr(ctx, pad, pad, S - pad * 2, S - pad * 2, S * 0.24);
+  ctx.fillStyle = TILE[color];
   ctx.fill();
-  // soft top sheen
-  ctx.save();
-  ctx.clip();
-  const sh = ctx.createLinearGradient(0, pad, 0, S * 0.55);
-  sh.addColorStop(0, 'rgba(255,255,255,0.28)');
-  sh.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = sh;
-  ctx.fillRect(0, 0, S, S * 0.55);
-  ctx.restore();
-  // inner hairline
-  rr(ctx, pad + 1.5, pad + 1.5, S - pad * 2 - 3, S - pad * 2 - 3, S * 0.25);
-  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
   const gs = Math.round(S * 0.56);
-  const img = await svgImage(icon, gs, '#ffffff', 2.3);
-  ctx.shadowColor = 'rgba(0,0,0,0.25)';
-  ctx.shadowBlur = 6;
-  ctx.shadowOffsetY = 2;
-  ctx.drawImage(img, (S - gs) / 2, (S - gs) / 2, gs, gs);
+  ctx.drawImage(await svgImage(icon, gs, '#ffffff', 2.3), (S - gs) / 2, (S - gs) / 2, gs, gs);
   return c;
 }
 
@@ -109,131 +88,63 @@ function hexA(hex, a) {
 }
 
 function background(ctx, accent) {
-  const g = ctx.createLinearGradient(0, 0, W, H);
-  g.addColorStop(0, '#0c0a1d');
-  g.addColorStop(0.55, '#15113a');
-  g.addColorStop(1, '#1d1650');
-  ctx.fillStyle = g;
+  ctx.fillStyle = BRAND.ink;
   ctx.fillRect(0, 0, W, H);
-  // big accent glow behind the illustration + a brand glow top-right
-  const glow = (x, y, r, col, a) => {
-    const rg = ctx.createRadialGradient(x, y, 0, x, y, r);
-    rg.addColorStop(0, hexA(col, a));
-    rg.addColorStop(1, hexA(col, 0));
-    ctx.fillStyle = rg;
-    ctx.fillRect(0, 0, W, H);
-  };
-  glow(310, 300, 420, accent, 0.42);
-  glow(980, 40, 460, BRAND.violet, 0.28);
-  // brand waves along the bottom
-  ctx.save();
-  for (let i = 0; i < 9; i++) {
-    const y0 = 440 + i * 20;
-    ctx.beginPath();
-    for (let x = -10; x <= W + 10; x += 10) {
-      const y = y0 + Math.sin(x / 170 + i * 0.7) * 10 + Math.sin(x / 61 + i) * 3;
-      x === -10 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = i === 2 ? hexA(accent, 0.55) : 'rgba(150,160,255,0.09)';
-    ctx.lineWidth = i === 2 ? 2.2 : 1.2;
-    if (i === 2) {
-      ctx.shadowColor = hexA(accent, 0.9);
-      ctx.shadowBlur = 12;
-    } else ctx.shadowBlur = 0;
-    ctx.stroke();
-  }
-  ctx.restore();
-  // fine grain so flat areas don't look plastic
-  const img = ctx.getImageData(0, 0, W, H);
-  let seed = 7;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < img.data.length; i += 4) {
-    const n = (rnd() - 0.5) * 9;
-    img.data[i] += n;
-    img.data[i + 1] += n;
-    img.data[i + 2] += n;
-  }
-  ctx.putImageData(img, 0, 0);
+  // the illustration sits on a slightly lighter panel; the accent band marks the reading side
+  ctx.fillStyle = BRAND.surface;
+  ctx.fillRect(0, 0, 600, H);
+  ctx.fillStyle = BRAND.line;
+  ctx.fillRect(600, 0, 2, H);
+  ctx.fillStyle = accent;
+  ctx.fillRect(W - 12, 0, 12, H);
+  // a quiet dot grid on the panel, for texture without decoration
+  ctx.fillStyle = 'rgba(255,255,255,0.05)';
+  for (let x = 30; x < 600; x += 30) for (let y = 30; y < H; y += 30) ctx.fillRect(x, y, 2, 2);
 }
 
 function brandMark(ctx, x, y, s = 1) {
-  // the Marka "M" with its dot, as on the avatar
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  rr(ctx, 0, 0, 44, 44, 12);
-  ctx.strokeStyle = 'rgba(185,166,255,0.55)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(12, 33);
-  ctx.lineTo(12, 15);
-  ctx.lineTo(22, 23.5);
-  ctx.lineTo(32, 15);
-  ctx.lineTo(32, 33);
-  ctx.strokeStyle = '#f2f0ff';
-  ctx.lineWidth = 4.2;
+  ctx.moveTo(10, 30);
+  ctx.lineTo(10, 12);
+  ctx.lineTo(20, 20.5);
+  ctx.lineTo(30, 12);
+  ctx.lineTo(30, 30);
+  ctx.strokeStyle = BRAND.muted;
+  ctx.lineWidth = 3.6;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(22, 9.5, 2.8, 0, Math.PI * 2);
-  ctx.fillStyle = BRAND.sky;
-  ctx.fill();
   ctx.restore();
-  ctx.font = F('ExtraBold', 26);
+  ctx.font = F('ExtraBold', 22);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.fillText('Marka', x + 56 * s, y + 22 * s);
-  const w = ctx.measureText('Marka').width;
-  ctx.fillStyle = BRAND.lilac;
-  ctx.fillText('Bot', x + 56 * s + w, y + 22 * s);
+  ctx.fillStyle = BRAND.muted;
+  ctx.fillText('MarkaBot', x + 42 * s, y + 21 * s);
 }
 
-/** A frosted circular "stage" with a big glowing glyph in the middle and small tiles around it. */
+/** The main glyph in an outlined ring, with the supporting icons as small flat tiles in a row. */
 async function stage(ctx, accent, main, sats = []) {
-  const cx = 320;
-  const cy = 290;
-  // rings
-  for (const [r, a] of [[230, 0.08], [182, 0.12]]) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = hexA(accent, a * 2.2);
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash(r === 230 ? [4, 10] : []);
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
-  const disc = ctx.createRadialGradient(cx - 40, cy - 60, 10, cx, cy, 150);
-  disc.addColorStop(0, hexA(accent, 0.55));
-  disc.addColorStop(1, hexA(accent, 0.12));
+  const cx = 300;
+  const cy = sats.length ? 262 : 300;
   ctx.beginPath();
-  ctx.arc(cx, cy, 140, 0, Math.PI * 2);
-  ctx.fillStyle = disc;
+  ctx.arc(cx, cy, 150, 0, Math.PI * 2);
+  ctx.fillStyle = BRAND.ink;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = accent;
   ctx.stroke();
-  const img = await svgImage(main, 170, '#ffffff', 1.6);
-  ctx.save();
-  ctx.shadowColor = hexA(accent, 1);
-  ctx.shadowBlur = 30;
-  ctx.drawImage(img, cx - 85, cy - 85, 170, 170);
-  ctx.restore();
-  const spots = [[cx + 168, cy - 120, -8], [cx - 190, cy - 70, 6], [cx + 150, cy + 128, 5], [cx - 150, cy + 140, -5]];
-  for (let i = 0; i < sats.length && i < spots.length; i++) {
-    const [x, y, rot] = spots[i];
+  ctx.drawImage(await svgImage(main, 150, accent, 1.6), cx - 75, cy - 75, 150, 150);
+  const n = Math.min(sats.length, 4);
+  const size = 64;
+  const gap = 18;
+  let x = cx - (n * size + (n - 1) * gap) / 2;
+  for (let i = 0; i < n; i++) {
     const [icon, color] = sats[i];
-    const t = await tile(icon, color, 96);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate((rot * Math.PI) / 180);
-    ctx.shadowColor = 'rgba(0,0,0,0.45)';
-    ctx.shadowBlur = 24;
-    ctx.shadowOffsetY = 10;
-    ctx.drawImage(t, -42, -42, 84, 84);
-    ctx.restore();
+    ctx.drawImage(await tile(icon, color, size), x, cy + 190, size, size);
+    x += size + gap;
   }
 }
 
@@ -305,7 +216,7 @@ function wheelArt(ctx, accent) {
   ctx.stroke();
   ctx.beginPath();
   ctx.arc(cx, cy - 22, 4, 0, Math.PI * 2);
-  ctx.fillStyle = BRAND.sky;
+  ctx.fillStyle = BRAND.teal;
   ctx.fill();
   // pointer
   ctx.save();
@@ -405,51 +316,41 @@ async function boxesArt(ctx, accent) {
 }
 
 function textBlock(ctx, { kicker, title, line, chips = [] }, accent) {
-  const R = W - 70;
-  ctx.direction = 'rtl';
-  ctx.textAlign = 'right';
+  const R = W - 76;
   ctx.textBaseline = 'alphabetic';
-  // kicker (English, letter-spaced)
+  // kicker: a short rule and a letter-spaced English label
+  ctx.fillStyle = accent;
+  ctx.fillRect(R - 40, 156, 40, 5);
   ctx.direction = 'ltr';
-  ctx.font = F('Bold', 24);
-  ctx.fillStyle = hexA(accent, 1);
-  const spaced = kicker.split('').join(String.fromCharCode(8202) + String.fromCharCode(8202));
-  ctx.fillText(spaced, R, 168);
+  ctx.textAlign = 'right';
+  ctx.font = F('Bold', 22);
+  ctx.fillText(kicker.split('').join(String.fromCharCode(8202, 8202)), R - 56, 166);
   ctx.direction = 'rtl';
   // title
-  let size = 128;
+  let size = 112;
   ctx.font = F('Black', size);
-  while (ctx.measureText(title).width > 560 && size > 70) ctx.font = F('Black', (size -= 4));
-  ctx.save();
-  ctx.shadowColor = hexA(accent, 0.55);
-  ctx.shadowBlur = 40;
-  const tg = ctx.createLinearGradient(0, 180, 0, 300);
-  tg.addColorStop(0, '#ffffff');
-  tg.addColorStop(1, '#d9d1ff');
-  ctx.fillStyle = tg;
-  ctx.fillText(title, R, 168 + size * 0.95);
-  ctx.restore();
-  // line
+  while (ctx.measureText(title).width > 500 && size > 64) ctx.font = F('Black', (size -= 4));
+  ctx.fillStyle = BRAND.text;
+  ctx.fillText(title, R, 190 + size * 0.92);
+  let y = 190 + size * 0.92;
   if (line) {
-    ctx.font = F('Medium', 33);
-    ctx.fillStyle = 'rgba(228,224,255,0.78)';
-    ctx.fillText(line, R, 168 + size * 0.95 + 78);
+    ctx.font = F('Medium', 30);
+    ctx.fillStyle = BRAND.muted;
+    ctx.fillText(line, R, (y += 66));
   }
-  // chips
+  // chips: flat outlined labels
   let x = R;
-  const y = 168 + size * 0.95 + 112;
-  ctx.font = F('Bold', 26);
+  y += 40;
+  ctx.font = F('Bold', 24);
   for (const c of chips) {
-    const w = ctx.measureText(c).width + 40;
-    rr(ctx, x - w, y, w, 48, 24);
-    ctx.fillStyle = 'rgba(255,255,255,0.07)';
-    ctx.fill();
-    ctx.strokeStyle = hexA(accent, 0.55);
-    ctx.lineWidth = 1.5;
+    const w = ctx.measureText(c).width + 36;
+    rr(ctx, x - w, y, w, 46, 10);
+    ctx.strokeStyle = BRAND.line;
+    ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.fillStyle = '#f1eeff';
+    ctx.fillStyle = BRAND.text;
     ctx.textBaseline = 'middle';
-    ctx.fillText(c, x - 20, y + 26);
+    ctx.fillText(c, x - 18, y + 25);
     ctx.textBaseline = 'alphabetic';
     x -= w + 12;
   }
@@ -475,10 +376,10 @@ const BANNERS = {
   top: { accent: '#ffcb47', kicker: 'LEADERBOARD', title: 'الترتيب', line: 'أقوى لاعبين السيرفر', chips: [], main: 'trophy', sats: [['crown', 'amber'], ['medal', 'amber'], ['star', 'amber']] },
   tempvoice: { accent: '#3fd9c6', kicker: 'TEMP VOICE', title: 'رومك الخاص', line: 'قفل، إخفاء، اسم، عدد، وطرد. كله من هون', chips: [], main: 'volume-2', sats: [['lock', 'slate'], ['users', 'blurple'], ['pencil', 'slate']] },
   khatma: { accent: '#34d399', kicker: 'KHATMA', title: 'الختمة الجماعية', line: 'جزء منك، وختمة منا كلنا', chips: [], main: 'book-open', sats: [['check', 'green'], ['moon', 'violet'], ['star', 'amber']] },
-  tickets: { accent: '#9a7bff', kicker: 'SUPPORT', title: 'مركز الدعم', line: 'افتح تذكرة والفريق بيرد عليك', chips: [], main: 'ticket', sats: [['message-circle', 'blurple'], ['check', 'green'], ['users', 'slate']] },
-  verify: { accent: '#2fd27a', kicker: 'VERIFICATION', title: 'التحقق', line: 'خطوة وحدة وبتفتحلك كل الرومات', chips: [], main: 'badge-check', sats: [['shield', 'blue'], ['lock-open', 'green']] },
-  help: { accent: '#8e9bff', kicker: 'COMMANDS', title: 'ماركا بوت', line: 'كل أوامر البوت مرتبة بأقسام', chips: [], main: 'list', sats: [['shield', 'blue'], ['dices', 'violet'], ['ticket', 'violet'], ['gift', 'pink']] },
-  apply: { accent: '#f5b942', kicker: 'STAFF APPLICATIONS', title: 'تقديم الإدارة', line: 'قدّم، وخلّينا نتعرّف عليك', chips: [], main: 'user-check', sats: [['clipboard-list', 'blue'], ['shield', 'blue'], ['star', 'amber']] },
+  tickets: { accent: '#3b82f6', kicker: 'SUPPORT', title: 'مركز الدعم', line: 'افتح تذكرة والفريق بيرد عليك', chips: [], main: 'ticket', sats: [['message-circle', 'blurple'], ['check', 'green'], ['users', 'slate']] },
+  verify: { accent: '#22c55e', kicker: 'VERIFICATION', title: 'التحقق', line: 'خطوة وحدة وبتفتحلك كل الرومات', chips: [], main: 'badge-check', sats: [['shield', 'blue'], ['lock-open', 'green']] },
+  help: { accent: '#14b8a6', kicker: 'COMMANDS', title: 'ماركا بوت', line: 'كل أوامر البوت مرتبة بأقسام', chips: [], main: 'list', sats: [['shield', 'blue'], ['dices', 'violet'], ['ticket', 'violet'], ['gift', 'pink']] },
+  apply: { accent: '#14b8a6', kicker: 'STAFF APPLICATIONS', title: 'تقديم الإدارة', line: 'قدّم، وخلّينا نتعرّف عليك', chips: [], main: 'user-check', sats: [['clipboard-list', 'blue'], ['shield', 'blue'], ['star', 'amber']] },
   appeal: { accent: '#5fb0ff', kicker: 'BAN APPEAL', title: 'طلب فك الحظر', line: 'احكي قصتك، والإدارة بتقرر', chips: [], main: 'scale', sats: [['mail', 'blue'], ['check', 'green'], ['x', 'red']] },
   backup: { accent: '#ffb02e', kicker: 'SERVER REPAIR', title: 'إصلاح السيرفر', line: 'المحذوف بيرجع زي ما كان', chips: [], main: 'archive', sats: [['wrench', 'amber'], ['rotate-ccw', 'blue'], ['shield', 'blue']] },
   radar: { accent: '#3fd9e8', kicker: 'NEWCOMER RADAR', title: 'عضو جديد ساكت', line: 'رحّبوا فيه قبل ما يطلع', chips: [], main: 'radar', sats: [['user-plus', 'green'], ['hand', 'amber'], ['bell', 'amber']] },
@@ -494,15 +395,8 @@ function lettersArt(ctx, accent) {
     ctx.shadowBlur = 28;
     ctx.shadowOffsetY = 12;
     rr(ctx, -72, -72, 144, 144, 34);
-    const g = ctx.createLinearGradient(0, -72, 0, 72);
-    g.addColorStop(0, col);
-    g.addColorStop(1, hexA(col, 0.7));
-    ctx.fillStyle = g;
+    ctx.fillStyle = col;
     ctx.fill();
-    ctx.shadowColor = 'transparent';
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
     ctx.fillStyle = '#fff';
     ctx.font = F('Black', 100);
     ctx.textAlign = 'center';
@@ -518,6 +412,8 @@ async function banner(key, b) {
   const c = createCanvas(W, H);
   const ctx = c.getContext('2d');
   background(ctx, b.accent);
+  // flat look: the hand-drawn illustrations set shadows; ignore them
+  for (const k of ['shadowBlur', 'shadowOffsetX', 'shadowOffsetY']) Object.defineProperty(ctx, k, { get: () => 0, set: () => {}, configurable: true });
   if (b.art === 'wheel') wheelArt(ctx, b.accent);
   else if (b.art === 'xo') xoArt(ctx, b.accent);
   else if (b.art === 'rps') await rpsArt(ctx);
@@ -525,7 +421,7 @@ async function banner(key, b) {
   else if (b.art === 'letters') lettersArt(ctx, b.accent);
   else await stage(ctx, b.accent, b.main, b.sats);
   textBlock(ctx, b, b.accent);
-  brandMark(ctx, W - 260, H - 82, 1);
+  brandMark(ctx, 640, H - 70, 1);
   return c;
 }
 

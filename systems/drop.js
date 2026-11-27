@@ -13,7 +13,7 @@ const save = () => store.save('drops');
 
 const cards = require('../utils/cards');
 const { AttachmentBuilder } = require('discord.js');
-const ACCENT = { open: 0xff5fa8, waiting: 0xff5fa8, won: 0xffcb47, expired: 0x8b8fb8 };
+const ACCENT = { open: ui.PALETTE.pink, waiting: ui.PALETTE.pink, won: ui.PALETTE.gold, expired: ui.PALETTE.muted };
 const stateOf = (d) => (d.winnerId ? 'won' : d.expired ? 'expired' : Date.now() < d.openAt ? 'waiting' : 'open');
 
 /** Embed + button for the box. With `withCard`, also draws the card for the current state. */

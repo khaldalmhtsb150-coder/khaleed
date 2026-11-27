@@ -1,201 +1,215 @@
 // Drawn cards for messages people react to: the box, application results, ticket summaries.
-// One visual language with the banners and winner cards (utils/art): dark violet backdrop, one accent
-// colour per kind, an app-icon tile, Tajawal type. Every function returns a PNG buffer, or null when
+// Flat and editorial on purpose: a charcoal surface, one accent band on the reading side, right-aligned
+// type in a clear hierarchy (kicker → title → details), hairline dividers. No gradients, glows or neon —
+// the look of a product, not of a generated poster. Every function returns a PNG buffer, or null when
 // no canvas library is installed (callers then fall back to a plain embed).
 const art = require('./art');
 
 const W = 1200;
+const PAD = 72;
+const RIGHT = W - PAD - 10; // text edge, just inside the accent band
+const INK = '#121317';
+const SURFACE = '#1a1c21';
+const LINE = 'rgba(255,255,255,0.08)';
+const TEXT = '#f3f4f6';
+const MUTED = '#9aa1ad';
+const FAINT = '#6b7280';
 
-function base(H, acc, glowY) {
+/** Accents, matching ui.PALETTE. */
+const ACC = {
+  brand: '#14b8a6',
+  info: '#3b82f6',
+  success: '#22c55e',
+  danger: '#ef4444',
+  gold: '#eab308',
+  pink: '#ec4899',
+  muted: '#64748b',
+};
+
+function base(H, acc) {
   const C = art.canvas();
   if (!C) return null;
   const c = C.createCanvas(W, H);
   const ctx = c.getContext('2d');
-  art.backdrop(ctx, W, H, acc, { glowX: W / 2, glowY: glowY ?? H * 0.4, waves: false });
-  // a fine frame so the card reads as a card in Discord's dark and light themes
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-  ctx.lineWidth = 2;
-  art.rr(ctx, 14, 14, W - 28, H - 28, 26);
-  ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.fillRect(0, 0, W, H);
+  // the accent band on the reading side (right, for Arabic)
+  ctx.fillStyle = acc;
+  ctx.fillRect(W - 10, 0, 10, H);
   return { c, ctx };
 }
 
-/** Rounded "app icon" tile with a glyph in it. */
-async function tile(ctx, cx, cy, size, key, acc) {
-  ctx.save();
-  ctx.shadowColor = art.hexA(acc, 0.8);
-  ctx.shadowBlur = 50;
-  const g = ctx.createLinearGradient(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2);
-  g.addColorStop(0, art.hexA(acc, 1));
-  g.addColorStop(1, art.hexA(acc, 0.55));
-  ctx.fillStyle = g;
-  art.rr(ctx, cx - size / 2, cy - size / 2, size, size, size * 0.28);
-  ctx.fill();
-  ctx.restore();
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-  ctx.lineWidth = 2;
-  art.rr(ctx, cx - size / 2 + 1, cy - size / 2 + 1, size - 2, size - 2, size * 0.28);
-  ctx.stroke();
-  ctx.restore();
-  const img = await art.glyph(key, '#ffffff');
-  if (img) ctx.drawImage(img, cx - size * 0.3, cy - size * 0.3, size * 0.6, size * 0.6);
-}
-
-async function avatar(ctx, cx, cy, size, url, name, acc) {
-  const img = await art.loadAvatar(url);
-  ctx.save();
-  ctx.shadowColor = art.hexA(acc, 0.9);
-  ctx.shadowBlur = 40;
-  ctx.beginPath();
-  ctx.arc(cx, cy, size / 2 + 7, 0, Math.PI * 2);
-  ctx.fillStyle = acc;
-  ctx.fill();
-  ctx.restore();
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
-  ctx.clip();
-  if (img) ctx.drawImage(img, cx - size / 2, cy - size / 2, size, size);
-  else {
-    ctx.fillStyle = '#2a2160';
-    ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
-    ctx.fillStyle = '#fff';
-    ctx.font = art.font('Black', size * 0.45);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(String(name || '?').slice(0, 1), cx, cy);
-  }
-  ctx.restore();
-}
-
-function text(ctx, str, x, y, { weight = 'Bold', size = 32, color = '#fff', max = W - 160, align = 'center', glow = null } = {}) {
+function text(ctx, str, x, y, { weight = 'Bold', size = 32, color = TEXT, max = W - PAD * 2, align = 'right' } = {}) {
   ctx.save();
   ctx.direction = 'rtl';
   ctx.textAlign = align;
   ctx.textBaseline = 'alphabetic';
-  const t = art.fitText(ctx, String(str), max, weight, size);
-  if (glow) {
-    ctx.shadowColor = glow;
-    ctx.shadowBlur = 30;
-  }
+  const t = art.fitText(ctx, String(str ?? ''), max, weight, size);
   ctx.fillStyle = color;
   ctx.fillText(t, x, y);
   ctx.restore();
 }
 
-/** A rounded label (e.g. the prize, a time). */
-function pill(ctx, str, cx, cy, { size = 30, color = '#fff', bg = 'rgba(255,255,255,0.1)', border = 'rgba(255,255,255,0.18)', weight = 'Bold' } = {}) {
+function hline(ctx, y, x1 = PAD, x2 = RIGHT) {
+  ctx.fillStyle = LINE;
+  ctx.fillRect(x1, y, x2 - x1, 2);
+}
+
+/** Small label in the accent colour with a short rule before it: "▬ بوكس". */
+function kicker(ctx, str, y, acc) {
   ctx.save();
-  ctx.font = art.font(weight, size);
+  ctx.font = art.font('Bold', 22);
   ctx.direction = 'rtl';
-  const w = Math.min(W - 200, ctx.measureText(str).width + size * 1.6);
-  const h = size * 1.9;
-  ctx.fillStyle = bg;
-  art.rr(ctx, cx - w / 2, cy - h / 2, w, h, h / 2);
+  const w = ctx.measureText(str).width;
+  ctx.restore();
+  ctx.fillStyle = acc;
+  ctx.fillRect(RIGHT - 36, y - 10, 36, 4);
+  text(ctx, str, RIGHT - 50, y, { weight: 'Bold', size: 22, color: acc, max: 600 });
+  return w;
+}
+
+/** A flat round badge with an outlined ring and a tinted glyph. */
+async function badge(ctx, cx, cy, size, key, acc) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+  ctx.fillStyle = SURFACE;
   ctx.fill();
-  ctx.strokeStyle = border;
-  ctx.lineWidth = 2;
-  art.rr(ctx, cx - w / 2, cy - h / 2, w, h, h / 2);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = art.hexA(acc, 0.55);
   ctx.stroke();
-  ctx.fillStyle = color;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(art.fitText(ctx, str, w - size, weight, size), cx, cy + 2);
+  ctx.restore();
+  const img = await art.glyph(key, acc);
+  if (img) ctx.drawImage(img, cx - size * 0.27, cy - size * 0.27, size * 0.54, size * 0.54);
+}
+
+async function avatar(ctx, cx, cy, size, url, name, acc) {
+  const img = await art.loadAvatar(url);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, size / 2 + 6, 0, Math.PI * 2);
+  ctx.fillStyle = acc;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy, size / 2 + 2, 0, Math.PI * 2);
+  ctx.fillStyle = INK;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+  ctx.clip();
+  if (img) ctx.drawImage(img, cx - size / 2, cy - size / 2, size, size);
+  else {
+    ctx.fillStyle = SURFACE;
+    ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
+    ctx.fillStyle = TEXT;
+    ctx.font = art.font('Black', size * 0.42);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(name || '?').trim().slice(0, 1).toUpperCase(), cx, cy + size * 0.03);
+  }
   ctx.restore();
 }
 
-const BOX = '#ff5fa8';
+/** A row of label/value cells separated by hairlines, right to left. */
+function stats(ctx, items, y, { x1 = PAD, x2 = RIGHT } = {}) {
+  const colW = (x2 - x1) / items.length;
+  items.forEach(([label, value, color], i) => {
+    const right = x2 - colW * i;
+    if (i) {
+      ctx.fillStyle = LINE;
+      ctx.fillRect(right + 1, y - 4, 2, 70);
+    }
+    const pad = i ? 26 : 0;
+    text(ctx, label, right - pad, y + 18, { weight: 'Medium', size: 19, color: MUTED, max: colW - 40 });
+    text(ctx, value, right - pad, y + 58, { weight: 'ExtraBold', size: 30, color: color || TEXT, max: colW - 40 });
+  });
+}
+
+/** Bottom strip: a detail on the right, the brand on the left. */
+function footer(ctx, H, str) {
+  hline(ctx, H - 66);
+  if (str) text(ctx, str, RIGHT, H - 28, { weight: 'Medium', size: 19, color: FAINT, max: 760 });
+  text(ctx, 'MARKA', PAD, H - 28, { weight: 'Black', size: 18, color: FAINT, align: 'left', max: 200 });
+}
 
 /**
  * The box. state: 'waiting' | 'open' | 'won' | 'expired'
  * { prize, host, winner: { name, avatar }, ms }
  */
 async function boxCard({ state = 'open', prize, host, winner, ms }) {
-  const H = 500;
-  const acc = state === 'expired' ? '#8b8fb8' : state === 'won' ? '#ffcb47' : BOX;
-  const b = base(H, acc, 170);
+  const H = 400;
+  const acc = state === 'expired' ? ACC.muted : state === 'won' ? ACC.gold : ACC.pink;
+  const b = base(H, acc);
   if (!b) return null;
   const { c, ctx } = b;
+  const textMax = W - PAD * 2 - 300; // leave the left side for the badge / avatar
   if (state === 'won' && winner) {
-    await avatar(ctx, W / 2, 150, 170, winner.avatar, winner.name, acc);
-    const crown = await art.glyph('crown', '#ffcb47');
-    if (crown) {
-      ctx.save();
-      ctx.translate(W / 2 + 62, 72);
-      ctx.rotate(0.45);
-      ctx.drawImage(crown, -36, -36, 72, 72);
-      ctx.restore();
-    }
-    text(ctx, winner.name, W / 2, 318, { weight: 'Black', size: 64, glow: art.hexA(acc, 0.6) });
-    text(ctx, 'فتح البوكس وفاز', W / 2, 362, { weight: 'Bold', size: 28, color: art.hexA(acc, 1) });
-    pill(ctx, prize, W / 2, 420, { size: 30 });
-    if (ms != null) text(ctx, `كبس خلال ${(ms / 1000).toFixed(2)} ثانية`, W / 2, 478, { weight: 'Medium', size: 20, color: 'rgba(230,226,255,0.6)' });
+    kicker(ctx, 'فاز بالبوكس', 92, acc);
+    text(ctx, winner.name, RIGHT, 170, { weight: 'Black', size: 66, max: textMax });
+    stats(ctx, [['الجائزة', prize, acc], ['سرعة الكبسة', ms != null ? `${(ms / 1000).toFixed(2)} ث` : '—'], ['بواسطة', host || '—']], 210, { x2: RIGHT, x1: PAD + 300 });
+    await avatar(ctx, PAD + 120, 170, 200, winner.avatar, winner.name, acc);
+    footer(ctx, H, 'مبروك! الجائزة بتوصلك من صاحب البوكس');
     return c.toBuffer('image/png');
   }
-  await tile(ctx, W / 2, 128, 150, 'gift', acc);
-  text(ctx, state === 'expired' ? 'انتهى البوكس' : 'بوكس!', W / 2, 262, { weight: 'Black', size: 40, color: art.hexA(acc, 1) });
-  text(ctx, prize, W / 2, 342, { weight: 'Black', size: 76, glow: art.hexA(acc, 0.6), color: state === 'expired' ? 'rgba(255,255,255,0.55)' : '#fff' });
-  const sub = state === 'waiting' ? 'جهّز إيدك… الزر بينفتح بعد شوي' : state === 'expired' ? 'خلص الوقت وما حدا كبس' : 'أول واحد بيكبس الزر بيفوز';
-  pill(ctx, sub, W / 2, 410, { size: 26, color: state === 'open' ? '#fff' : 'rgba(255,255,255,0.75)' });
-  if (host) text(ctx, `بواسطة ${host}`, W / 2, 470, { weight: 'Medium', size: 20, color: 'rgba(230,226,255,0.55)' });
+  const label = { waiting: 'بوكس • بينفتح بعد شوي', open: 'بوكس • مفتوح هلأ', expired: 'بوكس • انتهى' }[state] || 'بوكس';
+  kicker(ctx, label, 92, acc);
+  text(ctx, prize, RIGHT, 182, { weight: 'Black', size: 78, max: textMax, color: state === 'expired' ? MUTED : TEXT });
+  const sub = state === 'waiting' ? 'جهّز إيدك، الزر بينفتح بعد ثواني' : state === 'expired' ? 'خلص الوقت وما حدا كبس' : 'أول واحد بيكبس الزر تحت بياخذها';
+  text(ctx, sub, RIGHT, 236, { weight: 'Medium', size: 28, color: MUTED, max: textMax });
+  await badge(ctx, PAD + 120, 175, 190, 'gift', acc);
+  footer(ctx, H, host ? `بواسطة ${host}` : null);
   return c.toBuffer('image/png');
 }
 
 /** Staff application result for the DM and the ticket: accepted / rejected / trial. */
 async function resultCard({ ok, title, position, server, name, avatar: url }) {
-  const H = 460;
-  const acc = ok ? '#3ddc84' : '#ff6b6b';
-  const b = base(H, acc, 150);
+  const H = 400;
+  const acc = ok ? ACC.success : ACC.danger;
+  const b = base(H, acc);
   if (!b) return null;
   const { c, ctx } = b;
-  await avatar(ctx, W / 2, 140, 150, url, name, acc);
-  const badge = await art.glyph(ok ? 'check' : 'cancel', '#ffffff');
-  if (badge) {
+  const textMax = W - PAD * 2 - 300;
+  kicker(ctx, 'نتيجة التقديم', 92, acc);
+  text(ctx, title, RIGHT, 172, { weight: 'Black', size: 62, max: textMax });
+  stats(ctx, [['المنصب', position, acc], ['السيرفر', server], ['المتقدّم', name]], 212, { x2: RIGHT, x1: PAD + 300 });
+  await avatar(ctx, PAD + 120, 170, 200, url, name, acc);
+  const mark = await art.glyph(ok ? 'check' : 'cancel', '#ffffff');
+  if (mark) {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(W / 2 + 58, 196, 30, 0, Math.PI * 2);
+    ctx.arc(PAD + 192, 242, 30, 0, Math.PI * 2);
     ctx.fillStyle = acc;
     ctx.fill();
-    ctx.drawImage(badge, W / 2 + 38, 176, 40, 40);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    ctx.drawImage(mark, PAD + 174, 224, 36, 36);
     ctx.restore();
   }
-  text(ctx, title, W / 2, 290, { weight: 'Black', size: 60, glow: art.hexA(acc, 0.5) });
-  pill(ctx, position, W / 2, 350, { size: 30, color: art.hexA(acc, 1) });
-  text(ctx, server, W / 2, 420, { weight: 'Medium', size: 22, color: 'rgba(230,226,255,0.6)' });
+  footer(ctx, H, ok ? 'أهلاً فيك بالفريق' : 'بتقدر تقدّم مرة ثانية لاحقاً');
   return c.toBuffer('image/png');
 }
 
-/** Ticket summary when it closes: number, department, who handled it, how long, rating. */
-async function ticketCard({ number, department, owner, closer, claimer, minutes, messages }) {
-  const H = 420;
-  const acc = '#5fb0ff';
-  const b = base(H, acc, 120);
+/** Ticket summary when it closes: number, department, who handled it, how long, messages. */
+async function ticketCard({ number, department, owner, claimer, minutes, messages }) {
+  const H = 380;
+  const acc = ACC.info;
+  const b = base(H, acc);
   if (!b) return null;
   const { c, ctx } = b;
-  await tile(ctx, W / 2, 105, 120, 'ticket', acc);
-  text(ctx, `تذكرة #${String(number).padStart(4, '0')} انسكّرت`, W / 2, 228, { weight: 'Black', size: 52, glow: art.hexA(acc, 0.5) });
-  text(ctx, department || '', W / 2, 272, { weight: 'Bold', size: 26, color: art.hexA(acc, 1) });
-  const dur = minutes < 60 ? `${minutes} دقيقة` : minutes < 1440 ? `${Math.round(minutes / 60)} ساعة` : `${Math.round(minutes / 1440)} يوم`;
-  const stats = [
-    ['صاحب التذكرة', owner],
-    ['استلمها', claimer || '—'],
-    ['المدة', dur],
-    ['الرسائل', String(messages ?? '—')],
-  ];
-  const colW = (W - 160) / stats.length;
-  stats.forEach(([k, v], i) => {
-    const cx = W - 80 - colW * i - colW / 2;
-    ctx.save();
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    art.rr(ctx, cx - colW / 2 + 10, 300, colW - 20, 90, 18);
-    ctx.fill();
-    ctx.restore();
-    text(ctx, v, cx, 345, { weight: 'Black', size: 28, max: colW - 40 });
-    text(ctx, k, cx, 375, { weight: 'Medium', size: 18, color: 'rgba(230,226,255,0.6)', max: colW - 40 });
-  });
-  void closer;
+  kicker(ctx, 'تذكرة مسكّرة', 92, acc);
+  text(ctx, `#${String(number).padStart(4, '0')}`, RIGHT, 168, { weight: 'Black', size: 64, max: 360 });
+  ctx.save();
+  ctx.font = art.font('Black', 64);
+  const numW = Math.min(360, ctx.measureText(`#${String(number).padStart(4, '0')}`).width);
+  ctx.restore();
+  if (department) text(ctx, department, RIGHT - numW - 28, 162, { weight: 'Bold', size: 30, color: MUTED, max: W - PAD * 2 - numW - 40 });
+  hline(ctx, 196);
+  const m = Number(minutes) || 0;
+  const dur = m < 1 ? 'أقل من دقيقة' : m < 60 ? `${m} دقيقة` : m < 1440 ? `${Math.round(m / 60)} ساعة` : `${Math.round(m / 1440)} يوم`;
+  stats(ctx, [['صاحب التذكرة', owner || '—'], ['استلمها', claimer || '—', claimer ? acc : MUTED], ['المدة', dur], ['الرسائل', String(messages ?? '—')]], 222);
+  footer(ctx, H, 'شكراً لتواصلك معنا');
   return c.toBuffer('image/png');
 }
 
-module.exports = { boxCard, resultCard, ticketCard, _base: base, _tile: tile, _pill: pill, _text: text };
+module.exports = { boxCard, resultCard, ticketCard, ACC, _base: base, _badge: badge, _text: text, _stats: stats };

@@ -182,7 +182,8 @@ async function checks(guild, member, pos) {
   if (r.link) out.push({ key: 'link', ok: null, label: 'رابط السيرفر بالبايو', fix: `حطه بخانة «نبذة عني» بالزبط هيك، وبعد الأسئلة بنطلب صورة بروفايلك:\n\`${linkText(guild, pos)}\`` });
   return out;
 }
-const mark = (ok) => (ok === true ? '✅' : ok === false ? '❌' : '🕓');
+const E = require('../utils/emojis');
+const mark = (ok) => (ok === true ? E.success : ok === false ? E.error : E.timer);
 
 // ---------- panel ----------
 function seatsLeft(gid, pos) {
@@ -202,7 +203,7 @@ function panelPayload(guild) {
   });
   const e = ui
     .embed()
-    .setColor(art.accentInt('apply'))
+    .setColor(ui.PALETTE.brand)
     .setAuthor({ name: guild.name, iconURL: guild.iconURL?.() || undefined })
     .setTitle(conf.title)
     .setDescription([conf.description, '', ...lines].filter((x) => x !== null).join('\n').slice(0, 4000));
@@ -259,7 +260,7 @@ async function checkView(guild, member, pos) {
   const art = require('../utils/art');
   const e = ui
     .embed()
-    .setColor(failing.length ? 0xed4245 : art.accentInt('apply'))
+    .setColor(failing.length ? ui.PALETTE.danger : ui.PALETTE.brand)
     .setTitle(`${pos.emoji ? `${pos.emoji} ` : ''}التقديم على ${pos.name}`)
     .setThumbnail(guild.iconURL?.() || null)
     .setDescription(
@@ -304,7 +305,6 @@ function pageModal(pos, page) {
 }
 
 // ---------- AI ----------
-const bar = (s) => `${'▰'.repeat(Math.round(s / 10))}${'▱'.repeat(10 - Math.round(s / 10))}`;
 function profileOf(guild, member) {
   const e = store.peek('levels', guild.id)?.[member.id] || {};
   const lv = require('./levels');
@@ -331,9 +331,11 @@ async function evaluate(guild, member, pos, app) {
     ]
       .filter(Boolean)
       .join('\n'),
-    maxTokens: 800,
+    maxTokens: 1000,
   });
-  const score = Math.max(0, Math.min(100, Math.round(Number(r.score) || 0)));
+  const n = Number(String(r.score ?? '').match(/\d+(\.\d+)?/)?.[0]);
+  if (!Number.isFinite(n)) throw new Error('no score in the reply');
+  const score = Math.max(0, Math.min(100, Math.round(n <= 10 && /\/\s*10\b/.test(String(r.score)) ? n * 10 : n)));
   return {
     score,
     summary: String(r.summary || '').slice(0, 400),
@@ -341,6 +343,38 @@ async function evaluate(guild, member, pos, app) {
     concerns: (r.concerns || []).slice(0, 3).map((s) => String(s).slice(0, 120)),
     followups: (r.followups || []).slice(0, 3).map((s) => String(s).slice(0, 200)),
   };
+}
+
+/**
+ * Scores the application, with one quick retry. When it still fails the card says so, housekeeping
+ * retries a few times, and staff can press «إعادة التقييم». Every skip is logged with its reason.
+ */
+async function runEval(guild, member, pos, app, { tries = 2 } = {}) {
+  if (!pos || pos.mode === 'manual') return false;
+  if (!ai.available()) return console.warn('[apply] evaluate skipped: no AI key set'), false;
+  if (!ai.canUse(guild.id)) {
+    console.warn(`[apply] evaluate skipped: daily AI limit reached for ${guild.id}`);
+    app.aiPending = true;
+    return false;
+  }
+  for (let k = 0; k < tries; k++) {
+    try {
+      const r = await evaluate(guild, member, pos, app);
+      const prev = app.ai;
+      // an interview that already happened weighs more than the form
+      app.ai = prev?.interview ? { ...r, score: Math.round((r.score + prev.score * 2) / 3), interview: prev.interview } : r;
+      app.aiPending = false;
+      app.aiError = null;
+      return true;
+    } catch (e) {
+      app.aiError = String(e.message || e).slice(0, 200);
+      console.error(`[apply] evaluate #${app.id} try ${k + 1}/${tries}: ${app.aiError}`);
+      if (k + 1 < tries) await new Promise((r) => setTimeout(r, 2500));
+    }
+  }
+  app.aiPending = true;
+  app.aiTries = (app.aiTries || 0) + 1;
+  return false;
 }
 
 // Links are compared in code, character by character, after the model has only transcribed what it sees —
@@ -395,49 +429,76 @@ async function checkScreenshot(guild, member, pos, img) {
 }
 
 // ---------- review card ----------
+const P = ui.PALETTE;
 const STATUS = {
-  interview: ['🗣️ بالمقابلة', 0xf0b232],
-  pending: ['📬 بانتظار الإدارة', 0x5865f2],
-  accepted: ['✅ مقبول', 0x23a55a],
-  trial: ['⏳ مقبول — فترة تجربة', 0x1abc9c],
-  rejected: ['❌ مرفوض', 0xed4245],
-  ended: ['🚪 انتهت التجربة', 0x80848e],
+  interview: ['بالمقابلة', P.info],
+  pending: ['بانتظار قرار الإدارة', P.warning],
+  accepted: ['مقبول', P.success],
+  trial: ['مقبول • فترة تجربة', P.brand],
+  rejected: ['مرفوض', P.danger],
+  ended: ['انتهت التجربة', P.muted],
 };
 const SHORT = { account: 'عمر الحساب', server: 'مدته بالسيرفر', level: 'اللفل', warns: 'بدون تحذيرات', logo: 'الشعار', tag: 'التاق', link: 'الرابط بالبايو' };
+const grade = (s) => (s >= 85 ? 'ممتاز' : s >= 70 ? 'جيد جداً' : s >= 55 ? 'جيد' : s >= 40 ? 'متوسط' : 'ضعيف');
+const checklist = (app) => ((app.checks || []).length ? app.checks.map((c) => `${mark(c.ok)} ${SHORT[c.key] || c.label}`).join('\n') : 'ما في شروط');
+function statusLine(app) {
+  const [label] = STATUS[app.status] || STATUS.pending;
+  const by = app.auto ? ' • تلقائياً من المساعد' : app.decidedBy ? ` • <@${app.decidedBy}>` : '';
+  return `**${label}**${by}`;
+}
+function aiField(app) {
+  if (app.ai) {
+    const a = app.ai;
+    const lines = [
+      `**${a.score}**/100 • ${grade(a.score)}\n\`${ui.meter(a.score)}\``,
+      a.summary || null,
+      a.strengths?.length ? `**نقاط القوة:** ${a.strengths.join('، ')}` : null,
+      a.concerns?.length ? `**ملاحظات:** ${a.concerns.join('، ')}` : null,
+      a.interview ? `**المقابلة:** ${a.interview}` : null,
+    ];
+    return { name: 'تقييم المساعد', value: ui.trim(lines.filter(Boolean).join('\n'), 1024) };
+  }
+  if (app.aiPending) return { name: 'تقييم المساعد', value: `${E.timer} لسا ما خلص — بعيد المحاولة لحاله، أو اكبس **إعادة التقييم**.` };
+  return null;
+}
 function reviewPayload(guild, app) {
-  const [label, color] = STATUS[app.status] || STATUS.pending;
+  const [, color] = STATUS[app.status] || STATUS.pending;
   const p = app.profile || {};
   const e = ui
     .embed()
     .setColor(color)
-    .setAuthor({ name: `${app.name} • ${app.posName}`, iconURL: app.avatar || undefined })
+    .setAuthor({ name: app.name, iconURL: app.avatar || undefined })
+    .setTitle(`طلب تقديم • ${app.posName}`)
     .setDescription(
       [
-        `<@${app.uid}> • ${label}${app.auto ? ' تلقائياً من المساعد' : app.decidedBy ? ` بواسطة <@${app.decidedBy}>` : ''}${app.reason ? `\n-# ${app.status === 'rejected' ? 'السبب: ' : ''}${ui.trim(app.reason, 200)}` : ''}`,
-        `-# الحساب ${p.accountDays ?? '?'} يوم • بالسيرفر ${p.serverDays ?? '?'} يوم • لفل ${p.level ?? 0} • تحذيرات ${p.warns ?? 0}`,
-        (app.checks || []).length ? (app.checks || []).map((c) => `${mark(c.ok)} ${SHORT[c.key] || c.label}`).join(' ・ ') : null,
-        app.roomId ? `-# غرفة المقابلة: <#${app.roomId}>` : null,
+        `<@${app.uid}>`,
+        app.reason ? `-# ${app.status === 'rejected' ? 'السبب: ' : ''}${ui.trim(app.reason, 200)}` : null,
       ]
         .filter(Boolean)
         .join('\n')
+    )
+    .addFields(
+      { name: 'الحالة', value: statusLine(app), inline: true },
+      { name: 'الحساب', value: `${p.accountDays ?? '?'} يوم`, inline: true },
+      { name: 'بالسيرفر', value: `${p.serverDays ?? '?'} يوم`, inline: true },
+      { name: 'اللفل', value: String(p.level ?? 0), inline: true },
+      { name: 'التحذيرات', value: String(p.warns ?? 0), inline: true },
+      { name: 'المقابلة', value: app.roomId ? `<#${app.roomId}>` : '—', inline: true },
+      { name: 'الشروط', value: checklist(app) }
     );
+  const aiF = aiField(app);
+  if (aiF) e.addFields(aiF);
   let used = 0;
   for (const [k, a] of app.answers.entries()) {
     const v = ui.trim(a.a || '—', 600);
-    if (used + v.length > 3600) break;
+    if (used + v.length > 3000 || k >= 15) break;
     used += v.length;
-    e.addFields({ name: ui.trim(`${k + 1}. ${a.q}`, 256), value: v });
-  }
-  if (app.ai) {
-    e.addFields({
-      name: `تقييم المساعد ${app.ai.score}/100 ${bar(app.ai.score)}`,
-      value: ui.trim([app.ai.summary, app.ai.strengths?.length ? `👍 ${app.ai.strengths.join('، ')}` : null, app.ai.concerns?.length ? `⚠️ ${app.ai.concerns.join('، ')}` : null, app.ai.interview ? `🗣️ ${app.ai.interview}` : null].filter(Boolean).join('\n'), 1024),
-    });
+    e.addFields({ name: ui.trim(`${k + 1}. ${a.q}`, 256), value: `>>> ${v}` });
   }
   if (app.shotNote) e.addFields({ name: 'صورة البروفايل', value: ui.trim(app.shotNote, 1024) });
   const up = app.votes?.up?.length || 0;
   const down = app.votes?.down?.length || 0;
-  e.setFooter({ text: `👍 ${up}  •  👎 ${down}  •  #${app.id}` }).setTimestamp(app.at);
+  e.setFooter({ text: `طلب #${app.id} • أصوات الفريق: ${up} مع • ${down} ضد` }).setTimestamp(app.at);
   const shot = shots.get(app.id);
   if (shot || app.hasShot) e.setImage('attachment://profile.png');
   const open = ['interview', 'pending'].includes(app.status);
@@ -448,10 +509,12 @@ function reviewPayload(guild, app) {
         ui.button(`apply:acc:${app.id}`, 'قبول', { style: ButtonStyle.Success }),
         ui.button(`apply:rej:${app.id}`, 'رفض', { style: ButtonStyle.Danger }),
         ui.button(`apply:room:${app.id}`, app.roomId ? 'دخول المقابلة' : 'فتح مقابلة'),
-        ui.button(`apply:up:${app.id}`, `👍 ${up}`),
-        ui.button(`apply:down:${app.id}`, `👎 ${down}`)
+        ui.button(`apply:up:${app.id}`, `مع ${up}`, { emoji: 'upvote' }),
+        ui.button(`apply:down:${app.id}`, `ضد ${down}`, { emoji: 'downvote' })
       )
     );
+    const pos = posOf(guild.id, app.pos);
+    if ((!app.ai || app.aiPending) && pos && pos.mode !== 'manual' && ai.available()) rows.push(new ActionRowBuilder().addComponents(ui.button(`apply:eval:${app.id}`, 'إعادة التقييم', { emoji: 'refresh' })));
   } else if (app.status === 'trial') {
     rows.push(new ActionRowBuilder().addComponents(ui.button(`apply:keep:${app.id}`, 'تثبيت', { style: ButtonStyle.Success }), ui.button(`apply:end:${app.id}`, 'إنهاء التجربة', { style: ButtonStyle.Danger })));
   }
@@ -500,22 +563,20 @@ async function ensureCategory(guild) {
 
 /** Header of the application ticket: who, what, the checklist, and staff buttons. */
 function roomHeader(guild, app) {
-  const [label, color] = STATUS[app.status] || STATUS.pending;
+  const [, color] = STATUS[app.status] || STATUS.pending;
   const e = ui
     .embed()
     .setColor(color)
     .setAuthor({ name: app.name, iconURL: app.avatar || undefined })
     .setTitle(`تقديم #${String(app.no || 0).padStart(4, '0')} • ${app.posName}`)
-    .setDescription(
-      [
-        `<@${app.uid}> • ${label}`,
-        (app.checks || []).length ? (app.checks || []).map((c) => `${mark(c.ok)} ${SHORT[c.key] || c.label}`).join(' ・ ') : null,
-        '',
-        '-# هاي التذكرة ما بيشوفها غيرك وغير فريق الإدارة.',
-      ]
-        .filter((x) => x !== null)
-        .join('\n')
+    .setDescription(`<@${app.uid}>`)
+    .addFields(
+      { name: 'الحالة', value: statusLine(app), inline: true },
+      { name: 'المنصب', value: app.posName || '—', inline: true },
+      { name: 'قدّم', value: `<t:${Math.floor(app.at / 1000)}:R>`, inline: true },
+      { name: 'الشروط', value: checklist(app) }
     )
+    .setFooter({ text: 'هاي التذكرة ما بيشوفها غيرك وغير فريق الإدارة' })
     .setTimestamp(app.at);
   const open = ['interview', 'pending'].includes(app.status);
   const row = new ActionRowBuilder();
@@ -886,7 +947,7 @@ async function accept(guild, app, by, { auto = false } = {}) {
   const duties = pos.duties || TEMPLATE.duties;
   const welcome = ui
     .embed()
-    .setColor(0x23a55a)
+    .setColor(ui.PALETTE.success)
     .setTitle(`أهلاً فيك بالفريق 🎉`)
     .setDescription([`مبروك <@${app.uid}>، انقبلت **${pos.name}**${roles.length ? ` وأخذت ${roles.map((r) => `<@&${r}>`).join(' ')}` : ''}.`, pos.trialDays > 0 ? `-# أول ${pos.trialDays} يوم فترة تجربة، وبعدها الإدارة بتثبّتك.` : null, '', '**مهامك:**', duties].filter((x) => x !== null).join('\n').slice(0, 4000));
   const room = app.roomId ? guild.channels.cache.get(app.roomId) || (await guild.channels.fetch(app.roomId).catch(() => null)) : null;
@@ -947,7 +1008,7 @@ async function submit(interaction, pos, answers) {
   apps(guild.id)[id] = app;
   store.save('applications');
 
-  if (aiOn(guild.id, pos)) app.ai = await evaluate(guild, member, pos, app).catch((e) => (console.error('[apply] evaluate', e.message), null));
+  await runEval(guild, member, pos, app);
 
   // every application gets its own private ticket (the interview, the screenshot, the staff's questions)
   const room = await openRoom(guild, app, member);
@@ -968,6 +1029,14 @@ async function tick(client) {
     const guild = client.guilds.cache.get(gid);
     if (!guild) continue;
     for (const app of Object.values(list)) {
+      if (app.aiPending && (app.aiTries || 0) < 5 && ['interview', 'pending'].includes(app.status) && Date.now() - (app.aiTriedAt || 0) > 3 * 60_000) {
+        app.aiTriedAt = Date.now();
+        const member = await guild.members.fetch(app.uid).catch(() => null);
+        if (member && (await runEval(guild, member, posOf(gid, app.pos), app, { tries: 1 }))) {
+          store.save('applications');
+          await updateCard(guild, app).catch(() => {});
+        }
+      }
       if (app.status === 'trial' && app.trialEnds && Date.now() > app.trialEnds && !app.trialNotified) {
         app.trialNotified = true;
         const lv = store.peek('levels', gid)?.[app.uid] || {};
@@ -1093,6 +1162,19 @@ async function onInteraction(i) {
     await i.deferUpdate?.().catch(() => {});
     await reject(guild, app, i.user, i.fields.getTextInputValue('reason'));
     return;
+  }
+  if (action === 'eval') {
+    const pos = posOf(guild.id, app.pos);
+    if (!pos || pos.mode === 'manual') return i.reply({ content: '• هالمنصب على الوضع اليدوي، المساعد ما بيقيّم فيه. غيّره من لوحة التحكم.', ephemeral: true });
+    if (!ai.available()) return i.reply({ content: '• ما في مفتاح ذكاء اصطناعي مضبوط للبوت.', ephemeral: true });
+    if (!ai.canUse(guild.id)) return i.reply({ content: '• خلص حد المساعد اليومي لهالسيرفر، بيرجع بكرا.', ephemeral: true });
+    const member = await guild.members.fetch(app.uid).catch(() => null);
+    if (!member) return i.reply({ content: '• العضو مش بالسيرفر.', ephemeral: true });
+    await i.deferReply({ ephemeral: true }).catch(() => {});
+    const ok = await runEval(guild, member, pos, app);
+    store.save('applications');
+    await updateCard(guild, app).catch(() => {});
+    return i.editReply({ content: ok ? `• تم، التقييم: **${app.ai.score}/100**` : `• ما زبط هلأ${app.aiError ? ` (${ui.trim(app.aiError, 120)})` : ''}. رح أعيد المحاولة لحالي.` }).catch(() => {});
   }
   if (action === 'room') {
     let room = app.roomId ? guild.channels.cache.get(app.roomId) || (await guild.channels.fetch(app.roomId).catch(() => null)) : null;

@@ -142,19 +142,19 @@
       "title": "الختمة الجماعية"
     },
     "tickets": {
-      "accent": "#9a7bff",
+      "accent": "#3b82f6",
       "title": "مركز الدعم"
     },
     "verify": {
-      "accent": "#2fd27a",
+      "accent": "#22c55e",
       "title": "التحقق"
     },
     "help": {
-      "accent": "#8e9bff",
+      "accent": "#14b8a6",
       "title": "ماركا بوت"
     },
     "apply": {
-      "accent": "#f5b942",
+      "accent": "#14b8a6",
       "title": "تقديم الإدارة"
     },
     "appeal": {

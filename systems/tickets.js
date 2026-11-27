@@ -141,7 +141,7 @@ function openEmbed(guild, record) {
   const ai = require('./aiStaff').ticketLine(guild.id);
   const status = record.claimedBy ? `${E.crown} مع <@${record.claimedBy}>` : `${E.timer} بانتظار الفريق`;
   return ui
-    .embed()
+    .embed(record.claimedBy ? 'info' : 'brand')
     .setAuthor({ name: guild.name, iconURL: guild.iconURL() || undefined })
     .setTitle(`${E.ticket} تذكرة #${String(record.number).padStart(4, '0')}`)
     .setDescription(

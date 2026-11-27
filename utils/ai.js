@@ -332,9 +332,42 @@ async function run({ guildId, system, messages, tools = [], handlers = {}, maxSt
 async function json({ guildId, system, prompt, images = [], maxTokens = 700 }) {
   const content = [{ type: 'text', text: prompt }, ...images];
   const r = await chat({ guildId, system: `${system}\n\nReply with one JSON object only. No code fences, no text around it.`, messages: [{ role: 'user', content }], maxTokens, temperature: 0.2 });
-  const m = String(r.text || '').match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('AI returned no JSON');
-  return JSON.parse(m[0]);
+  return parseJSON(r.text);
+}
+
+/** Pulls the JSON object out of a reply: skips <think> blocks and code fences, forgives trailing commas. */
+function parseJSON(raw) {
+  const t = String(raw || '')
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/```(?:json)?/gi, '')
+    .trim();
+  const tries = [];
+  const first = t.indexOf('{');
+  if (first === -1) throw new Error(`AI returned no JSON: ${t.slice(0, 80)}`);
+  // the widest object, then each balanced object from the first brace
+  tries.push(t.slice(first, t.lastIndexOf('}') + 1));
+  let depth = 0;
+  let inStr = false;
+  for (let k = first; k < t.length; k++) {
+    const ch = t[k];
+    if (inStr) {
+      if (ch === '\\') k++;
+      else if (ch === '"') inStr = false;
+    } else if (ch === '"') inStr = true;
+    else if (ch === '{') depth++;
+    else if (ch === '}' && --depth === 0) {
+      tries.push(t.slice(first, k + 1));
+      break;
+    }
+  }
+  for (const c of tries) {
+    for (const v of [c, c.replace(/,\s*([}\]])/g, '$1')]) {
+      try {
+        return JSON.parse(v);
+      } catch {}
+    }
+  }
+  throw new Error(`AI returned broken JSON: ${t.slice(0, 80)}`);
 }
 
 /** Downloads an image attachment for vision (≤ 4 MB, png/jpg/webp/gif). */
@@ -358,6 +391,7 @@ async function image(url) {
 
 module.exports = {
   PROVIDERS,
+  parseJSON,
   available,
   providerName,
   describe,

@@ -321,11 +321,8 @@ async function renderCard(member) {
   ctx.clip();
   const conf = config(gid);
   const custom = require('../utils/premium').has(gid, 'rankCard') ? conf.card || {} : {};
-  const accent = /^#[0-9a-f]{6}$/i.test(custom.accent || '') ? custom.accent : '#7950E8';
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, '#111321');
-  bg.addColorStop(1, '#171A2A');
-  ctx.fillStyle = bg;
+  const accent = /^#[0-9a-f]{6}$/i.test(custom.accent || '') ? custom.accent : '#14B8A6';
+  ctx.fillStyle = '#121317';
   ctx.fillRect(0, 0, W, H);
   if (custom.background) {
     try {
@@ -337,20 +334,15 @@ async function renderCard(member) {
       ctx.fillRect(0, 0, W, H);
     } catch {}
   }
-  // seven hills contour lines (MarkaBot signature)
-  for (let i = 0; i < 7; i++) {
-    ctx.beginPath();
-    const y0 = 150 + i * 22;
-    for (let x = 0; x <= W; x += 12) ctx.lineTo(x, y0 + 12 * Math.sin(x / 90 + i * 0.7) + 6 * Math.sin(x / 31 - i));
-    ctx.strokeStyle = i % 2 ? 'rgba(145,200,255,.07)' : 'rgba(167,139,250,.08)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+  // flat: the avatar side on a slightly lighter panel, a hairline between, the accent band at the edge
+  if (!custom.background) {
+    ctx.fillStyle = '#1a1c21';
+    ctx.fillRect(0, 0, 284, H);
   }
-  const glow = ctx.createRadialGradient(150, 150, 10, 150, 150, 260);
-  glow.addColorStop(0, 'rgba(121,80,232,.28)');
-  glow.addColorStop(1, 'rgba(121,80,232,0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(255,255,255,.08)';
+  ctx.fillRect(284, 0, 2, H);
+  ctx.fillStyle = accent;
+  ctx.fillRect(0, 0, 8, H);
   ctx.restore();
 
   // avatar
@@ -364,7 +356,7 @@ async function renderCard(member) {
   try {
     ctx.drawImage(await loadImage(member.displayAvatarURL({ extension: 'png', size: 256 })), ax - ar, ay - ar, ar * 2, ar * 2);
   } catch {
-    ctx.fillStyle = '#1e2236';
+    ctx.fillStyle = '#1a1c21';
     ctx.fillRect(ax - ar, ay - ar, ar * 2, ar * 2);
   }
   ctx.restore();
@@ -375,13 +367,13 @@ async function renderCard(member) {
   ctx.stroke();
 
   // name + rank / level
-  const left = 280;
+  const left = 316;
   const right = W - 48;
   text(ctx, member.displayName || member.user.username, left, 92, { size: 38, bold: true, max: 360 });
-  text(ctx, `LVL ${t.level}`, right, 92, { size: 40, bold: true, color: '#A78BFA', align: 'right' });
+  text(ctx, `LVL ${t.level}`, right, 92, { size: 40, bold: true, color: accent, align: 'right' });
   ctx.font = `bold 40px "${FONT}", sans-serif`;
   const lvlW = ctx.measureText(`LVL ${t.level}`).width;
-  text(ctx, rank ? `#${rank}` : '#—', right - lvlW - 24, 92, { size: 40, bold: true, color: '#91C8FF', align: 'right' });
+  text(ctx, rank ? `#${rank}` : '#—', right - lvlW - 24, 92, { size: 40, bold: true, color: '#F3F4F6', align: 'right' });
 
   // progress bar
   const bx = left;
@@ -393,20 +385,17 @@ async function renderCard(member) {
   ctx.fill();
   const pct = Math.max(0.02, Math.min(1, t.current / t.next));
   roundRect(ctx, bx, by, Math.max(bh, bw * pct), bh, bh / 2);
-  const g = ctx.createLinearGradient(bx, 0, bx + bw, 0);
-  g.addColorStop(0, accent);
-  g.addColorStop(1, '#91C8FF');
-  ctx.fillStyle = g;
+  ctx.fillStyle = accent;
   ctx.fill();
-  text(ctx, `${short(t.current)} / ${short(t.next)} XP`, right, by + bh + 32, { size: 22, color: '#9298AD', align: 'right' });
+  text(ctx, `${short(t.current)} / ${short(t.next)} XP`, right, by + bh + 32, { size: 22, color: '#9AA1AD', align: 'right' });
 
   // bottom stats: voice level, echo, weekly
   const stat = (x, label, value, color) => {
     text(ctx, value, x, 262, { size: 28, bold: true, color });
-    text(ctx, label, x, 286, { size: 16, color: '#9298AD' });
+    text(ctx, label, x, 286, { size: 16, color: '#9AA1AD' });
   };
-  stat(left, 'VOICE LVL', String(v.level), '#91C8FF');
-  stat(left + 170, 'ECHO', short(e.echo || 0), '#A78BFA');
+  stat(left, 'VOICE LVL', String(v.level), '#F3F4F6');
+  stat(left + 170, 'ECHO', short(e.echo || 0), '#F3F4F6');
   stat(left + 320, 'THIS WEEK', `${short((e.wtx || 0) + (e.wvx || 0))} XP`, '#F5F5FA');
   text(ctx, 'MarkaBot', right, 286, { size: 16, bold: true, color: 'rgba(255,255,255,.35)', align: 'right' });
 
