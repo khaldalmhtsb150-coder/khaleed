@@ -75,11 +75,12 @@ function render(g, guild) {
     lines = [
       `${E.gwHost} **Hosted By:** <@${g.hostId}>`,
       `${E.gwEnds} **${g.ended ? 'Ended' : 'Ends'}:** ${ts(g.endTime)}`,
-      `${E.gwWinners} **Winners:** ${g.winnersCount}`,
+      // once it ends, the count becomes the winners themselves: same length as before
+      `${E.gwWinners} **Winners:** ${g.ended ? (g.winners.length ? g.winners.map((w) => `<@${w}>`).join(', ') : 'ما في فائز') : g.winnersCount}`,
     ];
   }
-  if (g.ended) {
-    lines.push('', g.winners.length ? `**Winner${g.winners.length > 1 ? 's' : ''}:** ${g.winners.map((w) => `<@${w}>`).join(', ')}` : 'ما في فائز، ما شارك حدا.');
+  if (g.ended && st?.description) {
+    lines.push('', g.winners.length ? `**Winner${g.winners.length > 1 ? 's' : ''}:** ${g.winners.map((w) => `<@${w}>`).join(', ')}` : 'ما في فائز.');
   }
   // the prize sits at the top next to the server's icon (no server name, no separate title)
   const embed = ui
@@ -87,7 +88,6 @@ function render(g, guild) {
     .setAuthor({ name: (st?.title ? fillTemplate(st.title, g) : g.prize).slice(0, 256), iconURL: guild?.iconURL?.({ size: 128 }) || undefined })
     .setDescription(ui.trim(lines.join('\n'), 4000));
   const fields = requirementFields(g);
-  if (g.ended) fields.push({ name: 'المشاركين', value: String(g.entrants?.length || 0), inline: true });
   if (fields.length) embed.addFields(fields);
   if (st?.color && !g.ended) embed.setColor(parseInt(st.color.slice(1), 16));
   if (st?.imageUrl) embed.setImage(st.imageUrl);
