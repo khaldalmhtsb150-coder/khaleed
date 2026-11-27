@@ -23,7 +23,9 @@ const DEFAULT_CONFIG = {
   minAccountAgeDays: 0,
   bonusRoles: [], // [{ roleId, entries }]
 };
-const DEFAULT_WIN = '{gift} مبروك {winnerList}! فزتم بـ **{prize}**';
+// the win line's emoji (the server's own): a plain message, not an embed
+const WIN_EMOJI = '<:gw_win:1575784763979997355>';
+const DEFAULT_WIN = `${WIN_EMOJI} مبروك {winnerList}! فزتم بـ **{prize}**`;
 
 const list = () => store.get('giveaways');
 const find = (messageId) => list().find((g) => g.messageId === messageId);
@@ -79,11 +81,11 @@ function render(g, guild) {
   if (g.ended) {
     lines.push('', g.winners.length ? `**Winner${g.winners.length > 1 ? 's' : ''}:** ${g.winners.map((w) => `<@${w}>`).join(', ')}` : 'ما في فائز، ما شارك حدا.');
   }
+  // the prize sits at the top next to the server's icon (no server name, no separate title)
   const embed = ui
     .embed(g.ended ? 'muted' : 'brand')
-    .setTitle((st?.title ? fillTemplate(st.title, g) : g.prize).slice(0, 256))
+    .setAuthor({ name: (st?.title ? fillTemplate(st.title, g) : g.prize).slice(0, 256), iconURL: guild?.iconURL?.({ size: 128 }) || undefined })
     .setDescription(ui.trim(lines.join('\n'), 4000));
-  if (guild?.name) embed.setAuthor({ name: guild.name, iconURL: guild.iconURL?.({ size: 128 }) || undefined });
   const fields = requirementFields(g);
   if (g.ended) fields.push({ name: 'المشاركين', value: String(g.entrants?.length || 0), inline: true });
   if (fields.length) embed.addFields(fields);
@@ -93,31 +95,17 @@ function render(g, guild) {
   return { embeds: [embed], components: [] };
 }
 
-/** The result, posted as a reply to the giveaway: winners pinged in the content, the details in a card. */
+/** The result, posted as a reply to the giveaway: one plain line (winners pinged) and a button back to it. */
 function resultPayload(g, msg, { reroll = false } = {}) {
   const won = g.winners.length > 0;
   const line = won
-    ? g.style?.winMessage
-      ? fillTemplate(g.style.winMessage, g)
-      : `مبروك ${g.winners.map((w) => `<@${w}>`).join('، ')}! فزتوا بـ **${g.prize}**`
-    : `ما في فائز: ${g.req && g.entrants.length ? 'ولا مشارك استوفى الشروط' : 'ما شارك حدا'}.`;
-  const e = ui
-    .embed(won ? 'gold' : 'muted')
-    .setTitle(reroll ? 'إعادة سحب' : 'انتهى القيفاواي')
-    .setDescription(line)
-    .addFields(
-      { name: 'الجائزة', value: g.prize, inline: true },
-      { name: 'المشاركين', value: String(g.entrants.length), inline: true },
-      ...(g.req ? [{ name: 'استوفوا الشروط', value: String(g.eligible ?? 0), inline: true }] : []),
-      { name: 'المنظم', value: `<@${g.hostId}>`, inline: true }
-    );
-  const rows = [];
+    ? `${reroll ? 'إعادة سحب — ' : ''}${fillTemplate(g.style?.winMessage || DEFAULT_WIN, g)}`
+    : `• انتهى القيفاواي على **${g.prize}** بدون ${g.req && g.entrants.length ? 'مشاركين مستوفين للشروط' : 'مشاركين'}.`;
   const row = new ActionRowBuilder();
   if (msg?.url) row.addComponents(ui.linkButton(msg.url, 'عرض القيفاواي'));
   const brand = require('./growth').brandRow(msg?.guild?.id || g.guildId);
   if (brand) row.addComponents(...brand.components);
-  if (row.components.length) rows.push(row);
-  return { content: won ? g.winners.map((w) => `<@${w}>`).join(' ') : undefined, embeds: [e], components: rows };
+  return { content: line, components: row.components.length ? [row] : [] };
 }
 
 async function start(channel, { prize, winnersCount, durationMs, hostId, hostName, hostAvatar, requiredRoleId, minInvites }) {
